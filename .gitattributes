@@ -1,0 +1,28 @@
+# Normalisation des fins de ligne
+* text=auto
+
+# Fichiers YAML Unity : texte, fusionnables
+*.unity text eol=lf linguist-generated
+*.prefab text eol=lf linguist-generated
+*.asset text eol=lf linguist-generated
+*.mat text eol=lf linguist-generated
+*.anim text eol=lf linguist-generated
+*.controller text eol=lf linguist-generated
+*.meta text eol=lf
+*.cs text diff=csharp
+
+# Binaires
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.psd binary
+*.tga binary
+*.exr binary
+*.hdr binary
+*.fbx binary
+*.blend binary
+*.wav binary
+*.mp3 binary
+*.ogg binary
+*.ttf binary
+*.otf binary

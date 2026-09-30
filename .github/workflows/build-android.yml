@@ -1,0 +1,64 @@
+name: Build Android
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: build-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Compiler l'APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      # L'image Docker Unity Android pèse plusieurs Go : on libère de la place sur le runner.
+      - name: Libérer de l'espace disque
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: false
+          swap-storage: false
+
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # Le dossier Library est mis en cache pour accélérer les builds suivants.
+      - name: Cache du dossier Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-Android-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-Android-
+
+      - name: Compiler avec Unity
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: Android
+          androidExportType: androidPackage
+          buildName: MonJeu3D
+          # La version affichée reste celle des Player Settings (bundleVersion).
+          versioning: None
+          # Le numéro de build GitHub sert de versionCode Android (toujours croissant).
+          androidVersionCode: ${{ github.run_number }}
+
+      - name: Publier l'APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MonJeu3D-Android-${{ github.run_number }}
+          path: build/Android
+          retention-days: 14
