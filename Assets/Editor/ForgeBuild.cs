@@ -7,7 +7,14 @@ using UnityEngine;
 [InitializeOnLoad]
 public static class ForgeBuild
 {
-    static ForgeBuild() { EditorApplication.update += Poll; }
+    // Le nom du produit sert aussi de clé à la sauvegarde PlayerPrefs de l'éditeur : il doit rester « MonJeu3D ».
+    const string EditorName = "MonJeu3D", AppName = "Forge de l'Enfer";
+
+    static ForgeBuild()
+    {
+        EditorApplication.update += Poll;
+        if (PlayerSettings.productName != EditorName) PlayerSettings.productName = EditorName;
+    }
 
     static string DlDir => Path.GetFullPath(Path.Combine(Application.dataPath, "../../_dl"));
     static double next;
@@ -28,7 +35,7 @@ public static class ForgeBuild
         string apk = Path.Combine(DlDir, "ForgeEnfer.apk");
         string log = Path.Combine(DlDir, "build_report.txt");
         File.WriteAllText(log, "EN COURS " + System.DateTime.Now + "\n");
-        PlayerSettings.productName = "Forge de l'Enfer";
+        PlayerSettings.productName = AppName;
         var opts = new BuildPlayerOptions
         {
             scenes = new[] { "Assets/Scenes/SampleScene.unity" },
@@ -37,7 +44,9 @@ public static class ForgeBuild
             options = BuildOptions.None,
         };
         EditorUserBuildSettings.buildAppBundle = false;
-        var report = BuildPipeline.BuildPlayer(opts);
+        BuildReport report;
+        try { report = BuildPipeline.BuildPlayer(opts); }
+        finally { PlayerSettings.productName = EditorName; AssetDatabase.SaveAssets(); }
         var s = report.summary;
         var txt = "RESULTAT " + s.result + "\nTaille " + (s.totalSize / 1048576f).ToString("0.0") + " Mo\nDurée " + s.totalTime + "\nErreurs " + s.totalErrors + "\n";
         foreach (var step in report.steps)

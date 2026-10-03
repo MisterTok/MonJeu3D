@@ -477,6 +477,18 @@ public class BattleWorld : MonoBehaviour
         {
             if (id < 0) continue;
             var def = ProgressionData.Pets[id];
+            if (hero.spr != null)
+            {
+                // Héros en 2D : le compagnon devient une image plate face caméra, tournée vers la droite.
+                var flat = FlatPet(def);
+                if (flat != null)
+                {
+                    flat.transform.localPosition = new Vector3(hero.X + PetOffsets[slot].x, def.fly, PetOffsets[slot].z);
+                    petObjs.Add(flat); petAnims.Add(null); petDefs.Add(def);
+                    slot++;
+                    continue;
+                }
+            }
             var go = ModelLib.Spawn(def.model, def.size * 1.5f, world);
             go.transform.localRotation = Quaternion.Euler(0f, HeroYaw, 0f);
             go.transform.localPosition = new Vector3(hero.X + PetOffsets[slot].x, def.fly, PetOffsets[slot].z);
@@ -486,6 +498,22 @@ public class BattleWorld : MonoBehaviour
             petDefs.Add(def);
             slot++;
         }
+    }
+
+    GameObject FlatPet(ProgressionData.PetDef def)
+    {
+        var sp = ItemIcons.CreatureSprite(def.model, ProgressionData.RarityColors[def.rarity], 0.12f, new Vector3(6f, 125f, 0f));
+        if (sp == null) return null;
+        var go = new GameObject("Compagnon " + def.name);
+        go.transform.SetParent(world, false);
+        var body = new GameObject("Sprite").transform;
+        body.SetParent(go.transform, false);
+        body.localRotation = Quaternion.Euler(CamPitch, 0f, 0f);
+        body.localScale = Vector3.one * Mathf.Clamp(def.size * 1.2f, 0.45f, 1.3f);
+        var sr = body.gameObject.AddComponent<SpriteRenderer>();
+        sr.sprite = sp;
+        sr.sortingOrder = 1;
+        return go;
     }
 
     readonly Dictionary<AnimPlayer, string> petState = new Dictionary<AnimPlayer, string>();
@@ -500,6 +528,13 @@ public class BattleWorld : MonoBehaviour
             var target = new Vector3(hero.X + PetOffsets[i].x, def.fly + (def.fly > 0 ? Mathf.Sin(Time.time * 2f + i) * 0.12f : 0f), PetOffsets[i].z);
             go.transform.localPosition = Vector3.Lerp(go.transform.localPosition, target, Mathf.Clamp01(dt * 6f));
             var a = petAnims[i];
+            if (a == null && go.transform.childCount > 0)
+            {
+                // Compagnon plat : petits bonds quand il marche.
+                var body = go.transform.GetChild(0);
+                float hop = moving && def.fly <= 0f ? Mathf.Abs(Mathf.Sin(Time.time * 10f + i)) * 0.12f : 0f;
+                body.localPosition = new Vector3(0f, hop, 0f);
+            }
             if (a == null) continue;
             string want = moving ? "move" : "idle";
             petState.TryGetValue(a, out string cur);

@@ -89,9 +89,11 @@ public static class ItemIcons
     static readonly string[] IdleKeys = { "Idle", "Flying", "Swim", "ArmatureAction", "Action", "*" };
 
     // Icône d'un modèle animé : posé dans son animation de repos, de trois quarts face à l'objectif.
-    public static Texture GetCreature(string modelPath, Color tint, float tintAmount)
+    public static Texture GetCreature(string modelPath, Color tint, float tintAmount) => GetCreature(modelPath, tint, tintAmount, CreatureEuler);
+
+    public static Texture GetCreature(string modelPath, Color tint, float tintAmount, Vector3 euler)
     {
-        int key = ("créature:" + modelPath + ":" + tint + ":" + tintAmount).GetHashCode();
+        int key = ("créature:" + modelPath + ":" + tint + ":" + tintAmount + ":" + euler).GetHashCode();
         if (cache.TryGetValue(key, out var rt) && rt != null && rt.IsCreated()) return rt;
         EnsureStudio();
         var model = ModelLib.Spawn(modelPath, 1f, null, false, true);
@@ -109,9 +111,36 @@ public static class ItemIcons
                 st.enabled = false;
             }
         }
-        rt = Shoot(model, CreatureEuler, "Icône " + modelPath);
+        rt = Shoot(model, euler, "Icône " + modelPath);
         cache[key] = rt;
         return rt;
+    }
+
+    // Version lisible (Texture2D) d'une icône de créature, recadrée sur la partie visible : pour en faire un sprite.
+    static readonly Dictionary<int, Sprite> spriteCache = new Dictionary<int, Sprite>();
+    public static Sprite CreatureSprite(string modelPath, Color tint, float tintAmount, Vector3 euler)
+    {
+        int key = ("sprite:" + modelPath + ":" + tint + ":" + tintAmount + ":" + euler).GetHashCode();
+        if (spriteCache.TryGetValue(key, out var sp) && sp != null) return sp;
+        var rt = GetCreature(modelPath, tint, tintAmount, euler) as RenderTexture;
+        if (rt == null) return null;
+        var prev = RenderTexture.active;
+        RenderTexture.active = rt;
+        var tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false);
+        tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+        tex.Apply();
+        RenderTexture.active = prev;
+        // Boîte des pixels visibles ; pivot en bas au centre.
+        var px = tex.GetPixels32();
+        int x0 = rt.width, y0 = rt.height, x1 = -1, y1 = -1;
+        for (int y = 0; y < rt.height; y++)
+            for (int x = 0; x < rt.width; x++)
+                if (px[y * rt.width + x].a > 20) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+        if (x1 < 0) { x0 = y0 = 0; x1 = rt.width - 1; y1 = rt.height - 1; }
+        var r = new Rect(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+        sp = Sprite.Create(tex, r, new Vector2(0.5f, 0f), r.height);   // 1 unité = hauteur visible
+        spriteCache[key] = sp;
+        return sp;
     }
 
     // Les modèles regardent vers +Z : on les tourne vers l'objectif, de trois quarts.
