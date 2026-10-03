@@ -20,6 +20,7 @@ Notes de passation pour Claude. À lire en premier dans toute nouvelle conversat
 - SkillData.cs (18 compétences, invocation, doublons), SkillFx.cs (effets en particules : projectiles, explosions, auras, onde de choc).
 - ShopData.cs (boutique : cadeau du jour, 6 offres du jour du jeu de référence en 4 tailles selon le cercle, ressources à l'unité, packs de gemmes affichés « bientôt »).
 - ItemIcons.cs (icônes 3D des tuiles : le modèle est photographié une fois dans un studio caché à y=-300, caméra orthographique, RenderTexture 256 px fond transparent, cache par emplacement+cercle ; GetCreature(modèle, teinte) pour compagnons et montures, posés dans leur animation de repos ; BuildItemModel(item, glowScale) avec lueur réduite).
+- GearModel.cs : gantelet, bottes (4 modèles selon le cercle) et anneaux (6, pierre selon le cercle) de Quaternius, stockés en JSON dans Resources/ForgeModels/Gear (parties couleur + sommets + triangles) et reconstruits en maillages à facettes. Source : .usda du dépôt GitHub chibifire-stages/quaternius-stage (l'ancien dépôt beep2bleep ne répond plus), convertis par Tools/usd_to_json.py (accessible depuis la VM du PC, pas depuis le cloud).
 - MissionData.cs (missions et pass de progression, tables du jeu de référence).
 - ForgeUI.Common.cs : style épuré façon Forge Master — Tile (icône + barre de doublons + « Niv. X » + coche équipé, cadre couleur de rareté, MakeTile/SetTile/SetEmptySlot), SummonBar compacte (monnaie, x1/x15, badge « Niv. (?) » qui ouvre les chances), fenêtre de détail ShowDetail/ShowInfo (toucher une tuile = fiche + bouton Équiper/Retirer). Règle : pas de phrases explicatives à l'écran, les infos détaillées vont dans la fiche. Tous les écrans suivent ce style (Donjons en 4 cartes, Techno plein écran + fiche ShowAction au toucher d'un nœud, Missions avec difficulté Facile/Moyen/Difficile + fiche, Boutique sans packs de gemmes, écran principal : bouton « Chances (?) », Reset (test) déplacé dans la fiche Héros). Fonds des panneaux opaques ; bouton Pass masqué quand un panneau est ouvert. Attention aux noms de champs : ForgeUI.Tech utilise déjà detailBtn/detailTitle…
 - ForgeUI.cs + partials ForgeUI.Companions/Dungeons/Tech/Mounts/Skills/Shop/Missions.cs (interface uGUI par code, police LegacyRuntime).
@@ -36,7 +37,7 @@ Forge (35 niv., nœuds, minuteur, gemmes), objets 8 emplacements avec vrais mod�
 - Sources temporaires : boss vaincu la 1re fois → coquilles + remontoirs (100 + 50/cercle).
 
 ## À faire ensuite
-Achats réels (Google Play Billing) et plus de sources de gemmes, ligue classée et guerre de clans (serveur en ligne nécessaire), équilibrage, modèles pour Gantelets/Bottes/Ceinture/Amulette/Anneau.
+Achats réels (Google Play Billing) et plus de sources de gemmes, ligue classée et guerre de clans (serveur en ligne nécessaire), équilibrage, modèles pour Ceinture/Amulette (UltimateRPG a S_Necklace1-3 pour l'amulette).
 
 ## Méthode de travail de Claude (important)
 - Git : Claude peut committer depuis device_bash (git -c user.name=MisterTok -c user.email=piecassa35@gmail.com) mais PAS pousser (pas d'identifiants GitHub dans la VM, terminaux Windows en clic seulement) : demander à Pierre de faire `git push` ou d'utiliser GitHub Desktop. Les verrous .git demandent la permission de suppression sur le dossier du projet.

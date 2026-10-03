@@ -639,22 +639,11 @@ public class ForgeWorld : MonoBehaviour
                 Prim(PrimitiveType.Cube, t, new Vector3(0, -0.1f, -0.16f), new Vector3(0.06f, 0.5f, 0.02f), dark);
                 Prim(PrimitiveType.Sphere, t, new Vector3(0, 0.15f, -0.17f), Vector3.one * 0.1f, gem);
                 break;
-            case 3: // Gantelets
-                for (int s = -1; s <= 1; s += 2)
-                {
-                    Prim(PrimitiveType.Cube, t, new Vector3(s * 0.22f, 0, 0), new Vector3(0.2f, 0.28f, 0.14f), metal);
-                    Prim(PrimitiveType.Cylinder, t, new Vector3(s * 0.22f, -0.25f, 0), new Vector3(0.18f, 0.1f, 0.15f), dark);
-                    Prim(PrimitiveType.Cube, t, new Vector3(s * 0.22f, 0.2f, 0), new Vector3(0.18f, 0.12f, 0.12f), metal);
-                    Prim(PrimitiveType.Sphere, t, new Vector3(s * 0.22f, 0f, -0.08f), Vector3.one * 0.06f, gem);
-                }
+            case 3: // Gantelets : gantelet de Quaternius, dressé doigts vers le haut
+                GearModel.Build(GearModel.GloveName(item.circle), 1.1f, c, glow, t, new Vector3(-90f, 0f, 0f));
                 break;
-            case 4: // Bottes
-                for (int s = -1; s <= 1; s += 2)
-                {
-                    Prim(PrimitiveType.Cube, t, new Vector3(s * 0.18f, 0.05f, 0.05f), new Vector3(0.16f, 0.45f, 0.18f), metal);
-                    Prim(PrimitiveType.Cube, t, new Vector3(s * 0.18f, -0.2f, -0.06f), new Vector3(0.16f, 0.12f, 0.36f), metal);
-                    Prim(PrimitiveType.Cube, t, new Vector3(s * 0.18f, 0.25f, 0.05f), new Vector3(0.19f, 0.06f, 0.21f), dark);
-                }
+            case 4: // Bottes : paire de bottes, plus hautes et plus blindées dans les derniers cercles
+                GearModel.Build(GearModel.BootName(item.circle), 1.0f, c, glow, t);
                 break;
             case 5: // Ceinture : bande de cuir en anneau, plaques de métal, grosse boucle devant
             {
@@ -680,10 +669,8 @@ public class ForgeWorld : MonoBehaviour
                 Prim(PrimitiveType.Cube, t, new Vector3(0, -0.05f, 0), new Vector3(0.28f, 0.28f, 0.05f), metal, new Vector3(0, 0, 45f));
                 Prim(PrimitiveType.Sphere, t, new Vector3(0, -0.05f, -0.04f), Vector3.one * 0.14f, gem);
                 break;
-            default: // Anneau
-                Prim(PrimitiveType.Cylinder, t, Vector3.zero, new Vector3(0.45f, 0.05f, 0.45f), metal, new Vector3(90f, 0, 0));
-                Prim(PrimitiveType.Cylinder, t, Vector3.zero, new Vector3(0.33f, 0.06f, 0.33f), Unlit(new Color(0.02f, 0.01f, 0.01f)), new Vector3(90f, 0, 0));
-                Prim(PrimitiveType.Sphere, t, new Vector3(0, 0.25f, 0), Vector3.one * 0.16f, gem);
+            default: // Anneau : anneau de Quaternius, pierre de plus en plus précieuse selon le cercle
+                GearModel.Build(GearModel.RingName(item.circle), 0.85f, c, glow, t);
                 break;
         }
         return root;
