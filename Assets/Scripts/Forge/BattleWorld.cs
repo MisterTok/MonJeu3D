@@ -107,6 +107,19 @@ public class BattleWorld : MonoBehaviour
     readonly List<Popup> popups = new List<Popup>();
 
     class Bar { public RectTransform root, fill; public Image fillImg; }
+
+    // ---------- Compétences en combat ----------
+    class SkillSlot
+    {
+        public int id = -1;
+        public float cd, active, droneTimer;
+        public GameObject fx;
+        public Image bg, fill; public Text label; public Button btn;
+    }
+    readonly SkillSlot[] skillSlots = { new SkillSlot(), new SkillSlot(), new SkillSlot() };
+    string skillKey = "";
+    double buffAtk, buffHp;
+    Material droneMat;
     class Popup { public Text t; public Vector3 world; public float time; }
 
     public static BattleWorld Build()
@@ -501,6 +514,7 @@ public class BattleWorld : MonoBehaviour
             circleTint = Color.Lerp(dc, new Color(0.5f, 0.05f, 0.02f), 0.3f);
             riverMat.SetColor("_BaseColor", Color.Lerp(new Color(2.6f, 1.3f, 0.7f), dc * 2.6f, 0.45f));
         }
+        ResetSkills();
         hero.maxHp = hero.hp = GameState.TotalHp();
         hero.atk = GameState.TotalAtk();
         hero.dead = false;
@@ -551,13 +565,13 @@ public class BattleWorld : MonoBehaviour
         RefreshHeroHelmet();
 
         // Les stats suivent l'équipement en temps réel.
-        double newMax = GameState.TotalHp();
+        double newMax = GameState.TotalHp() + buffHp;
         if (System.Math.Abs(newMax - hero.maxHp) > 0.5 && !hero.dead)
         {
             hero.hp = hero.hp / hero.maxHp * newMax;
             hero.maxHp = newMax;
         }
-        hero.atk = GameState.TotalAtk();
+        hero.atk = GameState.TotalAtk() + buffAtk;
 
         // Régénération (statistique secondaire) : % de la vie max par seconde.
         if (!hero.dead && phase == "walk" && hero.hp < hero.maxHp)
@@ -682,6 +696,7 @@ public class BattleWorld : MonoBehaviour
             idx++;
         }
 
+        UpdateSkills(dt);
         UpdateChunks(hero.X);
         UpdateTerrain(hero.X);
         UpdatePets(dt, phase == "walk" && !heroEngaged || phase == "clear");
@@ -721,17 +736,19 @@ public class BattleWorld : MonoBehaviour
             if (heal >= 1) { hero.hp += heal; ShowPopup(hero.go.transform.position + Vector3.up * 2.2f, "+" + GameState.Fmt(heal), new Color(0.4f, 1f, 0.45f), 28); }
         }
 
-        if (target.hp <= 0)
-        {
-            target.dead = true;
-            target.hp = 0;
-            float d = target.anim != null ? target.anim.Play(target.def.death, false, 0.1f) : 0f;
-            if (d <= 0f) target.go.transform.localRotation = Quaternion.Euler(0, EnemyYaw, 80f);
-            long gold = GameState.KillGold(target.boss);
-            GameState.AddGold(gold);
-            ShowPopup(target.go.transform.position + Vector3.up * 0.4f, "+" + GameState.Fmt(gold) + " or", new Color(1f, 0.82f, 0.3f), 34);
-            hero.cooldown = Mathf.Min(hero.cooldown, 0.35f);
-        }
+        if (target.hp <= 0) KillEnemy(target);
+    }
+
+    void KillEnemy(Fighter target)
+    {
+        target.dead = true;
+        target.hp = 0;
+        float d = target.anim != null ? target.anim.Play(target.def.death, false, 0.1f) : 0f;
+        if (d <= 0f) target.go.transform.localRotation = Quaternion.Euler(0, EnemyYaw, 80f);
+        long gold = GameState.KillGold(target.boss);
+        GameState.AddGold(gold);
+        ShowPopup(target.go.transform.position + Vector3.up * 0.4f, "+" + GameState.Fmt(gold) + " or", new Color(1f, 0.82f, 0.3f), 34);
+        hero.cooldown = Mathf.Min(hero.cooldown, 0.35f);
     }
 
     void EnemyHits(Fighter e)
@@ -752,6 +769,7 @@ public class BattleWorld : MonoBehaviour
             if (hero.anim != null) hero.anim.Play(HeroDeath, false, 0.1f);
             hero.state = "dead";
             phase = "dead";
+            ResetSkills();
             pauseTimer = 2.5f;
             if (dungeon >= 0)
             {
@@ -761,6 +779,211 @@ public class BattleWorld : MonoBehaviour
             }
             else ShowBanner("Défaite… forge un meilleur équipement !", new Color(1f, 0.4f, 0.35f));
         }
+    }
+
+    // ---------- Compétences ----------
+    const float SkillRange = 7.5f;
+
+    void ResetSkills()
+    {
+        foreach (var sl in skillSlots)
+        {
+            if (sl.fx != null) Destroy(sl.fx);
+            sl.fx = null;
+            sl.active = 0f;
+            sl.droneTimer = 0f;
+            if (sl.id >= 0) sl.cd = SkillData.Skills[sl.id].cooldown * 0.5f;
+        }
+        buffAtk = buffHp = 0;
+    }
+
+    void RefreshSkillSlots()
+    {
+        var eq = GameState.Data.equippedSkills;
+        string key = string.Join(",", eq);
+        if (key == skillKey) return;
+        skillKey = key;
+        for (int i = 0; i < 3; i++)
+        {
+            var sl = skillSlots[i];
+            int id = GameState.FindSkill(eq[i]) != null ? eq[i] : -1;
+            if (id == sl.id) continue;
+            if (sl.fx != null) Destroy(sl.fx);
+            sl.fx = null; sl.active = 0f;
+            sl.id = id;
+            if (id >= 0) sl.cd = SkillData.Skills[id].cooldown * 0.5f;
+        }
+    }
+
+    bool InSkillRange(Fighter f) => f != null && !f.dead && f.X - hero.X < SkillRange;
+
+    Fighter FrontEnemy()
+    {
+        foreach (var e in enemies) if (!e.dead && e.X - hero.X < SkillRange) return e;
+        return null;
+    }
+
+    void UpdateSkills(float dt)
+    {
+        RefreshSkillSlots();
+        bool fighting = phase == "walk" && !hero.dead && FrontEnemy() != null;
+        double atk = 0, hp = 0;
+        for (int i = 0; i < 3; i++)
+        {
+            var sl = skillSlots[i];
+            if (sl.id < 0) continue;
+            var def = SkillData.Skills[sl.id];
+            var own = GameState.FindSkill(sl.id);
+            if (own == null) continue;
+            if (sl.active > 0f)
+            {
+                sl.active -= dt;
+                if (def.kind == SkillData.Rage || def.kind == SkillData.Aura) atk += GameState.SkillDamage(own);
+                if (def.kind == SkillData.Aura) hp += GameState.SkillHealth(own);
+                if (def.kind == SkillData.Heal && !hero.dead)
+                {
+                    double heal = GameState.SkillHealth(own) / def.duration * dt;
+                    hero.hp = System.Math.Min(hero.maxHp, hero.hp + heal);
+                }
+                if (def.kind == SkillData.Drone && sl.fx != null)
+                {
+                    sl.fx.transform.localPosition = new Vector3(hero.X - 0.4f, 2.4f + Mathf.Sin(Time.time * 3f) * 0.15f, -0.5f);
+                    sl.droneTimer -= dt;
+                    if (sl.droneTimer <= 0f && fighting)
+                    {
+                        sl.droneTimer = 2f;
+                        FireAt(FrontEnemy(), sl.fx.transform.position, def.color, GameState.SkillDamage(own), 14f, 0.1f, 0.8f);
+                    }
+                }
+                if (sl.active <= 0f && sl.fx != null) { if (def.kind == SkillData.Drone) Destroy(sl.fx); sl.fx = null; }
+            }
+            else if (fighting)
+            {
+                sl.cd -= dt;
+                if (sl.cd <= 0f) Cast(sl, def, own);
+            }
+            // Affichage du bouton
+            if (sl.active > 0f) sl.fill.fillAmount = sl.active / Mathf.Max(0.1f, def.duration);
+            else sl.fill.fillAmount = 1f - Mathf.Clamp01(sl.cd / def.cooldown);
+            var c = def.color;
+            bool ready = sl.active <= 0f && sl.cd <= 0.05f;
+            sl.fill.color = sl.active > 0f ? new Color(c.r, c.g, c.b, 0.95f) : new Color(c.r * 0.55f, c.g * 0.55f, c.b * 0.55f, ready ? 1f : 0.75f);
+        }
+        buffAtk = atk;
+        buffHp = hp;
+        for (int i = 0; i < 3; i++)
+        {
+            var sl = skillSlots[i];
+            bool has = sl.id >= 0;
+            sl.bg.gameObject.SetActive(has);
+            if (!has) continue;
+            var def = SkillData.Skills[sl.id];
+            string t = def.name;
+            sl.label.text = sl.active > 0f ? "<b>" + t + "</b>\n" + Mathf.CeilToInt(sl.active) + "s" : t + (sl.cd > 0.05f ? "\n<size=24>" + Mathf.CeilToInt(sl.cd) + "</size>" : "");
+        }
+    }
+
+    void ManualCast(int i)
+    {
+        var sl = skillSlots[i];
+        if (sl.id < 0 || sl.active > 0f || phase != "walk" || hero.dead || FrontEnemy() == null) return;
+        var own = GameState.FindSkill(sl.id);
+        if (own == null) return;
+        if (sl.cd > 0.05f) return;
+        Cast(sl, SkillData.Skills[sl.id], own);
+    }
+
+    void Cast(SkillSlot sl, SkillData.SkillDef def, OwnedSkill own)
+    {
+        sl.cd = def.cooldown;
+        Vector3 heroPos = hero.go.transform.position;
+        ShowPopup(heroPos + Vector3.up * 2.7f, def.name, Color.Lerp(def.color, Color.white, 0.3f), 30);
+        double dmg = GameState.SkillDamage(own);
+        switch (def.kind)
+        {
+            case SkillData.Strike:
+            {
+                var t = FrontEnemy();
+                bool sky = sl.id == 13 || sl.id == 14;
+                Vector3 from = sky && t != null ? t.go.transform.position + new Vector3(-0.5f, 7f, 0f) : heroPos + Vector3.up * 1.2f;
+                FireAt(t, from, def.color, dmg, sky ? 22f : 11f, sky ? 0f : 0.5f, sl.id == 13 ? 1.8f : 1.1f);
+                break;
+            }
+            case SkillData.Volley:
+            {
+                if (sl.id == 2 || sl.id == 12)
+                {
+                    // Onde de choc depuis le héros : touche immédiatement tous les ennemis proches.
+                    SkillFx.Shockwave(heroPos + Vector3.up * 0.3f, def.color, SkillRange * 0.8f);
+                    foreach (var e in enemies.ToArray()) if (InSkillRange(e)) SkillHit(e, dmg, def.color);
+                }
+                else
+                {
+                    int n = 0;
+                    foreach (var e in enemies.ToArray())
+                    {
+                        if (!InSkillRange(e)) continue;
+                        var from = e.go.transform.position + new Vector3(-1.5f - n * 0.4f, 7f + n * 0.6f, Random.Range(-0.5f, 0.5f));
+                        FireAt(e, from, def.color, dmg, 12f + n * 1.5f, 0f, sl.id == 11 ? 2.2f : 1.3f, false);
+                        n++;
+                    }
+                }
+                break;
+            }
+            case SkillData.Heal:
+            case SkillData.Rage:
+            case SkillData.Aura:
+                sl.active = def.duration;
+                if (sl.fx != null) Destroy(sl.fx);
+                sl.fx = SkillFx.Aura(hero.go.transform, def.color, def.duration, def.kind == SkillData.Heal ? 0.45f : 0.65f);
+                break;
+            case SkillData.Drone:
+            {
+                sl.active = def.duration;
+                sl.droneTimer = 0.3f;
+                if (sl.fx != null) Destroy(sl.fx);
+                var orb = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                Destroy(orb.GetComponent<Collider>());
+                orb.name = "Œil de Lucifer";
+                orb.transform.SetParent(world, false);
+                orb.transform.localScale = Vector3.one * 0.35f;
+                orb.transform.localPosition = new Vector3(hero.X - 0.4f, 2.4f, -0.5f);
+                if (droneMat == null) droneMat = ForgeWorld.Unlit(new Color(def.color.r * 3f, def.color.g * 3f, def.color.b * 3f));
+                orb.GetComponent<Renderer>().sharedMaterial = droneMat;
+                SkillFx.Aura(orb.transform, def.color, def.duration, 0.12f);
+                sl.fx = orb;
+                break;
+            }
+        }
+    }
+
+    // Projectile vers un ennemi ; à l'impact, les dégâts vont à la cible (ou au nouvel ennemi de tête si elle est déjà morte).
+    void FireAt(Fighter target, Vector3 from, Color c, double dmg, float speed, float arc, float size, bool retarget = true)
+    {
+        if (target == null) return;
+        var t = target;
+        float h = t.def.height * (t.boss ? 1.7f : 1f) * 0.5f;
+        Vector3 last = t.go.transform.position + Vector3.up * (h + t.def.fly * 0.3f);
+        SkillFx.Projectile(from, () =>
+        {
+            if (t.go != null && !t.dead) last = t.go.transform.position + Vector3.up * (h + t.def.fly * 0.3f);
+            return last;
+        }, c, speed, arc, size, () =>
+        {
+            var hit = t;
+            if ((hit.dead || hit.go == null) && retarget) hit = FrontEnemy();
+            if (hit != null && !hit.dead && hit.go != null) SkillHit(hit, dmg, c);
+        });
+    }
+
+    void SkillHit(Fighter target, double dmg, Color c)
+    {
+        if (target == null || target.dead) return;
+        dmg *= Random.Range(0.95f, 1.05f);
+        target.hp -= dmg;
+        float h = target.def.height * (target.boss ? 1.7f : 1f) + target.def.fly * 0.2f + 0.5f;
+        ShowPopup(target.go.transform.position + Vector3.up * h, GameState.Fmt(dmg), Color.Lerp(c, Color.white, 0.2f), 42);
+        if (target.hp <= 0) KillEnemy(target);
     }
 
     // ---------- Interface du combat ----------
@@ -784,6 +1007,36 @@ public class BattleWorld : MonoBehaviour
         Anchor(waveText.rectTransform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -130), new Vector2(0, -82));
         banner = NewText(overlayRoot, 50, TextAnchor.MiddleCenter, Color.white);
         Anchor(banner.rectTransform, new Vector2(0, 0.55f), new Vector2(1, 0.85f), Vector2.zero, Vector2.zero);
+
+        // Les 3 compétences équipées (en bas à droite du chemin) : se lancent seules, ou d'une touche quand elles sont prêtes.
+        cgo.AddComponent<GraphicRaycaster>();
+        for (int i = 0; i < 3; i++)
+        {
+            int idx = i;
+            var sl = skillSlots[i];
+            var rt = NewRect("Compétence " + i, overlayRoot);
+            rt.anchorMin = rt.anchorMax = new Vector2(1f, 0f);
+            rt.pivot = new Vector2(1f, 0f);
+            rt.sizeDelta = new Vector2(124, 124);
+            rt.anchoredPosition = new Vector2(-24 - (2 - i) * 138, 18);
+            sl.bg = rt.gameObject.AddComponent<Image>();
+            sl.bg.sprite = ForgeUI.Circle();
+            sl.bg.color = new Color(0.08f, 0.04f, 0.04f, 0.85f);
+            sl.btn = rt.gameObject.AddComponent<Button>();
+            sl.btn.transition = Selectable.Transition.None;
+            sl.btn.onClick.AddListener(() => ManualCast(idx));
+            var frt = NewRect("Recharge", rt);
+            frt.offsetMin = new Vector2(8, 8); frt.offsetMax = new Vector2(-8, -8);
+            sl.fill = frt.gameObject.AddComponent<Image>();
+            sl.fill.sprite = ForgeUI.Circle();
+            sl.fill.type = Image.Type.Filled;
+            sl.fill.fillMethod = Image.FillMethod.Radial360;
+            sl.fill.fillOrigin = (int)Image.Origin360.Top;
+            sl.fill.raycastTarget = false;
+            sl.label = NewText(rt, 20, TextAnchor.MiddleCenter, Color.white);
+            sl.label.horizontalOverflow = HorizontalWrapMode.Wrap;
+            sl.label.rectTransform.offsetMin = new Vector2(6, 6); sl.label.rectTransform.offsetMax = new Vector2(-6, -6);
+        }
     }
 
     static RectTransform NewRect(string name, Transform parent)

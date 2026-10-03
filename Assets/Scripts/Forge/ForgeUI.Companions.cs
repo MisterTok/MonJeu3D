@@ -17,7 +17,7 @@ public partial class ForgeUI
     float compTimer;
     static Sprite circleSprite;
 
-    static Sprite Circle()
+    internal static Sprite Circle()
     {
         if (circleSprite != null) return circleSprite;
         const int n = 64;

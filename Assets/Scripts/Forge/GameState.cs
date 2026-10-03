@@ -44,6 +44,14 @@ public class OwnedMount
 }
 
 [Serializable]
+public class OwnedSkill
+{
+    public int id;
+    public int level = 1;
+    public int copies;
+}
+
+[Serializable]
 public class Incubator
 {
     public int rarity = -1;   // -1 = vide
@@ -72,7 +80,11 @@ public class SaveData
     public int equippedMount = -1;
     public bool mountGift;
     public long potions;            // potions rouges (arbre technologique, à venir)
-    public long skillTickets;       // tickets d'invocation de compétences (à venir)
+    public long skillTickets;       // tickets d'invocation de compétences
+    public System.Collections.Generic.List<OwnedSkill> skills;
+    public int[] equippedSkills;    // 3 emplacements (id ou -1)
+    public int skillSummonLevel, skillSummonProgress;
+    public bool skillGift;
     public int[] techLevels;        // niveaux de recherche (arbres mis bout à bout)
     public int researchTree = -1, researchNode = -1;
     public long researchEndTicks;
@@ -191,6 +203,14 @@ public static class GameState
             // Remontoirs offerts pour découvrir les montures.
             Data.mountGift = true;
             Data.winders += 500;
+        }
+        if (Data.skills == null) Data.skills = new List<OwnedSkill>();
+        if (Data.equippedSkills == null || Data.equippedSkills.Length != 3) Data.equippedSkills = new[] { -1, -1, -1 };
+        if (!Data.skillGift)
+        {
+            // Tickets offerts pour découvrir les compétences (une invocation x5).
+            Data.skillGift = true;
+            Data.skillTickets += SkillData.SummonCost * SkillData.SummonSmall;
         }
         if (!Data.shellGift)
         {
@@ -313,14 +333,14 @@ public static class GameState
     // ---------- Stats du héros ----------
     public static long TotalAtk()
     {
-        double t = BaseAtk + PetsDamage() * (1 + TV("PetBonusDamage"));
+        double t = BaseAtk + PetsDamage() * (1 + TV("PetBonusDamage")) + SkillPassiveDamage();
         foreach (var it in Data.equipped) if (it.valid) t += it.atk * (1 + TV(SlotTech[it.slot] + "Bonus"));
         return (long)Math.Round(t * (1.0 + SubTotal(SubDamage) + SubTotal(SubMelee)) * (1.0 + MountDamageBonus()));
     }
 
     public static long TotalHp()
     {
-        double t = BaseHp + PetsHealth() * (1 + TV("PetBonusHealth"));
+        double t = BaseHp + PetsHealth() * (1 + TV("PetBonusHealth")) + SkillPassiveHealth();
         foreach (var it in Data.equipped) if (it.valid) t += it.hp * (1 + TV(SlotTech[it.slot] + "Bonus"));
         return (long)Math.Round(t * (1.0 + SubTotal(SubHealth)) * (1.0 + MountHealthBonus()));
     }
@@ -328,7 +348,7 @@ public static class GameState
     // Puissance : dégâts par seconde estimés (critiques, double frappe, vitesse) et vie.
     public static long Power()
     {
-        double dps = TotalAtk() * (1 + CritChance * (CritMult - 1)) * (1 + DoubleChance) * (1 + AttackSpeedBonus);
+        double dps = TotalAtk() * (1 + CritChance * (CritMult - 1)) * (1 + DoubleChance) * (1 + AttackSpeedBonus) + SkillsDps();
         double surv = TotalHp() * (1 + BlockChance) * (1 + LifeSteal + RegenPerSecond * 5);
         return (long)Math.Round(dps * 10 + surv);
     }
@@ -736,6 +756,147 @@ public static class GameState
         Notify();
     }
 
+    // ---------- Compétences ----------
+    // Même échelle que les compagnons : les valeurs de référence sont trop fortes pour nos objets.
+    public const double SkillScale = 0.12;
+    public static event Action<string> SkillMessage;
+
+    public static OwnedSkill FindSkill(int id)
+    {
+        if (id < 0 || Data.skills == null) return null;
+        foreach (var s in Data.skills) if (s.id == id) return s;
+        return null;
+    }
+
+    // Valeur d'activation (dégâts par coup / attaque en plus) et vie (soin / PV en plus).
+    public static double SkillDamage(OwnedSkill s) => SkillData.Skills[s.id].damage * SkillData.LevelMult(s.level) * SkillScale * (1 + TV("SkillDamage"));
+    public static double SkillHealth(OwnedSkill s) => SkillData.Skills[s.id].health * SkillData.LevelMult(s.level) * SkillScale * (1 + TV("SkillDamage"));
+
+    static double PassiveBase(OwnedSkill s)
+    {
+        int r = SkillData.Skills[s.id].rarity;
+        return SkillData.PassiveDamage[r] * (1 + SkillData.PassiveSlope[r] * (s.level - 1)) * SkillScale;
+    }
+    public static double SkillPassiveDamage(OwnedSkill s) => PassiveBase(s) * (1 + TV("SkillPassiveDamage"));
+    public static double SkillPassiveHealth(OwnedSkill s) => PassiveBase(s) * 8 * (1 + TV("SkillPassiveHealth"));
+
+    // Le bonus passif vient de toutes les compétences possédées, équipées ou non.
+    public static double SkillPassiveDamage() { double t = 0; if (Data.skills != null) foreach (var s in Data.skills) t += SkillPassiveDamage(s); return t; }
+    public static double SkillPassiveHealth() { double t = 0; if (Data.skills != null) foreach (var s in Data.skills) t += SkillPassiveHealth(s); return t; }
+
+    // Dégâts par seconde estimés des compétences équipées (pour la puissance).
+    static double SkillsDps()
+    {
+        double t = 0;
+        if (Data.equippedSkills == null) return 0;
+        foreach (int id in Data.equippedSkills)
+        {
+            var s = FindSkill(id);
+            if (s == null) continue;
+            var d = SkillData.Skills[id];
+            double cycle = d.cooldown + d.duration;
+            switch (d.kind)
+            {
+                case SkillData.Strike: t += SkillDamage(s) / cycle; break;
+                case SkillData.Volley: t += SkillDamage(s) * 2 / cycle; break;
+                case SkillData.Rage:
+                case SkillData.Aura: t += SkillDamage(s) * d.duration / cycle; break;
+                case SkillData.Drone: t += SkillDamage(s) * (d.duration / 2f) / cycle; break;
+            }
+        }
+        return t;
+    }
+
+    public static int SkillCopiesForNext(int level) => SkillData.CopiesForNext[Math.Min(Math.Max(level, 1), SkillData.CopiesForNext.Length) - 1];
+    public static bool IsSkillEquipped(int id) => Array.IndexOf(Data.equippedSkills, id) >= 0;
+
+    public static string ToggleSkillEquip(int id)
+    {
+        if (FindSkill(id) == null) return "Pas encore obtenue";
+        int idx = Array.IndexOf(Data.equippedSkills, id);
+        if (idx >= 0) { Data.equippedSkills[idx] = -1; Notify(); return null; }
+        int free = Array.IndexOf(Data.equippedSkills, -1);
+        if (free < 0) return "3 compétences maximum : retires-en une d'abord";
+        Data.equippedSkills[free] = id;
+        Notify();
+        return null;
+    }
+
+    public static int SkillSummonLevelMax => SkillData.SummonRequired.Length;
+    public static float[] SkillOdds => SkillData.SummonOdds[Math.Min(Data.skillSummonLevel, SkillSummonLevelMax - 1)];
+    public static int SkillSummonRequired => SkillData.SummonRequired[Math.Min(Data.skillSummonLevel, SkillSummonLevelMax - 1)];
+    public static long SkillSummonCost => (long)Math.Ceiling(SkillData.SummonCost * (1 - TV("SkillSummonCost")));
+
+    static int RollSkillRarity()
+    {
+        var odds = SkillOdds;
+        double total = 0; foreach (var o in odds) total += o;
+        double x = rng.NextDouble() * total;
+        for (int r = 0; r < odds.Length; r++) { x -= odds[r]; if (x < 0) return r; }
+        return 0;
+    }
+
+    static string GainSkill(int rarity, out bool isNew)
+    {
+        var pool = new List<int>();
+        for (int i = 0; i < SkillData.Skills.Length; i++) if (SkillData.Skills[i].rarity == rarity) pool.Add(i);
+        int id = pool[rng.Next(pool.Count)];
+        var def = SkillData.Skills[id];
+        var s = FindSkill(id);
+        isNew = s == null;
+        if (s == null)
+        {
+            s = new OwnedSkill { id = id };
+            Data.skills.Add(s);
+            int free = Array.IndexOf(Data.equippedSkills, -1);
+            if (free >= 0) Data.equippedSkills[free] = id;
+            return "Nouvelle compétence : " + def.name + " (" + ProgressionData.Rarities[rarity] + ")";
+        }
+        s.copies++;
+        string msg = "Doublon : " + def.name;
+        while (s.level < SkillData.MaxLevel && s.copies >= SkillCopiesForNext(s.level))
+        {
+            s.copies -= SkillCopiesForNext(s.level);
+            s.level++;
+            msg = def.name + " niv. " + s.level;
+        }
+        return msg;
+    }
+
+    // Invoque « count » compétences avec des tickets ; renvoie un résumé (null si pas assez de tickets).
+    public static string SummonSkills(int count)
+    {
+        long cost = SkillSummonCost * count;
+        if (Data.skillTickets < cost) return null;
+        Data.skillTickets -= cost;
+        int best = -1, news = 0; string bestMsg = null;
+        for (int i = 0; i < count; i++)
+        {
+            int r = RollSkillRarity();
+            string msg = GainSkill(r, out bool isNew);
+            if (isNew) news++;
+            if (r > best || (r == best && isNew)) { best = r; bestMsg = msg; }
+            if (Data.skillSummonLevel < SkillSummonLevelMax - 1)
+            {
+                Data.skillSummonProgress++;
+                if (Data.skillSummonProgress >= SkillSummonRequired) { Data.skillSummonProgress = 0; Data.skillSummonLevel++; }
+            }
+        }
+        Notify();
+        string res = count + " invocations : meilleure = " + bestMsg + (news > 0 ? " (" + news + " nouvelle(s))" : "");
+        SkillMessage?.Invoke(res);
+        return res;
+    }
+
+    // Texte de l'effet avec les valeurs du niveau actuel.
+    public static string SkillEffectText(int id, OwnedSkill s)
+    {
+        var d = SkillData.Skills[id];
+        double a = s != null ? SkillDamage(s) : d.damage * SkillScale;
+        double h = s != null ? SkillHealth(s) : d.health * SkillScale;
+        return d.desc.Replace("{a}", Fmt(a)).Replace("{h}", Fmt(h)).Replace("{d}", d.duration.ToString("0"));
+    }
+
     // ---------- Arbre technologique ----------
     public static readonly string[] SlotTech = { "Weapon", "Helmet", "Body", "Glove", "Shoe", "Belt", "Necklace", "Ring" };
     static readonly string[] EggTimerTech = { "CommonEggTimer", "RareEggTimer", "EpicEggTimer", "LegendaryEggTimer", "UltimateEggTimer", "MythicEggTimer" };
@@ -970,12 +1131,13 @@ public static class GameState
     // Coquilles gagnées en battant le boss d'un cercle (récompense de progression, en attendant donjons, ligue et clan).
     public static long BossShellReward => 100 + 50 * StageCircle;
     public static long BossWinderReward => 100 + 50 * StageCircle;
+    public static long BossTicketReward => 80 + 40 * StageCircle;
 
     public static int StageCleared()
     {
         int gems = IsBossStage ? 20 : 2;
         Data.gems += gems;
-        if (IsBossStage && Data.stage >= Data.bestStage) { Data.eggshells += BossShellReward; Data.winders += BossWinderReward; }
+        if (IsBossStage && Data.stage >= Data.bestStage) { Data.eggshells += BossShellReward; Data.winders += BossWinderReward; Data.skillTickets += BossTicketReward; }
         Data.stage = Math.Min(MaxStage, Data.stage + 1);
         Data.bestStage = Math.Max(Data.bestStage, Data.stage);
         Notify();

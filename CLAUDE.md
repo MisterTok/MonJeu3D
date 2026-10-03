@@ -17,20 +17,24 @@ Notes de passation pour Claude. À lire en premier dans toute nouvelle conversat
 - GameState.cs : sauvegarde (PlayerPrefs JSON), économie, forge, objets + stats secondaires, compagnons/œufs, montures, donjons, arbre techno (TV(type)), forge auto, gains hors ligne, combat (stats ennemis).
 - ForgeData.cs (forge 35 niveaux), ProgressionData.cs (tech coûts/durées, compagnons, œufs/invocation, montures, stats secondaires), TechData.cs (235 nœuds générés), TechText.cs (noms FR).
 - ForgeWorld.cs (scène forge 3D, enclume procédurale, révélation de pièce, matériaux/ textures), BattleWorld.cs (chemin de combat, vagues, boss, donjons, compagnons qui suivent, monture chevauchée), ModelLib.cs (chargement FBX + AnimPlayer legacy), ProcGen.cs (textures sol/pavés/lave, maillage enclume).
-- ForgeUI.cs + partials ForgeUI.Companions/Dungeons/Tech/Mounts.cs (interface uGUI par code, police LegacyRuntime).
+- SkillData.cs (18 compétences, invocation, doublons), SkillFx.cs (effets en particules : projectiles, explosions, auras, onde de choc).
+- ForgeUI.cs + partials ForgeUI.Companions/Dungeons/Tech/Mounts/Skills.cs (interface uGUI par code, police LegacyRuntime).
 - Editor : ForgeMaterialsSetup (matériaux URP dans Resources/ForgeMats), ForgeModelPostprocessor (FBX Characters/Pets en Legacy), ForgeModelReport.
 - Modèles : Resources/ForgeModels (Quaternius CC0, via le dépôt GitHub beep2bleep/FreeAssetsByKenneyNLandQuaternius).
 
 ## Fonctionnalités faites
 Forge (35 niv., nœuds, minuteur, gemmes), objets 8 emplacements avec vrais modèles (Lame, Heaume, Bouclier), stats secondaires (0/1/2 selon cercle), combat auto 10 cercles × 10 étapes (boss à l'étape 10), compagnons (coquilles → invocation d'œufs → couveuses → éclosion, 25 compagnons, 3 équipés, PetScale 0,12), donjons (4, 2 clés/jour recharge à 22:00, clé consommée seulement en cas de victoire), arbre techno (3 branches, potions rouges, 1 recherche à la fois), forge auto (débloquée par la techno), gains hors ligne, montures (remontoirs, 15 montures, bonus % dégâts/vie, héros chevauche), luminosité relevée.
+- Compétences : tickets (Crypte des grimoires, 1er boss de chaque cercle 80 + 40/cercle, 200 offerts), invocation x5/x25 à 40 tickets (niveaux d'invocation du jeu de référence), 3 équipées qui se lancent seules (boutons ronds en bas à droite du chemin, touche = lancer si prête), bonus passif ATQ/PV de toute la collection, SkillScale 0,12. Types : Strike, Volley, Heal, Rage, Aura, Drone.
 - Doublons compagnons/montures : montée de niveau automatique (doublons requis = niveau actuel).
 - Sources temporaires : boss vaincu la 1re fois → coquilles + remontoirs (100 + 50/cercle).
 
 ## À faire ensuite
-Compétences (tickets déjà gagnés), boutique, icônes 3D dans les tuiles, ligue classée et guerre de clans (serveur en ligne nécessaire), équilibrage, modèles pour Gantelets/Bottes/Ceinture/Amulette/Anneau.
+Boutique, icônes 3D dans les tuiles, ligue classée et guerre de clans (serveur en ligne nécessaire), équilibrage, modèles pour Gantelets/Bottes/Ceinture/Amulette/Anneau.
 
 ## Méthode de travail de Claude (important)
+- Git : Claude peut committer depuis device_bash (git -c user.name=MisterTok -c user.email=piecassa35@gmail.com) mais PAS pousser (pas d'identifiants GitHub dans la VM, terminaux Windows en clic seulement) : demander à Pierre de faire `git push` ou d'utiliser GitHub Desktop. Les verrous .git demandent la permission de suppression sur le dossier du projet.
+- Editor.log : C:\Users\pierr\AppData\Local\Unity\Editor (dossier à demander). Unity 6000.3.17f1 : résoudre l'accès computer-use avec le chemin complet de unity.exe (« Unity » seul pointe sur 6000.4.10f1).
 - Écrire les fichiers dans le cloud puis device_commit_files (force), et TOUJOURS vérifier le md5 sur le PC (un envoi a déjà été perdu).
 - Faire compiler : donner le focus à Unity puis menu Assets > Refresh. Le clavier tactile Windows (textinputhost) passe souvent devant : demander l'accès computer-use à Unity ET à textinputhost.exe, puis cliquer dans Unity. Ne PAS utiliser open_application (relance un 2e Unity qui écrase Editor.log).
 - Vérifier la compilation : date de Library/ScriptAssemblies/Assembly-CSharp.dll + `strings Editor.log | grep "error CS"`.
-- Tester : Play, puis écrire dans C:\jeu\_dl\shot_request un nom → capture PNG plein écran dans C:\jeu\_dl\ (commandes de test : « forge », « item6 », « discard »). Stager le PNG pour le regarder.
+- Tester : Play, puis écrire dans C:\jeu\_dl\shot_request un nom → capture PNG plein écran dans C:\jeu\_dl\ (commandes de test : « forge », « item6 », « discard », « tickets » = +5000 tickets). Stager le PNG pour le regarder.
