@@ -188,7 +188,7 @@ public class BattleWorld : MonoBehaviour
         public int id = -1;
         public float cd, active, droneTimer;
         public GameObject fx;
-        public Image bg, fill; public Text label; public Button btn;
+        public Image bg, fill; public Text label; public Button btn; public RawImage icon;
     }
     readonly SkillSlot[] skillSlots = { new SkillSlot(), new SkillSlot(), new SkillSlot() };
     string skillKey = "";
@@ -1051,11 +1051,24 @@ public class BattleWorld : MonoBehaviour
                 if (sl.cd <= 0f) Cast(sl, def, own);
             }
             // Affichage du bouton
-            if (sl.active > 0f) sl.fill.fillAmount = sl.active / Mathf.Max(0.1f, def.duration);
-            else sl.fill.fillAmount = 1f - Mathf.Clamp01(sl.cd / def.cooldown);
             var c = def.color;
             bool ready = sl.active <= 0f && sl.cd <= 0.05f;
-            sl.fill.color = sl.active > 0f ? new Color(c.r, c.g, c.b, 0.95f) : new Color(c.r * 0.55f, c.g * 0.55f, c.b * 0.55f, ready ? 1f : 0.75f);
+            var tex = SkillData.Icon(sl.id);
+            sl.icon.texture = tex;
+            sl.icon.gameObject.SetActive(tex != null);
+            if (tex != null)
+            {
+                // Icône visible ; voile sombre circulaire pendant la recharge, voile coloré pendant l'effet.
+                if (sl.active > 0f) { sl.fill.fillAmount = sl.active / Mathf.Max(0.1f, def.duration); sl.fill.color = new Color(c.r, c.g, c.b, 0.3f); }
+                else { sl.fill.fillAmount = Mathf.Clamp01(sl.cd / def.cooldown); sl.fill.color = new Color(0f, 0f, 0f, 0.62f); }
+                sl.bg.color = ready || sl.active > 0f ? Color.Lerp(c, Color.white, 0.25f) : new Color(0.08f, 0.04f, 0.04f, 0.85f);
+            }
+            else
+            {
+                if (sl.active > 0f) sl.fill.fillAmount = sl.active / Mathf.Max(0.1f, def.duration);
+                else sl.fill.fillAmount = 1f - Mathf.Clamp01(sl.cd / def.cooldown);
+                sl.fill.color = sl.active > 0f ? new Color(c.r, c.g, c.b, 0.95f) : new Color(c.r * 0.55f, c.g * 0.55f, c.b * 0.55f, ready ? 1f : 0.75f);
+            }
         }
         buffAtk = atk;
         buffHp = hp;
@@ -1067,6 +1080,13 @@ public class BattleWorld : MonoBehaviour
             if (!has) continue;
             var def = SkillData.Skills[sl.id];
             string t = def.name;
+            if (SkillData.Icon(sl.id) != null)
+            {
+                sl.label.fontSize = 38;
+                sl.label.text = sl.active > 0f ? "<b>" + Mathf.CeilToInt(sl.active) + "</b>" : sl.cd > 0.05f ? Mathf.CeilToInt(sl.cd).ToString() : "";
+                continue;
+            }
+            sl.label.fontSize = 20;
             sl.label.text = sl.active > 0f ? "<b>" + t + "</b>\n" + Mathf.CeilToInt(sl.active) + "s" : t + (sl.cd > 0.05f ? "\n<size=24>" + Mathf.CeilToInt(sl.cd) + "</size>" : "");
         }
     }
@@ -1214,6 +1234,13 @@ public class BattleWorld : MonoBehaviour
             sl.btn = rt.gameObject.AddComponent<Button>();
             sl.btn.transition = Selectable.Transition.None;
             sl.btn.onClick.AddListener(() => ManualCast(idx));
+            // Icône peinte, découpée en rond (sous la recharge).
+            var mrt = NewRect("Masque", rt);
+            mrt.offsetMin = new Vector2(8, 8); mrt.offsetMax = new Vector2(-8, -8);
+            var mimg = mrt.gameObject.AddComponent<Image>(); mimg.sprite = ForgeUI.Circle(); mimg.raycastTarget = false;
+            mrt.gameObject.AddComponent<Mask>().showMaskGraphic = false;
+            sl.icon = NewRect("Icône", mrt).gameObject.AddComponent<RawImage>();
+            sl.icon.raycastTarget = false;
             var frt = NewRect("Recharge", rt);
             frt.offsetMin = new Vector2(8, 8); frt.offsetMax = new Vector2(-8, -8);
             sl.fill = frt.gameObject.AddComponent<Image>();

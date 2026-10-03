@@ -54,3 +54,4 @@ Décor du chemin en KayKit Dungeon Remastered, icônes 2D peintes (packs payants
 - SpriteChar.cs : sprite face caméra (inclinaison CamPitch 37°), ombre au sol, flash rouge à l'impact, fondu à la mort ; sans animation de marche, petits bonds. Les planches regardent à droite, les ennemis sont retournés (flipX).
 - Assets/Editor/ForgeSpritePostprocessor.cs : import en Sprite sans mipmaps ni redimensionnement.
 - BattleWorld : héros Valkyrie_1 (1,55), ennemis 1,45 (boss ×1,7), SpriteCircleEnemies par cercle, SpriteAlias pour les anciens noms (missions, donjons).
+- Icônes de compétences : Resources/ForgeSprites/SkillIcons/<id>.png (256 px, icônes Craftpix gratuites de MyBrute, hors dépôt), chargées par SkillData.Icon(id) ; absentes -> symbole. Correspondance id -> icône : N17,N28,W28,N10,W5,N49,W37,N45,W46,W34,W17,N43,W40,W16,N14,W48,N32,W38 (W = warlock, A = aeromancer, N = night elf).

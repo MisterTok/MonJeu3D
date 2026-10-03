@@ -20,6 +20,16 @@ public static class SkillData
 
     static UnityEngine.Color C(float r, float g, float b) => new UnityEngine.Color(r, g, b);
 
+    // Icônes peintes (Craftpix, hors dépôt : Resources/ForgeSprites/SkillIcons/<id>.png). null si absentes -> symbole.
+    static readonly UnityEngine.Texture2D[] icons = new UnityEngine.Texture2D[32];
+    static readonly bool[] iconTried = new bool[32];
+    public static UnityEngine.Texture2D Icon(int id)
+    {
+        if (id < 0 || id >= icons.Length) return null;
+        if (!iconTried[id]) { iconTried[id] = true; icons[id] = UnityEngine.Resources.Load<UnityEngine.Texture2D>("ForgeSprites/SkillIcons/" + id); }
+        return icons[id];
+    }
+
     public static readonly SkillDef[] Skills =
     {
         new SkillDef("Chair grillée", 0, Heal, 8f, 10f, 0, 100, C(0.45f, 1f, 0.4f), "Soigne le héros pendant {d}s : {h} PV au total"),

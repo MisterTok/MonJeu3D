@@ -66,11 +66,11 @@ public partial class ForgeUI
         var def = SkillData.Skills[id];
         var s = GameState.FindSkill(id);
         string glyph = KindGlyph[def.kind];
-        if (s == null) { ShowDetail(def.name, def.rarity, null, glyph, SkillColor(def), -1, 0, 0, null, null, null); return; }
+        if (s == null) { ShowDetail(def.name, def.rarity, SkillData.Icon(id), glyph, SkillColor(def), -1, 0, 0, null, null, null); return; }
         string body = GameState.SkillEffectText(id, s) + "\n<color=#A89C94>Recharge " + def.cooldown.ToString("0") + " s</color>"
             + "\n\n<size=26>Bonus permanent : <color=#FFC07A>+" + GameState.Fmt(GameState.SkillPassiveDamage(s)) + " ATQ  +" + GameState.Fmt(GameState.SkillPassiveHealth(s)) + " PV</color></size>";
         bool eq = GameState.IsSkillEquipped(id);
-        ShowDetail(def.name, def.rarity, null, glyph, SkillColor(def), s.level, s.copies, GameState.SkillCopiesForNext(s.level), body,
+        ShowDetail(def.name, def.rarity, SkillData.Icon(id), glyph, SkillColor(def), s.level, s.copies, GameState.SkillCopiesForNext(s.level), body,
             eq ? "RETIRER" : "ÉQUIPER", () => { string e = GameState.ToggleSkillEquip(id); if (e != null) Toast(e); RefreshSkills(); },
             eq ? new Color(0.5f, 0.18f, 0.12f) : (Color?)null);
     }
@@ -89,13 +89,13 @@ public partial class ForgeUI
             var s = GameState.FindSkill(id);
             if (s == null) { SetEmptySlot(eqSkillTile[i]); continue; }
             var def = SkillData.Skills[id];
-            SetTile(eqSkillTile[i], def.rarity, null, KindGlyph[def.kind], SkillColor(def), s.level, s.copies, GameState.SkillCopiesForNext(s.level), false);
+            SetTile(eqSkillTile[i], def.rarity, SkillData.Icon(id), KindGlyph[def.kind], SkillColor(def), s.level, s.copies, GameState.SkillCopiesForNext(s.level), false);
         }
         for (int i = 0; i < 18; i++)
         {
             var def = SkillData.Skills[i];
             var s = GameState.FindSkill(i);
-            SetTile(skillTile[i], def.rarity, null, KindGlyph[def.kind], SkillColor(def),
+            SetTile(skillTile[i], def.rarity, SkillData.Icon(i), KindGlyph[def.kind], SkillColor(def),
                 s == null ? -1 : s.level, s == null ? 0 : s.copies, s == null ? 0 : GameState.SkillCopiesForNext(s.level), s != null && GameState.IsSkillEquipped(i));
         }
     }
