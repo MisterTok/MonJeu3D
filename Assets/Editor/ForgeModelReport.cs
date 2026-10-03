@@ -38,6 +38,17 @@ public static class ForgeModelReport
             foreach (var r in go.GetComponentsInChildren<Renderer>(true))
                 foreach (var m in r.sharedMaterials) if (m != null) mats.Add(m.name + ":" + (m.shader != null ? m.shader.name : "?"));
             sb.Append(" | mats: ").Append(string.Join(", ", mats.ToArray()));
+            if (path.Contains("KayKit/Characters"))
+            {
+                sb.Append(" | renderers:");
+                foreach (var r in go.GetComponentsInChildren<Renderer>(true)) sb.Append(' ').Append(r.name).Append(r.gameObject.activeSelf ? "" : "(off)");
+                sb.Append(" | slots:");
+                foreach (var t in go.GetComponentsInChildren<Transform>(true))
+                {
+                    string n = t.name.ToLowerInvariant();
+                    if (n.Contains("hand") || n.Contains("head") || n.Contains("slot")) sb.Append(' ').Append(t.name);
+                }
+            }
             sb.AppendLine();
         }
         Directory.CreateDirectory(DlDir);

@@ -20,12 +20,14 @@ public class ForgeWorld : MonoBehaviour
 
     public static readonly string[] WeaponPaths =
     {
-        "Weapons/Dagger", "Weapons/Sword", "Weapons/Axe_Small", "Weapons/Sword_2", "Weapons/Axe",
-        "Weapons/Hammer_Small", "Weapons/Sword_Big", "Weapons/Claymore", "Weapons/Scythe", "Weapons/Sword_Golden"
+        // KayKit (CC0, textures peintes) pour les 7 premiers cercles, armes spéciales Quaternius pour la fin.
+        "KayKit/Items/dagger", "KayKit/Items/sword_1handed", "KayKit/Items/axe_1handed", "KayKit/Items/Skeleton_Blade", "KayKit/Items/axe_2handed",
+        "KayKit/Items/Skeleton_Axe", "KayKit/Items/sword_2handed", "Weapons/Claymore", "Weapons/Scythe", "Weapons/Sword_Golden"
     };
     public static string WeaponPath(int circle) => WeaponPaths[Mathf.Clamp(circle, 0, 9)];
     public static string ShieldPath(int circle) =>
-        circle < 2 ? "Weapons/Shield_Round" : circle < 4 ? "Weapons/Shield_Round_2" : circle < 6 ? "Weapons/Shield_Heater" : circle < 8 ? "Weapons/Shield_Heater_2" : "Weapons/Shield_Celtic_Golden";
+        circle < 2 ? "KayKit/Items/shield_round" : circle < 4 ? "KayKit/Items/shield_square" : circle < 6 ? "KayKit/Items/shield_badge"
+        : circle < 8 ? "KayKit/Items/shield_spikes" : circle < 9 ? "KayKit/Items/Skeleton_Shield_Large_A" : "Weapons/Shield_Celtic_Golden";
     public static string HelmetPath(int circle) =>
         circle < 3 ? "Characters/Helmet1" : circle < 6 ? "Characters/Helmet2" : circle < 9 ? "Characters/Helmet3" : "Props/KnightHelmet";
 

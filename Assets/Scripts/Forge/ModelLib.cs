@@ -53,6 +53,32 @@ public static class ModelLib
         return root;
     }
 
+    // Personnages KayKit : certains objets portés (armes, boucliers, casque) sont des maillages du modèle.
+    // On cache ceux de la liste « hide » avant de mesurer, pour que la taille corresponde au corps seul.
+    public static GameObject SpawnKit(string path, float height, Transform parent, params string[] hide)
+    {
+        var root = new GameObject(path);
+        var prefab = Prefab(path);
+        if (prefab == null) { if (parent != null) root.transform.SetParent(parent, false); return root; }
+        var inst = Object.Instantiate(prefab, root.transform, false);
+        inst.name = prefab.name;
+        foreach (var r in inst.GetComponentsInChildren<Renderer>(true))
+        {
+            if (System.Array.IndexOf(hide, r.name) >= 0) r.gameObject.SetActive(false);
+            if (r is SkinnedMeshRenderer smr) smr.updateWhenOffscreen = true;
+        }
+        var b = new Bounds(); bool has = false;
+        foreach (var r in inst.GetComponentsInChildren<Renderer>(false))
+        {
+            if (!has) { b = r.bounds; has = true; } else b.Encapsulate(r.bounds);
+        }
+        float s = height / Mathf.Max(b.size.y, 0.0001f);
+        inst.transform.localScale *= s;
+        inst.transform.localPosition = new Vector3(-b.center.x * s, -b.min.y * s, -b.center.z * s);
+        if (parent != null) root.transform.SetParent(parent, false);
+        return root;
+    }
+
     // Instancie un élément de décor à son échelle d'origine (le kit donjon est déjà en mètres).
     public static GameObject Raw(string path, Transform parent, Vector3 pos, float rotY = 0f, float scale = 1f)
     {

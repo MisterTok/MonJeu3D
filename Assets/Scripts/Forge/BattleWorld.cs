@@ -16,8 +16,16 @@ public class BattleWorld : MonoBehaviour
     {
         public string path; public float height; public float fly;
         public string[] idle, move, attack, death;
-        public EnemyDef(string p, float h, float f, string[] i, string[] m, string[] a, string[] d) { path = p; height = h; fly = f; idle = i; move = m; attack = a; death = d; }
+        public string weapon;   // arme KayKit tenue en main droite (squelettes)
+        public EnemyDef(string p, float h, float f, string[] i, string[] m, string[] a, string[] d, string w = null) { path = p; height = h; fly = f; idle = i; move = m; attack = a; death = d; weapon = w; }
+        public bool Kit => path.StartsWith("KayKit/");
     }
+
+    // Squelettes KayKit (CC0) : animations nommées comme celles du héros KayKit.
+    static readonly string[] SkelIdle = { "Idle_Combat", "Idle" };
+    static readonly string[] SkelMove = { "Walking_D_Skeletons", "Walking_A" };
+    static readonly string[] SkelAttack = { "1H_Melee_Attack_Chop", "1H_Melee_Attack_Slice_Diagonal" };
+    static readonly string[] SkelDeath = { "Death_C_Skeletons", "Death_A" };
 
     static readonly string[] AttackK = { "Attack", "Bite" };
     static readonly string[] DeathK = { "Death" };
@@ -31,8 +39,10 @@ public class BattleWorld : MonoBehaviour
         { "Bat", new EnemyDef("Characters/Bat", 0.75f, 0.8f, new[]{"Flying"}, new[]{"Flying"}, AttackK, DeathK) },
         { "Frog", new EnemyDef("Characters/Frog", 0.6f, 0f, new[]{"Idle"}, new[]{"Jump"}, AttackK, DeathK) },
         { "Slime", new EnemyDef("Characters/Slime", 0.75f, 0f, new[]{"Idle"}, new[]{"Walk"}, AttackK, DeathK) },
-        { "Skeleton", new EnemyDef("Characters/Skeleton", 1.7f, 0f, new[]{"Idle"}, new[]{"Running"}, AttackK, DeathK) },
-        { "Zombie", new EnemyDef("Characters/Zombie", 1.7f, 0f, new[]{"ZombieIdle"}, new[]{"ZombieWalk"}, new[]{"ZombieBite"}, DeathK) },
+        { "Skeleton", new EnemyDef("KayKit/Characters/Skeleton_Warrior", 1.75f, 0f, SkelIdle, SkelMove, SkelAttack, SkelDeath, "KayKit/Items/Skeleton_Blade") },
+        { "Zombie", new EnemyDef("KayKit/Characters/Skeleton_Minion", 1.6f, 0f, SkelIdle, SkelMove, SkelAttack, SkelDeath, "KayKit/Items/Skeleton_Axe") },
+        { "SkelRogue", new EnemyDef("KayKit/Characters/Skeleton_Rogue", 1.65f, 0f, SkelIdle, SkelMove, SkelAttack, SkelDeath, "KayKit/Items/Skeleton_Blade") },
+        { "SkelMage", new EnemyDef("KayKit/Characters/Skeleton_Mage", 1.8f, 0f, SkelIdle, SkelMove, new[]{ "Spellcast_Shoot", "1H_Melee_Attack_Chop" }, SkelDeath, "KayKit/Items/Skeleton_Staff") },
         { "Dragon", new EnemyDef("Characters/Dragon", 1.6f, 0.5f, new[]{"Flying"}, new[]{"Flying"}, AttackK, DeathK) },
     };
 
@@ -43,12 +53,12 @@ public class BattleWorld : MonoBehaviour
         new[]{ "Wasp", "Bat", "SnakeAngry", "Slime" },
         new[]{ "Slime", "Frog", "Rat", "Zombie" },
         new[]{ "Skeleton", "Spider", "Wasp", "Dragon" },
-        new[]{ "Zombie", "SnakeAngry", "Bat", "Skeleton" },
+        new[]{ "Zombie", "SnakeAngry", "SkelRogue", "Skeleton" },
         new[]{ "Skeleton", "Slime", "Frog", "Dragon" },
-        new[]{ "Zombie", "Spider", "Wasp", "Zombie" },
-        new[]{ "SnakeAngry", "Bat", "Skeleton", "Dragon" },
-        new[]{ "Skeleton", "Zombie", "Spider", "Dragon" },
-        new[]{ "Zombie", "Skeleton", "Bat", "Dragon" },
+        new[]{ "Zombie", "SkelMage", "Wasp", "Zombie" },
+        new[]{ "SnakeAngry", "SkelRogue", "Skeleton", "Dragon" },
+        new[]{ "Skeleton", "SkelMage", "SkelRogue", "Dragon" },
+        new[]{ "Zombie", "Skeleton", "SkelMage", "Dragon" },
     };
 
     class Fighter
@@ -65,7 +75,9 @@ public class BattleWorld : MonoBehaviour
 
     static readonly string[] HeroIdle = { "Idle_swordRight", "Idle" };
     static readonly string[] HeroRun = { "Run_swordRight", "Run" };
-    static readonly string[] HeroAttack = { "Run_swordAttack", "swordAttackJump" };
+    static readonly string[] HeroAttack = { "1H_Melee_Attack_Chop", "1H_Melee_Attack_Slice_Diagonal", "Run_swordAttack" };
+    // Objets portés par le chevalier KayKit, remplacés par l'équipement du joueur.
+    static readonly string[] KnightHide = { "1H_Sword_Offhand", "Badge_Shield", "Rectangle_Shield", "Round_Shield", "Spike_Shield", "1H_Sword", "2H_Sword" };
     static readonly string[] HeroDeath = { "Death" };
 
     const float HeroSpeed = 2.4f, EnemySpeed = 1.8f, Engage = 0.75f, Spacing = 1.25f;
@@ -82,6 +94,7 @@ public class BattleWorld : MonoBehaviour
     float pauseTimer;
     string phase = "walk"; // walk, dead, clear
     int heroWeaponKey = -999, heroHelmetKey = -999;
+    Material heroHelmBase;
     bool heroEngaged;
     int dungeon = -1;          // -1 = chemin principal, sinon type de donjon
     int missionSlot = -1;     // mission en cours (index dans la liste), -1 sinon
@@ -318,7 +331,7 @@ public class BattleWorld : MonoBehaviour
     void SpawnHero()
     {
         hero = new Fighter();
-        hero.go = ModelLib.Spawn("Characters/KnightCharacter", 1.7f, world);
+        hero.go = ModelLib.SpawnKit("KayKit/Characters/Knight", 1.75f, world, KnightHide);
         hero.go.transform.localRotation = Quaternion.Euler(0, HeroYaw, 0);
         hero.anim = AnimPlayer.Attach(hero.go);
         RefreshHeroWeapon();
@@ -330,7 +343,7 @@ public class BattleWorld : MonoBehaviour
         int key = eq.valid ? eq.circle : -1;
         if (key == heroWeaponKey) return;
         heroWeaponKey = key;
-        var palm = ModelLib.FindDeep(hero.go.transform, "Palm.R");
+        var palm = ModelLib.FindDeep(hero.go.transform, "handslot.r") ?? ModelLib.FindDeep(hero.go.transform, "Palm.R");
         if (palm == null) return;
         var old = palm.Find("Arme du héros");
         if (old != null) Destroy(old.gameObject);
@@ -437,6 +450,20 @@ public class BattleWorld : MonoBehaviour
         int key = eq.valid ? eq.circle : -1;
         if (key == heroHelmetKey) return;
         heroHelmetKey = key;
+        // Chevalier KayKit : son propre heaume prend la couleur du cercle du casque équipé.
+        var kitHelm = ModelLib.FindDeep(hero.go.transform, "Knight_Helmet");
+        if (kitHelm != null)
+        {
+            var r = kitHelm.GetComponent<Renderer>();
+            if (r != null)
+            {
+                if (heroHelmBase == null) heroHelmBase = r.sharedMaterial;
+                var m = new Material(heroHelmBase);
+                if (eq.valid) m.SetColor("_BaseColor", Color.Lerp(Color.white, GameState.CircleColors[eq.circle], 0.45f));
+                r.sharedMaterial = m;
+            }
+            return;
+        }
         var head = ModelLib.FindDeep(hero.go.transform, "Head");
         if (head == null) return;
         var old = head.Find("Casque du héros");
@@ -454,12 +481,24 @@ public class BattleWorld : MonoBehaviour
         var def = Defs[key];
         var f = new Fighter { def = def, boss = boss };
         float h = def.height * (boss ? 1.7f : 1f);
-        f.go = ModelLib.Spawn(def.path, h, world);
+        f.go = def.Kit ? ModelLib.SpawnKit(def.path, h, world) : ModelLib.Spawn(def.path, h, world);
         f.go.transform.localPosition = new Vector3(x, def.fly, 0f);
         f.go.transform.localRotation = Quaternion.Euler(0, EnemyYaw, 0);
-        ModelLib.Tint(f.go, circleTint, boss ? 0.3f : 0.15f);
-        var bb = ModelLib.WorldBounds(f.go);
-        f.halfLen = Mathf.Clamp(bb.extents.x, 0.2f, 1.2f);
+        if (def.Kit)
+        {
+            // Arme en main droite ; largeur fixe (le modèle est en T avant la première animation).
+            var slot = ModelLib.FindDeep(f.go.transform, "handslot.r");
+            var wp = def.weapon != null ? ModelLib.Prefab(def.weapon) : null;
+            if (slot != null && wp != null) Instantiate(wp, slot, false);
+            f.halfLen = 0.32f * (boss ? 1.7f : 1f);
+            ModelLib.Tint(f.go, circleTint, boss ? 0.22f : 0.1f);
+        }
+        else
+        {
+            ModelLib.Tint(f.go, circleTint, boss ? 0.3f : 0.15f);
+            var bb = ModelLib.WorldBounds(f.go);
+            f.halfLen = Mathf.Clamp(bb.extents.x, 0.2f, 1.2f);
+        }
         f.anim = AnimPlayer.Attach(f.go);
         if (missionSlot >= 0)
         {
