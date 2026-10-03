@@ -15,7 +15,7 @@ public partial class ForgeUI
     void BuildDungeonPanel(Transform R)
     {
         dungPanel = MakeRect("Donjons", R, Vector2.zero, Vector2.one, new Vector2(0, 150), new Vector2(0, -130)).gameObject;
-        dungPanel.AddComponent<Image>().color = new Color(0.05f, 0.025f, 0.03f, 0.98f);
+        dungPanel.AddComponent<Image>().color = new Color(0.05f, 0.025f, 0.03f, 1f);
         Transform P = dungPanel.transform;
         Label(P, "DONJONS", 48, TextAnchor.UpperCenter, Ember, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
         Text closeT;

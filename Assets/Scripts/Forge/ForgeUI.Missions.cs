@@ -27,7 +27,7 @@ public partial class ForgeUI
     void BuildMissionPanel(Transform R)
     {
         missionPanel = MakeRect("Missions", R, Vector2.zero, Vector2.one, new Vector2(0, 150), new Vector2(0, -130)).gameObject;
-        missionPanel.AddComponent<Image>().color = new Color(0.06f, 0.03f, 0.07f, 0.98f);
+        missionPanel.AddComponent<Image>().color = new Color(0.06f, 0.03f, 0.07f, 1f);
         Transform P = missionPanel.transform;
         Label(P, "MISSIONS", 48, TextAnchor.UpperCenter, Ember, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
         Text closeT;
@@ -125,7 +125,7 @@ public partial class ForgeUI
     void BuildPassPanel(Transform R)
     {
         passPanel = MakeRect("Pass de progression", R, Vector2.zero, Vector2.one, new Vector2(0, 150), new Vector2(0, -130)).gameObject;
-        passPanel.AddComponent<Image>().color = new Color(0.08f, 0.05f, 0.02f, 0.98f);
+        passPanel.AddComponent<Image>().color = new Color(0.08f, 0.05f, 0.02f, 1f);
         Transform P = passPanel.transform;
         Label(P, "PASS DE PROGRESSION", 46, TextAnchor.UpperCenter, new Color(1f, 0.8f, 0.3f), new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
         Text closeT;

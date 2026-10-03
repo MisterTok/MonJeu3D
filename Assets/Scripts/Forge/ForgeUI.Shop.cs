@@ -20,7 +20,7 @@ public partial class ForgeUI
     void BuildShopPanel(Transform R)
     {
         shopPanel = MakeRect("Boutique", R, Vector2.zero, Vector2.one, new Vector2(0, 150), new Vector2(0, -130)).gameObject;
-        shopPanel.AddComponent<Image>().color = new Color(0.07f, 0.035f, 0.03f, 0.98f);
+        shopPanel.AddComponent<Image>().color = new Color(0.07f, 0.035f, 0.03f, 1f);
         Transform P = shopPanel.transform;
         Label(P, "BOUTIQUE", 48, TextAnchor.UpperCenter, Ember, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
         Text closeT;

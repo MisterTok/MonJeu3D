@@ -234,6 +234,7 @@ public partial class ForgeUI : MonoBehaviour
         BuildShopPanel(R);
         BuildMissionPanel(R);
         BuildPassPanel(R);
+        BuildDetailPopup(R);
 
         toast = Label(R, "", 40, TextAnchor.MiddleCenter, new Color(1f, 0.85f, 0.4f), new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 860), new Vector2(0, 930));
 
@@ -289,7 +290,7 @@ public partial class ForgeUI : MonoBehaviour
 
     void CloseAllPanels()
     {
-        foreach (var p in new[] { statsPanel, compPanel, dungPanel, techPanel, mountPanel, skillPanel, shopPanel, missionPanel, passPanel })
+        foreach (var p in new[] { statsPanel, compPanel, dungPanel, techPanel, mountPanel, skillPanel, shopPanel, missionPanel, passPanel, detail })
             if (p != null) p.SetActive(false);
     }
 
@@ -484,8 +485,17 @@ public partial class ForgeUI : MonoBehaviour
         Toast(msg);
     }
 
+    // Vrai si un écran plein (compagnons, boutique…) est ouvert : on masque alors ce qui dépasse (bouton Pass).
+    bool AnyPanelOpen()
+    {
+        foreach (var p in new[] { statsPanel, compPanel, dungPanel, techPanel, mountPanel, skillPanel, shopPanel, missionPanel, passPanel })
+            if (p != null && p.activeSelf) return true;
+        return false;
+    }
+
     void Update()
     {
+        if (passBtn != null) passBtn.gameObject.SetActive(!AnyPanelOpen() && !popup.activeSelf);
         UpdateAuto();
         UpdateTech();
         UpdateCompanions();

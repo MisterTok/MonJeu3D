@@ -20,7 +20,7 @@ public partial class ForgeUI
     void BuildTechPanel(Transform R)
     {
         techPanel = MakeRect("Arbre technologique", R, Vector2.zero, Vector2.one, new Vector2(0, 150), new Vector2(0, -130)).gameObject;
-        techPanel.AddComponent<Image>().color = new Color(0.1f, 0.05f, 0.05f, 0.98f);
+        techPanel.AddComponent<Image>().color = new Color(0.1f, 0.05f, 0.05f, 1f);
         Transform P = techPanel.transform;
         Label(P, "ARBRE TECHNOLOGIQUE", 44, TextAnchor.UpperCenter, Ember, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -76), new Vector2(0, -16));
         Text closeT;
