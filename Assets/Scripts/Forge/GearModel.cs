@@ -16,6 +16,9 @@ public static class GearModel
                                               "SK_MedievalFeet", "SK_SoldierFeet", "SK_SoldierFeet", "SK_SoldierFeet", "SK_KingFeet" };
     static readonly string[] RingByCircle = { "S_Ring1", "S_Ring2", "S_Ring3", "S_Ring3", "S_Ring6", "S_Ring6", "S_Ring4", "S_Ring4", "S_Ring5", "S_Ring5" };
 
+    static readonly string[] AmuletByCircle = { "S_Amulet2", "S_Amulet2", "S_Amulet2", "S_Amulet2", "S_Amulet3",
+                                                "S_Amulet3", "S_Amulet3", "S_Amulet1", "S_Amulet1", "S_Amulet1" };
+    public static string AmuletName(int circle) => AmuletByCircle[Mathf.Clamp(circle, 0, 9)];
     public static string GloveName(int circle) => "S_Glove";
     public static string BootName(int circle) => BootByCircle[Mathf.Clamp(circle, 0, 9)];
     public static string RingName(int circle) => RingByCircle[Mathf.Clamp(circle, 0, 9)];

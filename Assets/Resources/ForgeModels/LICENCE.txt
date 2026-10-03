@@ -1,3 +1,3 @@
 Modèles 3D : Quaternius (quaternius.com) — licence CC0 1.0 (domaine public).
-Gear/*.json : gantelet (Ultimate RPG), anneaux (Ultimate RPG), bottes (Ultimate Modular Characters / Women) de Quaternius, CC0,
+Gear/*.json : gantelet, anneaux et colliers (Ultimate RPG), bottes (Ultimate Modular Characters / Women) de Quaternius, CC0,
 convertis depuis les .usda du dépôt chibifire-stages/quaternius-stage avec Tools/usd_to_json.py.

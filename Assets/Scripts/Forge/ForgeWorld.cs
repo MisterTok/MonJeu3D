@@ -660,14 +660,8 @@ public class ForgeWorld : MonoBehaviour
                 Prim(PrimitiveType.Sphere, t, new Vector3(0, 0, -0.45f), Vector3.one * 0.08f, gem);
                 break;
             }
-            case 6: // Amulette : chaîne de perles et pendentif
-                for (int k = 0; k < 16; k++)
-                {
-                    float a = k * Mathf.PI * 2f / 16;
-                    Prim(PrimitiveType.Sphere, t, new Vector3(Mathf.Sin(a) * 0.26f, 0.32f + Mathf.Cos(a) * 0.26f, 0), Vector3.one * 0.06f, metal);
-                }
-                Prim(PrimitiveType.Cube, t, new Vector3(0, -0.05f, 0), new Vector3(0.28f, 0.28f, 0.05f), metal, new Vector3(0, 0, 45f));
-                Prim(PrimitiveType.Sphere, t, new Vector3(0, -0.05f, -0.04f), Vector3.one * 0.14f, gem);
+            case 6: // Amulette : collier de Quaternius (cordon et pendentif), pierre selon le cercle
+                GearModel.Build(GearModel.AmuletName(item.circle), 1.0f, c, glow, t, new Vector3(0f, 55f, 0f));
                 break;
             default: // Anneau : anneau de Quaternius, pierre de plus en plus précieuse selon le cercle
                 GearModel.Build(GearModel.RingName(item.circle), 0.85f, c, glow, t);
