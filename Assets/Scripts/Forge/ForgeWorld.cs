@@ -587,12 +587,12 @@ public class ForgeWorld : MonoBehaviour
         Prim(PrimitiveType.Sphere, t, pos, Vector3.one * 0.08f, gem);
     }
 
-    public static GameObject BuildItemModel(Item item)
+    public static GameObject BuildItemModel(Item item, float glowScale = 1f)
     {
         var root = new GameObject("Pièce " + item.Name);
         var t = root.transform;
         Color c = GameState.CircleColors[item.circle];
-        float glow = 0.08f + item.circle * 0.12f;
+        float glow = (0.08f + item.circle * 0.12f) * glowScale;
         var metal = Lit(Color.Lerp(new Color(0.25f, 0.24f, 0.25f), c, 0.55f), 0.85f, 0.7f, c * glow);
         var dark = Lit(new Color(0.08f, 0.05f, 0.05f), 0.5f, 0.4f);
         var gem = Unlit(c * 3f);
@@ -656,13 +656,27 @@ public class ForgeWorld : MonoBehaviour
                     Prim(PrimitiveType.Cube, t, new Vector3(s * 0.18f, 0.25f, 0.05f), new Vector3(0.19f, 0.06f, 0.21f), dark);
                 }
                 break;
-            case 5: // Ceinture
-                Prim(PrimitiveType.Cylinder, t, Vector3.zero, new Vector3(0.75f, 0.06f, 0.75f), dark, new Vector3(80f, 0, 0));
-                Prim(PrimitiveType.Cube, t, new Vector3(0, 0, -0.38f), new Vector3(0.22f, 0.18f, 0.05f), metal);
-                Prim(PrimitiveType.Sphere, t, new Vector3(0, 0, -0.41f), Vector3.one * 0.08f, gem);
+            case 5: // Ceinture : bande de cuir en anneau, plaques de métal, grosse boucle devant
+            {
+                var leather = Lit(new Color(0.22f, 0.12f, 0.07f), 0.1f, 0.35f);
+                const int segs = 18;
+                for (int k = 0; k < segs; k++)
+                {
+                    float a = k * Mathf.PI * 2f / segs;
+                    var pos = new Vector3(Mathf.Sin(a) * 0.38f, 0f, -Mathf.Cos(a) * 0.38f);
+                    Prim(PrimitiveType.Cube, t, pos, new Vector3(0.15f, 0.14f, 0.04f), k % 3 == 0 ? metal : leather, new Vector3(0, -a * Mathf.Rad2Deg, 0));
+                }
+                Prim(PrimitiveType.Cube, t, new Vector3(0, 0, -0.41f), new Vector3(0.24f, 0.2f, 0.05f), metal);
+                Prim(PrimitiveType.Cube, t, new Vector3(0, 0, -0.43f), new Vector3(0.14f, 0.11f, 0.03f), dark);
+                Prim(PrimitiveType.Sphere, t, new Vector3(0, 0, -0.45f), Vector3.one * 0.08f, gem);
                 break;
-            case 6: // Amulette
-                Prim(PrimitiveType.Cylinder, t, new Vector3(0, 0.3f, 0), new Vector3(0.5f, 0.01f, 0.5f), dark, new Vector3(90f, 0, 0));
+            }
+            case 6: // Amulette : chaîne de perles et pendentif
+                for (int k = 0; k < 16; k++)
+                {
+                    float a = k * Mathf.PI * 2f / 16;
+                    Prim(PrimitiveType.Sphere, t, new Vector3(Mathf.Sin(a) * 0.26f, 0.32f + Mathf.Cos(a) * 0.26f, 0), Vector3.one * 0.06f, metal);
+                }
                 Prim(PrimitiveType.Cube, t, new Vector3(0, -0.05f, 0), new Vector3(0.28f, 0.28f, 0.05f), metal, new Vector3(0, 0, 45f));
                 Prim(PrimitiveType.Sphere, t, new Vector3(0, -0.05f, -0.04f), Vector3.one * 0.14f, gem);
                 break;

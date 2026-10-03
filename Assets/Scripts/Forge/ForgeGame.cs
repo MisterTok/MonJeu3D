@@ -66,6 +66,14 @@ public class ForgeGame : MonoBehaviour
             FindAnyObjectByType<ForgeUI>().SendMessage("ShowPopup", it);
             return;
         }
+        if (name.StartsWith("equipall"))
+        {
+            // Outil de test : équipe les 8 emplacements avec des pièces d'un cercle donné (ex. « equipall6 »).
+            int c = 6; int.TryParse(name.Substring(8), out c);
+            for (int sl = 0; sl < GameState.SlotCount; sl++) GameState.Data.equipped[sl] = GameState.MakeItem(sl, Mathf.Clamp(c, 0, 9), 12);
+            GameState.AddEggshells(0);
+            return;
+        }
         if (name == "tickets") { GameState.Data.skillTickets += 5000; GameState.AddEggshells(0); return; } // outil de test : tickets de compétences
         if (name.StartsWith("forge")) { GameState.Data.hammers = Mathf.Max(GameState.Data.hammers, 1); FindAnyObjectByType<ForgeUI>()?.SendMessage("OnForge"); return; }
         ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(dir, name + ".png"));

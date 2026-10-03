@@ -22,6 +22,8 @@ public partial class ForgeUI : MonoBehaviour
     Image forgeBtnImg;
     readonly Image[] slotBg = new Image[GameState.SlotCount];
     readonly Text[] slotText = new Text[GameState.SlotCount];
+    readonly Text[] slotLevel = new Text[GameState.SlotCount];
+    readonly RawImage[] slotIcon = new RawImage[GameState.SlotCount];
 
     GameObject popup;
     Text popName, popInfo, popStat, popSubs, popCompare, popSellText;
@@ -213,7 +215,12 @@ public partial class ForgeUI : MonoBehaviour
             slotBg[i] = Box(eq, "Emplacement " + i, aMin, aMax, new Vector2(7, 7), new Vector2(-7, -7), Panel);
             var ol = slotBg[i].gameObject.AddComponent<Outline>();
             ol.effectDistance = new Vector2(4, -4);
-            slotText[i] = Label(slotBg[i].transform, "", 25, TextAnchor.MiddleCenter, TextMain, Vector2.zero, Vector2.one, new Vector2(6, 6), new Vector2(-6, -6));
+            // Icône 3D de la pièce au centre, niveau en haut, statistique en bas.
+            var iconRt = MakeRect("Icône", slotBg[i].transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-62, -54), new Vector2(62, 70));
+            slotIcon[i] = iconRt.gameObject.AddComponent<RawImage>();
+            slotIcon[i].raycastTarget = false;
+            slotLevel[i] = Label(slotBg[i].transform, "", 24, TextAnchor.UpperLeft, TextMain, Vector2.zero, Vector2.one, new Vector2(10, 6), new Vector2(-6, -6));
+            slotText[i] = Label(slotBg[i].transform, "", 25, TextAnchor.LowerCenter, TextMain, Vector2.zero, Vector2.one, new Vector2(6, 6), new Vector2(-6, -6));
         }
 
         BuildPassButton(R);
@@ -538,14 +545,20 @@ public partial class ForgeUI : MonoBehaviour
                 Color c = GameState.CircleColors[it.circle];
                 slotBg[i].color = new Color(c.r * 0.45f, c.g * 0.45f, c.b * 0.45f, 0.95f);
                 ol.effectColor = c;
-                slotText[i].text = "<size=22>" + GameState.SlotNames[i] + "</size>\n<b><size=34>Niv. " + it.level + "</size></b>\n<size=22>" + it.StatLabel + " " + GameState.Fmt(it.MainStat) + "</size>"
-                    + (it.SubCount > 0 ? "\n<size=20><color=#BFD8FF>+" + it.SubCount + " bonus</color></size>" : "");
+                slotIcon[i].texture = ItemIcons.Get(i, it.circle);
+                slotIcon[i].color = Color.white;
+                slotLevel[i].text = "<b>Niv. " + it.level + "</b>" + (it.SubCount > 0 ? "\n<size=19><color=#BFD8FF>+" + it.SubCount + " bonus</color></size>" : "");
+                slotText[i].text = "<size=23>" + it.StatLabel + " " + GameState.Fmt(it.MainStat) + "</size>";
             }
             else
             {
                 slotBg[i].color = Panel;
                 ol.effectColor = new Color(0.3f, 0.15f, 0.1f);
-                slotText[i].text = "<b>" + GameState.SlotNames[i] + "</b>\n<color=#776655>vide</color>";
+                // Emplacement vide : silhouette sombre de la pièce.
+                slotIcon[i].texture = ItemIcons.Get(i, 0);
+                slotIcon[i].color = new Color(0f, 0f, 0f, 0.55f);
+                slotLevel[i].text = "";
+                slotText[i].text = "<b>" + GameState.SlotNames[i] + "</b>  <color=#776655>vide</color>";
             }
         }
         RefreshTimers();

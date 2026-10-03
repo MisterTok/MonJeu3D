@@ -19,6 +19,7 @@ Notes de passation pour Claude. À lire en premier dans toute nouvelle conversat
 - ForgeWorld.cs (scène forge 3D, enclume procédurale, révélation de pièce, matériaux/ textures), BattleWorld.cs (chemin de combat, vagues, boss, donjons, compagnons qui suivent, monture chevauchée), ModelLib.cs (chargement FBX + AnimPlayer legacy), ProcGen.cs (textures sol/pavés/lave, maillage enclume).
 - SkillData.cs (18 compétences, invocation, doublons), SkillFx.cs (effets en particules : projectiles, explosions, auras, onde de choc).
 - ShopData.cs (boutique : cadeau du jour, 6 offres du jour du jeu de référence en 4 tailles selon le cercle, ressources à l'unité, packs de gemmes affichés « bientôt »).
+- ItemIcons.cs (icônes 3D des tuiles : le modèle est photographié une fois dans un studio caché à y=-300, caméra orthographique, RenderTexture 256 px fond transparent, cache par emplacement+cercle ; BuildItemModel(item, glowScale) avec lueur réduite).
 - MissionData.cs (missions et pass de progression, tables du jeu de référence).
 - ForgeUI.cs + partials ForgeUI.Companions/Dungeons/Tech/Mounts/Skills/Shop/Missions.cs (interface uGUI par code, police LegacyRuntime).
 - Editor : ForgeMaterialsSetup (matériaux URP dans Resources/ForgeMats), ForgeModelPostprocessor (FBX Characters/Pets en Legacy), ForgeModelReport.
@@ -34,7 +35,7 @@ Forge (35 niv., nœuds, minuteur, gemmes), objets 8 emplacements avec vrais mod�
 - Sources temporaires : boss vaincu la 1re fois → coquilles + remontoirs (100 + 50/cercle).
 
 ## À faire ensuite
-Achats réels (Google Play Billing) et plus de sources de gemmes, icônes 3D dans les tuiles, ligue classée et guerre de clans (serveur en ligne nécessaire), équilibrage, modèles pour Gantelets/Bottes/Ceinture/Amulette/Anneau.
+Achats réels (Google Play Billing) et plus de sources de gemmes, icônes 3D ailleurs (compagnons, montures, compétences, fenêtre de la pièce), ligue classée et guerre de clans (serveur en ligne nécessaire), équilibrage, modèles pour Gantelets/Bottes/Ceinture/Amulette/Anneau.
 
 ## Méthode de travail de Claude (important)
 - Git : Claude peut committer depuis device_bash (git -c user.name=MisterTok -c user.email=piecassa35@gmail.com) mais PAS pousser (pas d'identifiants GitHub dans la VM, terminaux Windows en clic seulement) : demander à Pierre de faire `git push` ou d'utiliser GitHub Desktop. Les verrous .git demandent la permission de suppression sur le dossier du projet.
@@ -42,4 +43,4 @@ Achats réels (Google Play Billing) et plus de sources de gemmes, icônes 3D dan
 - Écrire les fichiers dans le cloud puis device_commit_files (force), et TOUJOURS vérifier le md5 sur le PC (un envoi a déjà été perdu).
 - Faire compiler : donner le focus à Unity puis menu Assets > Refresh. Le clavier tactile Windows (textinputhost) passe souvent devant : demander l'accès computer-use à Unity ET à textinputhost.exe, puis cliquer dans Unity. Ne PAS utiliser open_application (relance un 2e Unity qui écrase Editor.log).
 - Vérifier la compilation : date de Library/ScriptAssemblies/Assembly-CSharp.dll + `strings Editor.log | grep "error CS"`.
-- Tester : Play, puis écrire dans C:\jeu\_dl\shot_request un nom → capture PNG plein écran dans C:\jeu\_dl\ (commandes de test : « forge », « item6 », « discard », « tickets » = +5000 tickets). Stager le PNG pour le regarder.
+- Tester : Play, puis écrire dans C:\jeu\_dl\shot_request un nom → capture PNG plein écran dans C:\jeu\_dl\ (commandes de test : « forge », « item6 », « discard », « tickets » = +5000 tickets, « equipall6 » = équipe les 8 emplacements au cercle 6 — écrase l'équipement de la sauvegarde). Stager le PNG pour le regarder.
