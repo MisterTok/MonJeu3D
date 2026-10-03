@@ -76,3 +76,6 @@ Claude outputs/
 # Sprites 2D sous licence Craftpix (achetés) : jamais sur le dépôt public
 Assets/Resources/ForgeSprites/
 Assets/Resources/ForgeSprites.meta
+
+# Fichiers temporaires du build Android
+.utmp/
