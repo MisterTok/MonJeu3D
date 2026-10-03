@@ -14,6 +14,25 @@ public partial class ForgeUI
     readonly Text[] eqPetText = new Text[3];
     readonly Image[] petTileBg = new Image[25];
     readonly Text[] petTileText = new Text[25];
+    readonly Text[] petTileName = new Text[25];
+    readonly RawImage[] petTileIcon = new RawImage[25];
+    readonly RawImage[] eqPetIcon = new RawImage[3];
+
+    // Icône 3D carrée placée derrière les textes d'une tuile.
+    RawImage AddIcon(Transform parent, Vector2 aMin, Vector2 aMax, Vector2 offMin, Vector2 offMax)
+    {
+        var holder = MakeRect("Zone icône", parent, aMin, aMax, offMin, offMax);
+        holder.SetSiblingIndex(0);
+        var rt = MakeRect("Icône", holder, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+        var fit = rt.gameObject.AddComponent<AspectRatioFitter>();
+        fit.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+        fit.aspectRatio = 1f;
+        var ri = rt.gameObject.AddComponent<RawImage>();
+        ri.raycastTarget = false;
+        return ri;
+    }
+
+    static readonly Color Silhouette = new Color(0f, 0f, 0f, 0.6f);
     float compTimer;
     static Sprite circleSprite;
 
@@ -88,7 +107,8 @@ public partial class ForgeUI
         {
             eqPetBg[i] = Box(P, "Équipé " + i, new Vector2(i / 3f, 1), new Vector2((i + 1) / 3f, 1), new Vector2(12, -745), new Vector2(-12, -595), Panel);
             eqPetBg[i].gameObject.AddComponent<Outline>().effectDistance = new Vector2(4, -4);
-            eqPetText[i] = Label(eqPetBg[i].transform, "", 26, TextAnchor.MiddleCenter, TextMain, Vector2.zero, Vector2.one, new Vector2(8, 4), new Vector2(-8, -4));
+            eqPetIcon[i] = AddIcon(eqPetBg[i].transform, Vector2.zero, new Vector2(0.4f, 1f), new Vector2(4, 6), new Vector2(0, -6));
+            eqPetText[i] = Label(eqPetBg[i].transform, "", 22, TextAnchor.MiddleLeft, TextMain, new Vector2(0.4f, 0f), Vector2.one, new Vector2(4, 4), new Vector2(-6, -4));
         }
 
         // Collection
@@ -103,7 +123,11 @@ public partial class ForgeUI
             petTileBg[i] = b.GetComponent<Image>();
             var ol = b.gameObject.GetComponent<Outline>();
             ol.effectDistance = new Vector2(3, -3);
+            t.alignment = TextAnchor.LowerCenter;
+            t.rectTransform.offsetMin = new Vector2(4, 4);
             petTileText[i] = t;
+            petTileName[i] = Label(b.transform, "", 18, TextAnchor.UpperCenter, TextMain, Vector2.zero, Vector2.one, new Vector2(4, 0), new Vector2(-4, -4));
+            petTileIcon[i] = AddIcon(b.transform, Vector2.zero, Vector2.one, new Vector2(6, 30), new Vector2(-6, -24));
         }
 
         compPanel.SetActive(false);
@@ -232,13 +256,17 @@ public partial class ForgeUI
                 eqPetBg[i].color = Panel;
                 ol.effectColor = new Color(0.3f, 0.15f, 0.1f);
                 eqPetText[i].text = "<color=#776655>emplacement libre</color>";
+                eqPetIcon[i].enabled = false;
                 continue;
             }
             var def = ProgressionData.Pets[p.id];
             var c = ProgressionData.RarityColors[def.rarity];
             eqPetBg[i].color = new Color(c.r * 0.25f, c.g * 0.25f, c.b * 0.25f, 0.95f);
             ol.effectColor = c;
-            eqPetText[i].text = "<b>" + def.name + "</b>\nNiv. " + p.level + "\n<size=22>ATQ +" + GameState.Fmt(GameState.PetDamage(p)) + "  PV +" + GameState.Fmt(GameState.PetHealth(p)) + "</size>"
+            eqPetIcon[i].enabled = true;
+            eqPetIcon[i].texture = ItemIcons.GetCreature(def.model, c, 0.12f);
+            eqPetIcon[i].color = Color.white;
+            eqPetText[i].text = "<b>" + def.name + "</b>\nNiv. " + p.level + "\n<size=20>ATQ +" + GameState.Fmt(GameState.PetDamage(p)) + "  PV +" + GameState.Fmt(GameState.PetHealth(p)) + "</size>"
                 + PetSubsText(p);
         }
 
@@ -252,13 +280,19 @@ public partial class ForgeUI
             {
                 petTileBg[i].color = new Color(0.07f, 0.05f, 0.05f);
                 ol.effectColor = new Color(c.r * 0.4f, c.g * 0.4f, c.b * 0.4f);
-                petTileText[i].text = "<color=#665555>???\n" + ProgressionData.Rarities[def.rarity] + "</color>";
+                petTileName[i].text = "<color=#665555>???</color>";
+                petTileText[i].text = "<size=18><color=#776666>" + ProgressionData.Rarities[def.rarity] + "</color></size>";
+                petTileIcon[i].texture = ItemIcons.GetCreature(def.model, c, 0.12f);
+                petTileIcon[i].color = Silhouette;
                 continue;
             }
             bool eq = GameState.IsPetEquipped(i);
             petTileBg[i].color = eq ? new Color(c.r * 0.5f, c.g * 0.5f, c.b * 0.5f, 1f) : new Color(c.r * 0.22f, c.g * 0.22f, c.b * 0.22f, 1f);
             ol.effectColor = c;
-            petTileText[i].text = def.name + "\n<b><size=28>Niv. " + p.level + "</size></b>\n<size=18>" + p.copies + "/" + GameState.CopiesForNext(p.level) + (eq ? "  ✔" : "") + "</size>";
+            petTileName[i].text = def.name;
+            petTileText[i].text = "<b>Niv. " + p.level + "</b> <size=17>" + p.copies + "/" + GameState.CopiesForNext(p.level) + (eq ? " ✔" : "") + "</size>";
+            petTileIcon[i].texture = ItemIcons.GetCreature(def.model, c, 0.12f);
+            petTileIcon[i].color = Color.white;
         }
     }
 

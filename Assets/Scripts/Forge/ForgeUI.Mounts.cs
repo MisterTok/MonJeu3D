@@ -11,6 +11,9 @@ public partial class ForgeUI
     Image mountEqBg;
     readonly Image[] mountTileBg = new Image[15];
     readonly Text[] mountTileText = new Text[15];
+    readonly Text[] mountTileName = new Text[15];
+    readonly RawImage[] mountTileIcon = new RawImage[15];
+    RawImage mountEqIcon;
 
     void BuildMountPanel(Transform R)
     {
@@ -35,7 +38,8 @@ public partial class ForgeUI
         Label(P, "Monture chevauchée", 30, TextAnchor.UpperLeft, TextDim, new Vector2(0, 1), new Vector2(1, 1), new Vector2(30, -290), new Vector2(0, -250));
         mountEqBg = Box(P, "Équipée", new Vector2(0, 1), new Vector2(1, 1), new Vector2(12, -470), new Vector2(-12, -295), Panel);
         mountEqBg.gameObject.AddComponent<Outline>().effectDistance = new Vector2(5, -5);
-        mountEquipped = Label(mountEqBg.transform, "", 32, TextAnchor.MiddleCenter, TextMain, Vector2.zero, Vector2.one, new Vector2(12, 6), new Vector2(-12, -6));
+        mountEqIcon = AddIcon(mountEqBg.transform, Vector2.zero, new Vector2(0.24f, 1f), new Vector2(8, 8), new Vector2(0, -8));
+        mountEquipped = Label(mountEqBg.transform, "", 30, TextAnchor.MiddleLeft, TextMain, new Vector2(0.24f, 0f), Vector2.one, new Vector2(12, 6), new Vector2(-12, -6));
 
         Label(P, "Collection (touche pour chevaucher)", 30, TextAnchor.UpperLeft, TextDim, new Vector2(0, 1), new Vector2(1, 1), new Vector2(30, -530), new Vector2(0, -490));
         var grid = MakeRect("Collection", P, Vector2.zero, new Vector2(1, 1), new Vector2(12, 12), new Vector2(-12, -540));
@@ -46,7 +50,11 @@ public partial class ForgeUI
             var b = MakeButton(grid, "Monture " + i, new Vector2(col / 5f, 1f - (row + 1) / 3f), new Vector2((col + 1) / 5f, 1f - row / 3f),
                 new Vector2(6, 6), new Vector2(-6, -6), Panel, "", 24, out t, () => { GameState.EquipMount(id); RefreshMounts(); });
             mountTileBg[i] = b.GetComponent<Image>();
+            t.alignment = TextAnchor.LowerCenter;
+            t.rectTransform.offsetMin = new Vector2(4, 8);
             mountTileText[i] = t;
+            mountTileName[i] = Label(b.transform, "", 21, TextAnchor.UpperCenter, TextMain, Vector2.zero, Vector2.one, new Vector2(4, 0), new Vector2(-4, -8));
+            mountTileIcon[i] = AddIcon(b.transform, Vector2.zero, Vector2.one, new Vector2(8, 62), new Vector2(-8, -36));
         }
         mountPanel.SetActive(false);
         GameState.MountMessage += Toast;
@@ -88,6 +96,7 @@ public partial class ForgeUI
             mountEqBg.color = Panel;
             ol.effectColor = new Color(0.4f, 0.25f, 0.2f);
             mountEquipped.text = "<color=#998877>Aucune monture : invoque-en avec des remontoirs</color>";
+            mountEqIcon.enabled = false;
         }
         else
         {
@@ -95,6 +104,8 @@ public partial class ForgeUI
             var c = ProgressionData.RarityColors[def.rarity];
             mountEqBg.color = new Color(c.r * 0.3f, c.g * 0.3f, c.b * 0.3f, 1f);
             ol.effectColor = c;
+            mountEqIcon.enabled = true;
+            mountEqIcon.texture = ItemIcons.GetCreature(def.model, c, 0.15f);
             mountEquipped.text = "<b>" + def.name + "</b>  <size=26><color=" + Hex(c) + ">" + ProgressionData.Rarities[def.rarity] + "</color> · niv. " + eq.level
                 + " (" + eq.copies + "/" + eq.level + ")</size>\n+" + GameState.FmtPct((float)GameState.MountDamageBonus()) + " dégâts   +" + GameState.FmtPct((float)GameState.MountHealthBonus()) + " vie";
         }
@@ -109,13 +120,19 @@ public partial class ForgeUI
             {
                 mountTileBg[i].color = new Color(0.12f, 0.09f, 0.09f);
                 tol.effectColor = new Color(c.r * 0.45f, c.g * 0.45f, c.b * 0.45f);
-                mountTileText[i].text = "<color=#776666>???\n" + ProgressionData.Rarities[def.rarity] + "</color>";
+                mountTileName[i].text = "<color=#776666>???</color>";
+                mountTileText[i].text = "<size=20><color=#776666>" + ProgressionData.Rarities[def.rarity] + "</color></size>";
+                mountTileIcon[i].texture = ItemIcons.GetCreature(def.model, c, 0.15f);
+                mountTileIcon[i].color = Silhouette;
                 continue;
             }
             bool on = d.equippedMount == i;
             mountTileBg[i].color = on ? new Color(c.r * 0.55f, c.g * 0.55f, c.b * 0.55f) : new Color(c.r * 0.25f, c.g * 0.25f, c.b * 0.25f);
             tol.effectColor = on ? Color.white : c;
-            mountTileText[i].text = def.name + "\n<b><size=30>Niv. " + m.level + "</size></b>\n<size=20>+" + GameState.FmtPct((float)GameState.MountBonus(m)) + "</size>";
+            mountTileName[i].text = def.name;
+            mountTileText[i].text = "<b><size=28>Niv. " + m.level + "</size></b>\n<size=20>+" + GameState.FmtPct((float)GameState.MountBonus(m)) + "</size>";
+            mountTileIcon[i].texture = ItemIcons.GetCreature(def.model, c, 0.15f);
+            mountTileIcon[i].color = Color.white;
         }
     }
 }

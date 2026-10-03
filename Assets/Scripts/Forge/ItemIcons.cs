@@ -82,17 +82,54 @@ public static class ItemIcons
         EnsureStudio();
         var it = new Item { valid = true, slot = slot, circle = circle, level = 1 };
         var model = ForgeWorld.BuildItemModel(it, 0.35f); // lueur réduite : les couleurs restent lisibles
+        return Shoot(model, SlotEuler[Mathf.Clamp(slot, 0, SlotEuler.Length - 1)], "Icône " + slot + "-" + circle);
+    }
+
+    // ---------- Créatures (compagnons et montures) ----------
+    static readonly string[] IdleKeys = { "Idle", "Flying", "Swim", "ArmatureAction", "Action", "*" };
+
+    // Icône d'un modèle animé : posé dans son animation de repos, de trois quarts face à l'objectif.
+    public static Texture GetCreature(string modelPath, Color tint, float tintAmount)
+    {
+        int key = ("créature:" + modelPath + ":" + tint + ":" + tintAmount).GetHashCode();
+        if (cache.TryGetValue(key, out var rt) && rt != null && rt.IsCreated()) return rt;
+        EnsureStudio();
+        var model = ModelLib.Spawn(modelPath, 1f, null, false, true);
+        if (tintAmount > 0f) ModelLib.Tint(model, tint, tintAmount);
+        var anim = model.GetComponentInChildren<Animation>();
+        if (anim != null)
+        {
+            var p = AnimPlayer.Attach(model);
+            string n = p != null ? p.Find(IdleKeys) : null;
+            if (n != null)
+            {
+                var st = anim[n];
+                st.enabled = true; st.weight = 1f; st.time = st.length * 0.25f;
+                anim.Sample();
+                st.enabled = false;
+            }
+        }
+        rt = Shoot(model, CreatureEuler, "Icône " + modelPath);
+        cache[key] = rt;
+        return rt;
+    }
+
+    // Les modèles regardent vers +Z : on les tourne vers l'objectif, de trois quarts.
+    static readonly Vector3 CreatureEuler = new Vector3(8f, 215f, 0f);
+
+    static RenderTexture Shoot(GameObject model, Vector3 euler, string name)
+    {
         model.transform.SetParent(studio, false);
         model.transform.localPosition = Vector3.zero;
-        model.transform.localRotation = Quaternion.Euler(SlotEuler[Mathf.Clamp(slot, 0, SlotEuler.Length - 1)]);
+        model.transform.localRotation = Quaternion.Euler(euler);
 
-        // Cadrage : on centre la pièce et on règle la taille de l'objectif sur sa plus grande dimension.
+        // Cadrage : on centre l'objet et on règle la taille de l'objectif sur sa plus grande dimension.
         var b = ModelLib.WorldBounds(model);
         model.transform.position += studio.position - b.center;
         float half = Mathf.Max(b.extents.x, b.extents.y, 0.05f);
         cam.orthographicSize = half * 1.18f;
 
-        var rt = new RenderTexture(Size, Size, 24, RenderTextureFormat.ARGB32) { name = "Icône " + slot + "-" + circle, antiAliasing = 4 };
+        var rt = new RenderTexture(Size, Size, 24, RenderTextureFormat.ARGB32) { name = name, antiAliasing = 4 };
         rt.Create();
         cam.targetTexture = rt;
         var req = new UniversalRenderPipeline.SingleCameraRequest { destination = rt };
