@@ -155,12 +155,14 @@ public partial class ForgeUI : MonoBehaviour
                 new Color(0.32f, 0.13f, 0.1f), navNames[i], 21, out nt, () =>
                 {
                     if (idx != 4 && skillPanel != null) skillPanel.SetActive(false);
+                    if (idx != 7 && shopPanel != null) shopPanel.SetActive(false);
                     if (idx == 0) ToggleStats();
                     else if (idx == 1) ToggleDungeons();
                     else if (idx == 2) ToggleCompanions();
                     else if (idx == 3) { if (mountPanel.activeSelf) mountPanel.SetActive(false); else ToggleMounts(); }
                     else if (idx == 4) ToggleSkills();
                     else if (idx == 5) ToggleTech();
+                    else if (idx == 7) ToggleShop();
                     else Toast(navNames[idx].Replace("\n", "") + " : bientôt !");
                 });
         }
@@ -218,6 +220,7 @@ public partial class ForgeUI : MonoBehaviour
         BuildTechPanel(R);
         BuildMountPanel(R);
         BuildSkillPanel(R);
+        BuildShopPanel(R);
 
         toast = Label(R, "", 40, TextAnchor.MiddleCenter, new Color(1f, 0.85f, 0.4f), new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 860), new Vector2(0, 930));
 
@@ -239,6 +242,7 @@ public partial class ForgeUI : MonoBehaviour
         GameState.TechDone -= Toast;
         GameState.MountMessage -= Toast;
         GameState.SkillMessage -= Toast;
+        GameState.ShopMessage -= Toast;
         if (battle != null) battle.DungeonEnded -= Toast;
         GameState.Changed -= Refresh;
         GameState.ForgeLeveledUp -= OnLevelUp;
@@ -271,7 +275,7 @@ public partial class ForgeUI : MonoBehaviour
 
     void CloseAllPanels()
     {
-        foreach (var p in new[] { statsPanel, compPanel, dungPanel, techPanel, mountPanel, skillPanel })
+        foreach (var p in new[] { statsPanel, compPanel, dungPanel, techPanel, mountPanel, skillPanel, shopPanel })
             if (p != null) p.SetActive(false);
     }
 
@@ -472,6 +476,7 @@ public partial class ForgeUI : MonoBehaviour
         UpdateTech();
         UpdateCompanions();
         UpdateDungeons();
+        UpdateShop();
         refreshTimer -= Time.deltaTime;
         if (refreshTimer <= 0f)
         {
@@ -496,6 +501,7 @@ public partial class ForgeUI : MonoBehaviour
         RefreshTech();
         RefreshMounts();
         RefreshSkills();
+        RefreshShop();
         var d = GameState.Data;
         goldText.text = "<size=26>or</size>  " + GameState.Fmt(d.gold);
         gemText.text = "<size=26>gemmes</size>  " + GameState.Fmt(d.gems);

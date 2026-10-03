@@ -85,6 +85,11 @@ public class SaveData
     public int[] equippedSkills;    // 3 emplacements (id ou -1)
     public int skillSummonLevel, skillSummonProgress;
     public bool skillGift;
+    public long shopDay;            // jour des offres (change à 22:00, comme les clés)
+    public bool shopFreeTaken;
+    public int[] shopDeals;         // index des 3 offres du jour dans ShopData.Deals
+    public bool[] shopDealBought;
+    public int[] shopBundleBuys;    // achats du jour par ressource
     public int[] techLevels;        // niveaux de recherche (arbres mis bout à bout)
     public int researchTree = -1, researchNode = -1;
     public long researchEndTicks;
@@ -197,6 +202,7 @@ public static class GameState
         if (Data.dungeonLevel == null || Data.dungeonLevel.Length != DungeonCount) Data.dungeonLevel = new int[DungeonCount];
         if (Data.dungeonKeys == null || Data.dungeonKeys.Length != DungeonCount) { Data.dungeonKeys = new int[DungeonCount]; Data.keyDay = 0; }
         RefreshKeys();
+        RefreshShop();
         if (Data.mounts == null) Data.mounts = new List<OwnedMount>();
         if (!Data.mountGift)
         {
@@ -258,6 +264,7 @@ public static class GameState
         }
 
         if (RefreshKeys()) changed = true;
+        if (RefreshShop()) changed = true;
         if (Data.researchTree >= 0 && now >= Data.researchEndTicks) { FinishResearch(); changed = true; }
         if (Data.upgrading && now >= Data.upgradeEndTicks) { FinishUpgrade(); return; }
         if (changed) Notify();
@@ -896,6 +903,110 @@ public static class GameState
         double h = s != null ? SkillHealth(s) : d.health * SkillScale;
         return d.desc.Replace("{a}", Fmt(a)).Replace("{h}", Fmt(h)).Replace("{d}", d.duration.ToString("0"));
     }
+
+    // ---------- Boutique ----------
+    public static event Action<string> ShopMessage;
+    public static int DealSize => ShopData.DealSize(Math.Min(9, Data.bestStage / StagesPerCircle));
+
+    // Nouvelles offres chaque jour à 22:00. Vrai si elles viennent d'être renouvelées.
+    static bool RefreshShop()
+    {
+        long day = DateTime.Now.AddHours(2).Date.Ticks;
+        bool valid = Data.shopDeals != null && Data.shopDeals.Length == ShopData.DealsPerDay
+            && Data.shopDealBought != null && Data.shopDealBought.Length == ShopData.DealsPerDay
+            && Data.shopBundleBuys != null && Data.shopBundleBuys.Length == ShopData.Bundles.Length;
+        if (valid && day == Data.shopDay) return false;
+        Data.shopDay = day;
+        Data.shopFreeTaken = false;
+        Data.shopDealBought = new bool[ShopData.DealsPerDay];
+        Data.shopBundleBuys = new int[ShopData.Bundles.Length];
+        // 3 offres différentes tirées au hasard (graine = jour : stable si on relance le jeu).
+        var r = new System.Random((int)(day / TimeSpan.TicksPerDay));
+        var pool = new List<int>();
+        for (int i = 0; i < ShopData.Deals.Length; i++) pool.Add(i);
+        Data.shopDeals = new int[ShopData.DealsPerDay];
+        for (int i = 0; i < ShopData.DealsPerDay; i++) { int k = r.Next(pool.Count); Data.shopDeals[i] = pool[k]; pool.RemoveAt(k); }
+        return true;
+    }
+
+    // Or réel donné pour une quantité « de référence » : 1 000 = 1 heure de gains hors ligne au niveau actuel.
+    public static long ShopGold(long refAmount) => (long)Math.Round(refAmount / ShopData.GoldRefPerHour * 3600 * (1 + Data.stage * 0.15) * (1 + TV("CoinOfflineReward")));
+
+    public static long ShopAmount(int currency, long amount) => currency == ShopData.Gold ? ShopGold(amount) : amount;
+
+    static void Give(int currency, long amount)
+    {
+        switch (currency)
+        {
+            case ShopData.Gold: Data.gold += ShopGold(amount); break;
+            case ShopData.Gems: Data.gems += amount; break;
+            case ShopData.Hammers: Data.hammers += (int)amount; break;
+            case ShopData.Shells: Data.eggshells += amount; break;
+            case ShopData.Winders: Data.winders += amount; break;
+            case ShopData.Tickets: Data.skillTickets += amount; break;
+            case ShopData.Potions: Data.potions += amount; break;
+            case ShopData.KeyHammer: Data.dungeonKeys[DungeonHammer] += (int)amount; break;
+            case ShopData.KeyEgg: Data.dungeonKeys[DungeonEgg] += (int)amount; break;
+            case ShopData.KeyPotion: Data.dungeonKeys[DungeonPotion] += (int)amount; break;
+            case ShopData.KeySkill: Data.dungeonKeys[DungeonSkill] += (int)amount; break;
+        }
+    }
+
+    static void GiveAll(int[] list) { for (int i = 0; i + 1 < list.Length; i += 2) Give(list[i], list[i + 1]); }
+
+    public static string ContentText(int[] list, string sep)
+    {
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i + 1 < list.Length; i += 2)
+        {
+            if (i > 0) sb.Append(sep);
+            int c = list[i];
+            string col = "#" + ColorUtility.ToHtmlStringRGB(ShopData.CurrencyColors[c]);
+            sb.Append("<color=" + col + ">+" + Fmt(ShopAmount(c, list[i + 1])) + " " + ShopData.CurrencyNames[c] + "</color>");
+        }
+        return sb.ToString();
+    }
+
+    public static int[] DealContent(int slot) => ShopData.Deals[Data.shopDeals[slot]].sizes[DealSize];
+    public static int DealPrice => ShopData.DealPrice[DealSize];
+
+    public static string TakeFreeGift()
+    {
+        if (Data.shopFreeTaken) return "Cadeau déjà pris aujourd'hui : reviens après 22:00";
+        Data.shopFreeTaken = true;
+        GiveAll(ShopData.FreeGift);
+        Notify();
+        ShopMessage?.Invoke("Cadeau du jour récupéré !");
+        return null;
+    }
+
+    public static string BuyDeal(int slot)
+    {
+        if (Data.shopDealBought[slot]) return "Offre déjà achetée aujourd'hui";
+        int price = DealPrice;
+        if (Data.gems < price) return "Pas assez de gemmes";
+        Data.gems -= price;
+        Data.shopDealBought[slot] = true;
+        GiveAll(DealContent(slot));
+        Notify();
+        ShopMessage?.Invoke(ShopData.Deals[Data.shopDeals[slot]].name + " acheté !");
+        return null;
+    }
+
+    public static string BuyBundle(int i)
+    {
+        var b = ShopData.Bundles[i];
+        if (Data.shopBundleBuys[i] >= b.perDay) return "Limite du jour atteinte";
+        if (Data.gems < b.price) return "Pas assez de gemmes";
+        Data.gems -= b.price;
+        Data.shopBundleBuys[i]++;
+        Give(b.currency, b.amount);
+        Notify();
+        ShopMessage?.Invoke("+" + Fmt(ShopAmount(b.currency, b.amount)) + " " + ShopData.CurrencyNames[b.currency]);
+        return null;
+    }
+
+    public static TimeSpan TimeToShopRefresh() => TimeToKeyRefresh();
 
     // ---------- Arbre technologique ----------
     public static readonly string[] SlotTech = { "Weapon", "Helmet", "Body", "Glove", "Shoe", "Belt", "Necklace", "Ring" };

@@ -69,3 +69,6 @@ Desktop.ini
 
 # Réglages locaux Claude
 .claude/settings.local.json
+
+# Fichiers envoyés par Claude
+Claude outputs/
