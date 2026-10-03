@@ -145,7 +145,7 @@ public partial class ForgeUI : MonoBehaviour
 
         // ----- Barre de navigation (emplacements pour la suite) -----
         var nav = Box(R, "Navigation", new Vector2(0, 0), new Vector2(1, 0), Vector2.zero, new Vector2(0, 150), new Color(0.07f, 0.04f, 0.05f, 0.97f));
-        string[] navNames = { "Héros", "Donjons", "Compa-\ngnons", "Montures", "Compé-\ntences", "Techno", "Clan", "Boutique" };
+        string[] navNames = { "Héros", "Donjons", "Compa-\ngnons", "Montures", "Compé-\ntences", "Techno", "Missions", "Boutique" };
         int navCount = navNames.Length;
         for (int i = 0; i < navCount; i++)
         {
@@ -156,12 +156,15 @@ public partial class ForgeUI : MonoBehaviour
                 {
                     if (idx != 4 && skillPanel != null) skillPanel.SetActive(false);
                     if (idx != 7 && shopPanel != null) shopPanel.SetActive(false);
+                    if (idx != 6 && missionPanel != null) missionPanel.SetActive(false);
+                    if (passPanel != null) passPanel.SetActive(false);
                     if (idx == 0) ToggleStats();
                     else if (idx == 1) ToggleDungeons();
                     else if (idx == 2) ToggleCompanions();
                     else if (idx == 3) { if (mountPanel.activeSelf) mountPanel.SetActive(false); else ToggleMounts(); }
                     else if (idx == 4) ToggleSkills();
                     else if (idx == 5) ToggleTech();
+                    else if (idx == 6) ToggleMissions();
                     else if (idx == 7) ToggleShop();
                     else Toast(navNames[idx].Replace("\n", "") + " : bientôt !");
                 });
@@ -213,6 +216,7 @@ public partial class ForgeUI : MonoBehaviour
             slotText[i] = Label(slotBg[i].transform, "", 25, TextAnchor.MiddleCenter, TextMain, Vector2.zero, Vector2.one, new Vector2(6, 6), new Vector2(-6, -6));
         }
 
+        BuildPassButton(R);
         BuildPopup(R);
         BuildStatsPanel(R);
         BuildCompanionPanel(R);
@@ -221,6 +225,8 @@ public partial class ForgeUI : MonoBehaviour
         BuildMountPanel(R);
         BuildSkillPanel(R);
         BuildShopPanel(R);
+        BuildMissionPanel(R);
+        BuildPassPanel(R);
 
         toast = Label(R, "", 40, TextAnchor.MiddleCenter, new Color(1f, 0.85f, 0.4f), new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 860), new Vector2(0, 930));
 
@@ -243,6 +249,7 @@ public partial class ForgeUI : MonoBehaviour
         GameState.MountMessage -= Toast;
         GameState.SkillMessage -= Toast;
         GameState.ShopMessage -= Toast;
+        GameState.MissionMessage -= Toast;
         if (battle != null) battle.DungeonEnded -= Toast;
         GameState.Changed -= Refresh;
         GameState.ForgeLeveledUp -= OnLevelUp;
@@ -275,7 +282,7 @@ public partial class ForgeUI : MonoBehaviour
 
     void CloseAllPanels()
     {
-        foreach (var p in new[] { statsPanel, compPanel, dungPanel, techPanel, mountPanel, skillPanel, shopPanel })
+        foreach (var p in new[] { statsPanel, compPanel, dungPanel, techPanel, mountPanel, skillPanel, shopPanel, missionPanel, passPanel })
             if (p != null) p.SetActive(false);
     }
 
@@ -477,6 +484,7 @@ public partial class ForgeUI : MonoBehaviour
         UpdateCompanions();
         UpdateDungeons();
         UpdateShop();
+        UpdateMissions();
         refreshTimer -= Time.deltaTime;
         if (refreshTimer <= 0f)
         {
@@ -502,6 +510,7 @@ public partial class ForgeUI : MonoBehaviour
         RefreshMounts();
         RefreshSkills();
         RefreshShop();
+        RefreshMissions();
         var d = GameState.Data;
         goldText.text = "<size=26>or</size>  " + GameState.Fmt(d.gold);
         gemText.text = "<size=26>gemmes</size>  " + GameState.Fmt(d.gems);

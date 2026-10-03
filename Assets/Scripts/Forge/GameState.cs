@@ -90,6 +90,11 @@ public class SaveData
     public int[] shopDeals;         // index des 3 offres du jour dans ShopData.Deals
     public bool[] shopDealBought;
     public int[] shopBundleBuys;    // achats du jour par ressource
+    public int missionEnergy;
+    public long missionDay;
+    public int[] missionSquad;      // escouade de chaque mission proposée
+    public int[] missionLevel;      // niveau de chaque mission proposée
+    public bool[] passClaimed;      // paliers du pass de progression déjà récupérés
     public int[] techLevels;        // niveaux de recherche (arbres mis bout à bout)
     public int researchTree = -1, researchNode = -1;
     public long researchEndTicks;
@@ -203,6 +208,13 @@ public static class GameState
         if (Data.dungeonKeys == null || Data.dungeonKeys.Length != DungeonCount) { Data.dungeonKeys = new int[DungeonCount]; Data.keyDay = 0; }
         RefreshKeys();
         RefreshShop();
+        RefreshMissions();
+        if (Data.passClaimed == null || Data.passClaimed.Length != MissionData.PassStage.Length)
+        {
+            var old = Data.passClaimed;
+            Data.passClaimed = new bool[MissionData.PassStage.Length];
+            if (old != null) Array.Copy(old, Data.passClaimed, Math.Min(old.Length, Data.passClaimed.Length));
+        }
         if (Data.mounts == null) Data.mounts = new List<OwnedMount>();
         if (!Data.mountGift)
         {
@@ -265,6 +277,7 @@ public static class GameState
 
         if (RefreshKeys()) changed = true;
         if (RefreshShop()) changed = true;
+        if (RefreshMissions()) changed = true;
         if (Data.researchTree >= 0 && now >= Data.researchEndTicks) { FinishResearch(); changed = true; }
         if (Data.upgrading && now >= Data.upgradeEndTicks) { FinishUpgrade(); return; }
         if (changed) Notify();
@@ -1007,6 +1020,132 @@ public static class GameState
     }
 
     public static TimeSpan TimeToShopRefresh() => TimeToKeyRefresh();
+
+    // ---------- Missions (escouades, 3 énergies par jour) ----------
+    public static event Action<string> MissionMessage;
+
+    // Palier de missions débloqué par le niveau atteint au Voleur de marteau.
+    public static int MissionTier
+    {
+        get
+        {
+            int thief = Data.dungeonLevel[DungeonHammer], t = 0;
+            for (int i = 0; i < MissionData.LevelMinThief.Length; i++) if (MissionData.LevelMinThief[i] <= thief) t = i;
+            return t;
+        }
+    }
+
+    static void RollMission(int slot, System.Random r)
+    {
+        int tier = MissionTier;
+        int level = r.Next(MissionData.LevelMin[tier], MissionData.LevelMax[tier] + 1);
+        var pool = new List<int>();
+        for (int i = 0; i < MissionData.SquadMinLevel.Length; i++) if (MissionData.SquadMinLevel[i] <= level) pool.Add(i);
+        Data.missionSquad[slot] = pool[r.Next(pool.Count)];
+        Data.missionLevel[slot] = level;
+    }
+
+    static void RollAllMissions()
+    {
+        Data.missionSquad = new int[MissionData.OfferCount];
+        Data.missionLevel = new int[MissionData.OfferCount];
+        for (int i = 0; i < MissionData.OfferCount; i++) RollMission(i, rng);
+    }
+
+    // Énergies rechargées et nouvelle liste chaque jour à 22:00.
+    static bool RefreshMissions()
+    {
+        long day = DateTime.Now.AddHours(2).Date.Ticks;
+        bool valid = Data.missionSquad != null && Data.missionSquad.Length == MissionData.OfferCount
+            && Data.missionLevel != null && Data.missionLevel.Length == MissionData.OfferCount;
+        if (valid && day == Data.missionDay) return false;
+        if (day != Data.missionDay) Data.missionEnergy = Math.Max(Data.missionEnergy, MissionData.DailyEnergy);
+        Data.missionDay = day;
+        RollAllMissions();
+        return true;
+    }
+
+    public static string RefreshMissionList()
+    {
+        if (Data.gems < MissionData.RefreshGemCost) return "Pas assez de gemmes";
+        Data.gems -= MissionData.RefreshGemCost;
+        RollAllMissions();
+        Notify();
+        return null;
+    }
+
+    // Difficulté : le niveau de mission équivaut au Voleur de marteau qui le débloque (même échelle que les donjons).
+    static int MissionEquivalentStage(int level)
+    {
+        int thief = 0;
+        for (int i = 0; i < MissionData.LevelMax.Length; i++) if (MissionData.LevelMax[i] >= level) { thief = MissionData.LevelMinThief[i]; break; }
+        return 2 + 4 * thief + (level - 1);
+    }
+
+    public static int MissionUnits(int slot) => MissionData.SquadUnits[Data.missionSquad[slot]];
+    public static double MissionUnitHp(int slot) => 30 * Math.Pow(1.16, MissionEquivalentStage(Data.missionLevel[slot])) * MissionData.SquadHealth[Data.missionSquad[slot]] / 8000.0 * 1.5;
+    public static double MissionUnitAtk(int slot) => 5 * Math.Pow(1.16, MissionEquivalentStage(Data.missionLevel[slot])) * MissionData.SquadDamage[Data.missionSquad[slot]] / 1000.0;
+
+    public static int[] MissionReward(int level)
+    {
+        int i = Math.Max(1, Math.Min(MissionData.MaxLevel, level)) - 1;
+        return new[] { ShopData.Gold, (int)(MissionData.RewardGold[i] / MissionData.GoldDivider), ShopData.Tickets, MissionData.RewardTickets[i],
+            ShopData.Shells, MissionData.RewardShells[i], ShopData.Potions, MissionData.RewardPotions[i], ShopData.Winders, MissionData.RewardWinders[i] };
+    }
+
+    public static bool CanStartMission => Data.missionEnergy > 0;
+
+    // Victoire : récompense, 1 énergie consommée (seulement en cas de réussite) et une nouvelle mission à cette place.
+    public static string MissionWon(int slot)
+    {
+        var reward = MissionReward(Data.missionLevel[slot]);
+        string txt = ContentText(reward, "  ");
+        GiveAll(reward);
+        Data.missionEnergy = Math.Max(0, Data.missionEnergy - 1);
+        RollMission(slot, rng);
+        Notify();
+        return txt;
+    }
+
+    // ---------- Pass de progression ----------
+    public static bool PassReached(int i) => Data.bestStage > MissionData.PassStage[i];
+    public static int PassReadyCount() { int n = 0; for (int i = 0; i < MissionData.PassStage.Length; i++) if (PassReached(i) && !Data.passClaimed[i]) n++; return n; }
+
+    // L'or du pass est converti comme celui des missions (1 000 = 15 min de gains hors ligne).
+    public static int[] PassContent(int i)
+    {
+        var src = MissionData.PassRewards[i];
+        var r = (int[])src.Clone();
+        for (int k = 0; k + 1 < r.Length; k += 2) if (r[k] == ShopData.Gold) r[k + 1] = (int)(r[k + 1] / MissionData.GoldDivider);
+        return r;
+    }
+
+    public static string ClaimPass(int i)
+    {
+        if (Data.passClaimed[i]) return "Déjà récupéré";
+        if (!PassReached(i)) return "Franchis d'abord l'étape " + StageName(MissionData.PassStage[i]);
+        Data.passClaimed[i] = true;
+        GiveAll(PassContent(i));
+        Notify();
+        return null;
+    }
+
+    public static string ClaimAllPass()
+    {
+        int n = 0;
+        for (int i = 0; i < MissionData.PassStage.Length; i++)
+            if (PassReached(i) && !Data.passClaimed[i]) { Data.passClaimed[i] = true; GiveAll(PassContent(i)); n++; }
+        if (n == 0) return "Rien à récupérer pour l'instant";
+        Notify();
+        MissionMessage?.Invoke(n + " palier(s) récupéré(s) !");
+        return null;
+    }
+
+    public static string StageName(int stage)
+    {
+        stage = Math.Max(0, Math.Min(MaxStage, stage));
+        return CircleNames[stage / StagesPerCircle] + " " + (stage / StagesPerCircle + 1) + "-" + (stage % StagesPerCircle + 1);
+    }
 
     // ---------- Arbre technologique ----------
     public static readonly string[] SlotTech = { "Weapon", "Helmet", "Body", "Glove", "Shoe", "Belt", "Necklace", "Ring" };

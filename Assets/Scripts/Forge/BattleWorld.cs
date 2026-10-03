@@ -84,7 +84,10 @@ public class BattleWorld : MonoBehaviour
     int heroWeaponKey = -999, heroHelmetKey = -999;
     bool heroEngaged;
     int dungeon = -1;          // -1 = chemin principal, sinon type de donjon
-    public bool InDungeon => dungeon >= 0;
+    int missionSlot = -1;     // mission en cours (index dans la liste), -1 sinon
+    float missionMult = 1f;   // ennemis regroupés quand l'escouade est trop nombreuse
+    public bool InDungeon => dungeon >= 0 || missionSlot >= 0;
+    static readonly Color MissionColor = new Color(0.75f, 0.45f, 1f);
     public System.Action<string> DungeonEnded;
     string petKey = "";
     int mountKey = -999;
@@ -458,7 +461,12 @@ public class BattleWorld : MonoBehaviour
         var bb = ModelLib.WorldBounds(f.go);
         f.halfLen = Mathf.Clamp(bb.extents.x, 0.2f, 1.2f);
         f.anim = AnimPlayer.Attach(f.go);
-        if (dungeon >= 0)
+        if (missionSlot >= 0)
+        {
+            f.maxHp = f.hp = GameState.MissionUnitHp(missionSlot) * missionMult;
+            f.atk = GameState.MissionUnitAtk(missionSlot) * missionMult;
+        }
+        else if (dungeon >= 0)
         {
             double hm = dungeon == GameState.DungeonEgg ? 0.6 : dungeon == GameState.DungeonHammer ? 6.0 : 3.0;
             f.maxHp = f.hp = GameState.DungeonEnemyHp(dungeon, hm);
@@ -487,8 +495,22 @@ public class BattleWorld : MonoBehaviour
     // ---------- Donjons ----------
     public bool StartDungeon(int type)
     {
-        if (dungeon >= 0 || !GameState.CanEnterDungeon(type)) return false;
+        if (InDungeon || !GameState.CanEnterDungeon(type)) return false;
         dungeon = type;
+        pauseTimer = 0f;
+        hero.go.SetActive(true);
+        Play(hero, HeroIdle, true, true);
+        StartStage();
+        return true;
+    }
+
+    // ---------- Missions ----------
+    public bool StartMission(int slot)
+    {
+        if (InDungeon || !GameState.CanStartMission) return false;
+        missionSlot = slot;
+        int units = GameState.MissionUnits(slot);
+        missionMult = units / (float)Mathf.Min(units, MissionData.MaxShownUnits);
         pauseTimer = 0f;
         hero.go.SetActive(true);
         Play(hero, HeroIdle, true, true);
@@ -506,9 +528,14 @@ public class BattleWorld : MonoBehaviour
         var lavaCol = Color.Lerp(new Color(1f, 0.3f, 0.05f), GameState.CircleColors[circle], 0.35f) * 1.8f;
         riverMat.SetColor("_BaseColor", Color.Lerp(new Color(2.6f, 1.3f, 0.7f), GameState.CircleColors[circle] * 2.6f, 0.3f));
         wave = 0;
-        waveCount = dungeon == GameState.DungeonHammer ? 1 : dungeon >= 0 ? 3 : GameState.IsBossStage ? 2 : 3;
+        waveCount = missionSlot >= 0 ? 1 : dungeon == GameState.DungeonHammer ? 1 : dungeon >= 0 ? 3 : GameState.IsBossStage ? 2 : 3;
         waveSpawned = false;
-        if (dungeon >= 0)
+        if (missionSlot >= 0)
+        {
+            circleTint = Color.Lerp(MissionColor, new Color(0.4f, 0.05f, 0.1f), 0.35f);
+            riverMat.SetColor("_BaseColor", Color.Lerp(new Color(2.6f, 1.3f, 0.7f), MissionColor * 2.6f, 0.45f));
+        }
+        else if (dungeon >= 0)
         {
             var dc = GameState.DungeonColors[dungeon];
             circleTint = Color.Lerp(dc, new Color(0.5f, 0.05f, 0.02f), 0.3f);
@@ -519,7 +546,12 @@ public class BattleWorld : MonoBehaviour
         hero.atk = GameState.TotalAtk();
         hero.dead = false;
         phase = "walk";
-        if (dungeon >= 0)
+        if (missionSlot >= 0)
+        {
+            stageText.text = MissionData.SquadNames[GameState.Data.missionSquad[missionSlot]] + "  niv. " + GameState.Data.missionLevel[missionSlot];
+            ShowBanner("MISSION !", MissionColor);
+        }
+        else if (dungeon >= 0)
         {
             stageText.text = GameState.DungeonNames[dungeon] + "  niv. " + (GameState.Data.dungeonLevel[dungeon] + 1);
             ShowBanner("DONJON !", GameState.DungeonColors[dungeon]);
@@ -536,6 +568,15 @@ public class BattleWorld : MonoBehaviour
     void SpawnWave()
     {
         float x = hero.X + 9f;
+        if (missionSlot >= 0)
+        {
+            int squad = GameState.Data.missionSquad[missionSlot];
+            int shown = Mathf.Min(GameState.MissionUnits(missionSlot), MissionData.MaxShownUnits);
+            bool big = shown <= 2;
+            for (int i = 0; i < shown; i++) SpawnEnemy(MissionData.SquadModel[squad], x + i * 1.3f, big);
+            waveSpawned = true;
+            return;
+        }
         if (dungeon >= 0)
         {
             if (dungeon == GameState.DungeonHammer) SpawnEnemy("Zombie", x, true);
@@ -598,8 +639,17 @@ public class BattleWorld : MonoBehaviour
                 {
                     waveSpawned = false;
                     wave++;
-                    if (dungeon < 0) GameState.WaveCleared();
-                    if (wave >= waveCount && dungeon >= 0)
+                    if (!InDungeon) GameState.WaveCleared();
+                    if (wave >= waveCount && missionSlot >= 0)
+                    {
+                        string reward = GameState.MissionWon(missionSlot);
+                        ShowBanner("Mission réussie !", MissionColor);
+                        DungeonEnded?.Invoke("Mission réussie : " + reward);
+                        missionSlot = -1;
+                        phase = "clear";
+                        pauseTimer = 2.2f;
+                    }
+                    else if (wave >= waveCount && dungeon >= 0)
                     {
                         string reward = GameState.DungeonWon(dungeon);
                         ShowBanner("Donjon réussi !  " + reward, new Color(1f, 0.85f, 0.35f));
@@ -771,7 +821,13 @@ public class BattleWorld : MonoBehaviour
             phase = "dead";
             ResetSkills();
             pauseTimer = 2.5f;
-            if (dungeon >= 0)
+            if (missionSlot >= 0)
+            {
+                ShowBanner("Mission échouée… l'énergie est conservée", new Color(1f, 0.4f, 0.35f));
+                DungeonEnded?.Invoke("Mission échouée : l'énergie est conservée");
+                missionSlot = -1;
+            }
+            else if (dungeon >= 0)
             {
                 ShowBanner("Échec… la clé n'est pas consommée", new Color(1f, 0.4f, 0.35f));
                 DungeonEnded?.Invoke("Donjon échoué : la clé est conservée");
