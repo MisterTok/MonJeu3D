@@ -424,6 +424,13 @@ public class BattleWorld : MonoBehaviour
 
     void UpdateMount(bool moving)
     {
+        // Héros en 2D : la monture 3D n'est pas affichée en combat (ses bonus restent actifs).
+        if (hero.spr != null)
+        {
+            if (mountObj != null) { Destroy(mountObj); mountObj = null; mountAnim = null; mountKey = -999; }
+            var p0 = hero.go.transform.localPosition; p0.y = 0f; hero.go.transform.localPosition = p0;
+            return;
+        }
         int id = GameState.Data.equippedMount;
         if (id != mountKey)
         {
