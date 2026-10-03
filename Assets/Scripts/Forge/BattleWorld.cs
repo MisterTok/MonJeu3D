@@ -1,0 +1,908 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+
+// Le chemin des Enfers : le héros avance, affronte des vagues de démons et des boss, en automatique.
+public class BattleWorld : MonoBehaviour
+{
+    // ---------- Réglages visuels (orientation des modèles) ----------
+    public static float HeroYaw = 90f;      // le héros regarde vers +X
+    public static float EnemyYaw = -90f;    // les ennemis regardent vers -X
+    public static Vector3 WeaponLocalPos = new Vector3(0f, 0f, 0f);
+    public static Vector3 WeaponLocalEuler = new Vector3(0f, 0f, 0f);
+    public static float HelmetUp = 0.12f, HelmetYaw = 0f;
+
+    class EnemyDef
+    {
+        public string path; public float height; public float fly;
+        public string[] idle, move, attack, death;
+        public EnemyDef(string p, float h, float f, string[] i, string[] m, string[] a, string[] d) { path = p; height = h; fly = f; idle = i; move = m; attack = a; death = d; }
+    }
+
+    static readonly string[] AttackK = { "Attack", "Bite" };
+    static readonly string[] DeathK = { "Death" };
+    static readonly Dictionary<string, EnemyDef> Defs = new Dictionary<string, EnemyDef>
+    {
+        { "Rat", new EnemyDef("Characters/Rat", 0.55f, 0f, new[]{"Idle"}, new[]{"Run","Walk"}, AttackK, DeathK) },
+        { "Spider", new EnemyDef("Characters/Spider", 0.6f, 0f, new[]{"Idle"}, new[]{"Walk"}, AttackK, DeathK) },
+        { "Snake", new EnemyDef("Characters/Snake", 0.8f, 0f, new[]{"Idle"}, new[]{"Walk"}, AttackK, DeathK) },
+        { "SnakeAngry", new EnemyDef("Characters/Snake_angry", 0.8f, 0f, new[]{"Idle"}, new[]{"Walk"}, AttackK, DeathK) },
+        { "Wasp", new EnemyDef("Characters/Wasp", 0.75f, 0.7f, new[]{"Flying"}, new[]{"Flying"}, AttackK, DeathK) },
+        { "Bat", new EnemyDef("Characters/Bat", 0.75f, 0.8f, new[]{"Flying"}, new[]{"Flying"}, AttackK, DeathK) },
+        { "Frog", new EnemyDef("Characters/Frog", 0.6f, 0f, new[]{"Idle"}, new[]{"Jump"}, AttackK, DeathK) },
+        { "Slime", new EnemyDef("Characters/Slime", 0.75f, 0f, new[]{"Idle"}, new[]{"Walk"}, AttackK, DeathK) },
+        { "Skeleton", new EnemyDef("Characters/Skeleton", 1.7f, 0f, new[]{"Idle"}, new[]{"Running"}, AttackK, DeathK) },
+        { "Zombie", new EnemyDef("Characters/Zombie", 1.7f, 0f, new[]{"ZombieIdle"}, new[]{"ZombieWalk"}, new[]{"ZombieBite"}, DeathK) },
+        { "Dragon", new EnemyDef("Characters/Dragon", 1.6f, 0.5f, new[]{"Flying"}, new[]{"Flying"}, AttackK, DeathK) },
+    };
+
+    // Ennemis par cercle : trois communs puis le boss.
+    static readonly string[][] CircleEnemies =
+    {
+        new[]{ "Rat", "Spider", "Snake", "Skeleton" },
+        new[]{ "Wasp", "Bat", "SnakeAngry", "Slime" },
+        new[]{ "Slime", "Frog", "Rat", "Zombie" },
+        new[]{ "Skeleton", "Spider", "Wasp", "Dragon" },
+        new[]{ "Zombie", "SnakeAngry", "Bat", "Skeleton" },
+        new[]{ "Skeleton", "Slime", "Frog", "Dragon" },
+        new[]{ "Zombie", "Spider", "Wasp", "Zombie" },
+        new[]{ "SnakeAngry", "Bat", "Skeleton", "Dragon" },
+        new[]{ "Skeleton", "Zombie", "Spider", "Dragon" },
+        new[]{ "Zombie", "Skeleton", "Bat", "Dragon" },
+    };
+
+    class Fighter
+    {
+        public GameObject go;
+        public AnimPlayer anim;
+        public EnemyDef def;
+        public bool boss, dead;
+        public double hp, maxHp, atk;
+        public float cooldown, hitTimer, deathTimer, halfLen = 0.3f;
+        public string state = "";
+        public float X { get => go.transform.localPosition.x; set { var p = go.transform.localPosition; p.x = value; go.transform.localPosition = p; } }
+    }
+
+    static readonly string[] HeroIdle = { "Idle_swordRight", "Idle" };
+    static readonly string[] HeroRun = { "Run_swordRight", "Run" };
+    static readonly string[] HeroAttack = { "Run_swordAttack", "swordAttackJump" };
+    static readonly string[] HeroDeath = { "Death" };
+
+    const float HeroSpeed = 2.4f, EnemySpeed = 1.8f, Engage = 0.75f, Spacing = 1.25f;
+    const float HeroAttackInterval = 0.85f, EnemyAttackInterval = 1.3f;
+
+    Camera cam;
+    Transform world;
+    Fighter hero;
+    readonly List<Fighter> enemies = new List<Fighter>();
+    readonly List<GameObject> chunks = new List<GameObject>();
+    float builtUntil = -12f;
+    int wave, waveCount;
+    bool waveSpawned;
+    float pauseTimer;
+    string phase = "walk"; // walk, dead, clear
+    int heroWeaponKey = -999, heroHelmetKey = -999;
+    bool heroEngaged;
+    int dungeon = -1;          // -1 = chemin principal, sinon type de donjon
+    public bool InDungeon => dungeon >= 0;
+    public System.Action<string> DungeonEnded;
+    string petKey = "";
+    int mountKey = -999;
+    GameObject mountObj;
+    AnimPlayer mountAnim;
+    ProgressionData.MountDef mountDef;
+    string mountState = "";
+    readonly List<GameObject> petObjs = new List<GameObject>();
+    readonly List<AnimPlayer> petAnims = new List<AnimPlayer>();
+    readonly List<ProgressionData.PetDef> petDefs = new List<ProgressionData.PetDef>();
+    Light rigLight;
+    Color circleTint;
+
+    // Interface du combat
+    RectTransform overlayRoot, canvasRect;
+    Text stageText, waveText, banner;
+    float bannerTime;
+    Font font;
+    readonly List<Bar> bars = new List<Bar>();
+    readonly List<Popup> popups = new List<Popup>();
+
+    class Bar { public RectTransform root, fill; public Image fillImg; }
+    class Popup { public Text t; public Vector3 world; public float time; }
+
+    public static BattleWorld Build()
+    {
+        var go = new GameObject("BattleWorld");
+        go.transform.position = new Vector3(1000f, 0f, 0f);
+        var b = go.AddComponent<BattleWorld>();
+        b.Create();
+        return b;
+    }
+
+    void Create()
+    {
+        ForgeWorld.InitMaterials();
+        world = transform;
+        font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+
+        var camGo = new GameObject("Caméra combat");
+        cam = camGo.AddComponent<Camera>();
+        cam.clearFlags = CameraClearFlags.SolidColor;
+        cam.backgroundColor = new Color(0.16f, 0.05f, 0.04f);
+        cam.fieldOfView = 38f;
+        cam.depth = 0f;
+        cam.allowHDR = true;
+        var data = UnityEngine.Rendering.Universal.CameraExtensions.GetUniversalAdditionalCameraData(cam);
+        data.renderPostProcessing = true;
+
+        rigLight = new GameObject("Lumière chemin").AddComponent<Light>();
+        rigLight.type = LightType.Point;
+        rigLight.color = new Color(1f, 0.45f, 0.2f);
+        rigLight.range = 22f;
+        rigLight.intensity = 14f;
+        var fl = rigLight.gameObject.AddComponent<Flicker>(); fl.baseIntensity = 14f; fl.amount = 1.5f; fl.speed = 4f;
+
+        BuildOverlay();
+        BuildTerrain();
+        SpawnHero();
+        StartStage();
+    }
+
+    // ---------- Disposition à l'écran ----------
+    public void SetBand(float y0, float y1)
+    {
+        cam.rect = new Rect(0f, y0, 1f, Mathf.Max(0.01f, y1 - y0));
+        overlayRoot.anchorMin = new Vector2(0f, y0);
+        overlayRoot.anchorMax = new Vector2(1f, y1);
+        overlayRoot.offsetMin = overlayRoot.offsetMax = Vector2.zero;
+    }
+
+    public void SetVisible(bool v)
+    {
+        cam.enabled = v;
+        overlayRoot.gameObject.SetActive(v);
+    }
+
+    // ---------- Décor ----------
+    // Terrain continu : sol volcanique, chemin pavé et rivière de lave (des quads qui suivent le héros, textures défilantes).
+    Transform ground, path, river;
+    Material groundMat, pathMat, riverMat;
+    Light riverLight;
+    static readonly Color Basalt = new Color(0.3f, 0.18f, 0.15f);
+
+    void BuildTerrain()
+    {
+        ground = Quad("Sol volcanique", new Vector3(0, -0.02f, -2f), new Vector2(90f, 40f), groundMat = ForgeWorld.GroundMaterial(1f));
+        path = Quad("Chemin", new Vector3(0, 0.005f, 0f), new Vector2(90f, 2.4f), pathMat = ForgeWorld.CobbleMaterial());
+        river = Quad("Rivière de lave", new Vector3(0, 0.012f, 4.6f), new Vector2(90f, 4.2f), riverMat = ForgeWorld.LavaMaterial(new Color(2.6f, 1.3f, 0.7f)));
+        riverLight = new GameObject("Lueur de la lave").AddComponent<Light>();
+        riverLight.type = LightType.Point;
+        riverLight.color = new Color(1f, 0.4f, 0.1f);
+        riverLight.range = 9f;
+        riverLight.intensity = 4f;
+    }
+
+    Transform Quad(string name, Vector3 pos, Vector2 size, Material m)
+    {
+        var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        Destroy(q.GetComponent<Collider>());
+        q.name = name;
+        q.transform.SetParent(world, false);
+        q.transform.localPosition = pos;
+        q.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        q.transform.localScale = new Vector3(size.x, size.y, 1f);
+        q.GetComponent<Renderer>().sharedMaterial = m;
+        return q.transform;
+    }
+
+    void UpdateTerrain(float heroX)
+    {
+        float x = heroX + 2f;
+        foreach (var t in new[] { ground, path, river })
+        {
+            var p = t.localPosition; p.x = x; t.localPosition = p;
+        }
+        groundMat.mainTextureScale = new Vector2(90f / 3.5f, 40f / 3.5f);
+        groundMat.mainTextureOffset = new Vector2(Frac(x / 3.5f), 0f);
+        pathMat.mainTextureScale = new Vector2(90f / 1.6f, 1.5f);
+        pathMat.mainTextureOffset = new Vector2(Frac(x / 1.6f), 0f);
+        riverMat.mainTextureScale = new Vector2(90f / 7f, 0.6f);
+        riverMat.mainTextureOffset = new Vector2(Frac(x / 7f + Time.time * 0.015f), Frac(Time.time * 0.03f));
+        riverLight.transform.position = world.TransformPoint(new Vector3(heroX + 2f, 1.2f, 3.4f));
+        riverLight.intensity = 4f + Mathf.PerlinNoise(Time.time * 0.7f, 3.1f) * 2f;
+    }
+
+    static float Frac(float v) => v - Mathf.Floor(v);
+
+    GameObject Rock(Transform c, Vector3 pos, float scale, float rot, float r)
+    {
+        var g = ModelLib.Raw("Props/Rock" + (1 + (int)(r * 97f) % 4), c, pos, rot, scale);
+        if (g != null) ModelLib.Tint(g, Basalt, 0.75f);
+        return g;
+    }
+
+    void BuildChunk(float x)
+    {
+        var c = new GameObject("Tronçon " + x).transform;
+        c.SetParent(world, false);
+        c.localPosition = new Vector3(x, 0f, 0f);
+        int i = Mathf.RoundToInt(x / 2f);
+        float r = Mathf.Abs(Mathf.Sin(i * 12.9898f) * 43758.5453f) % 1f;
+        float r2 = Mathf.Abs(Mathf.Sin(i * 78.233f) * 12543.17f) % 1f;
+        float r3 = Mathf.Abs(Mathf.Sin(i * 39.425f) * 24634.63f) % 1f;
+
+        // Berge de la rivière et falaises au loin
+        Rock(c, new Vector3(r * 1.5f - 0.7f, -0.1f, 2.45f + r2 * 0.3f), 1.1f + r3 * 0.9f, r * 360f, r);
+        if (i % 2 == 0) Rock(c, new Vector3(r2 - 0.5f, -0.3f, 9f + r * 1.5f), 2.8f + r3 * 1.8f, r2 * 360f, r2);
+        if (i % 3 == 0)
+        {
+            var sp = ModelLib.Raw("Props/Spike_Group", c, new Vector3(r3 - 0.5f, -0.2f, 8f), r * 360f, 1.2f + r * 0.8f);
+            if (sp != null) ModelLib.Tint(sp, Basalt, 0.7f);
+        }
+
+        // Abords du chemin
+        if (i % 4 == 2)
+        {
+            float side = (i % 8 == 2) ? 1.75f : -1.75f;
+            ModelLib.Raw("Dungeon/Woodfire", c, new Vector3(0, 0, side), 0f, 0.8f);
+            MakeFire(c, new Vector3(0, 0.35f, side));
+        }
+        if (i % 6 == 0) ModelLib.Raw("Dungeon/Column", c, new Vector3(0.3f, 0, 1.9f), r * 90f, 0.6f);
+        if (r < 0.25f) ModelLib.Raw("Dungeon/Skull", c, new Vector3(0.5f, 0, -1.55f), r * 1440f);
+        else if (r < 0.45f) Rock(c, new Vector3(-0.4f, 0, -1.7f), 0.7f, r * 900f, r);
+        else if (r < 0.55f) ModelLib.Raw("Props/Spike_Single", c, new Vector3(0.3f, 0, -2.0f), 0f, 0.5f);
+        else if (r < 0.62f) ModelLib.Raw("Dungeon/Bag_Coins", c, new Vector3(-0.5f, 0, 1.45f), r * 500f, 1.2f);
+
+        // Premier plan
+        if (r2 < 0.35f) Rock(c, new Vector3(0.2f, -0.05f, -4.0f - r3), 1.4f + r * 0.8f, r2 * 900f, r2);
+        else if (r2 < 0.48f)
+        {
+            var sp = ModelLib.Raw("Props/Spike_Group", c, new Vector3(-0.3f, 0, -4.4f), r2 * 500f, 0.8f);
+            if (sp != null) ModelLib.Tint(sp, Basalt, 0.7f);
+        }
+        else if (r2 < 0.56f) ModelLib.Raw("Dungeon/Trap_spikes", c, new Vector3(0f, -0.05f, -3.2f), 0f, 0.6f);
+        chunks.Add(c.gameObject);
+    }
+
+    void MakeFire(Transform parent, Vector3 pos)
+    {
+        var go = new GameObject("Feu");
+        go.transform.SetParent(parent, false);
+        go.transform.localPosition = pos;
+        var ps = go.AddComponent<ParticleSystem>();
+        ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        var m = ps.main;
+        m.startLifetime = new ParticleSystem.MinMaxCurve(0.4f, 0.8f);
+        m.startSpeed = new ParticleSystem.MinMaxCurve(0.4f, 0.9f);
+        m.startSize = new ParticleSystem.MinMaxCurve(0.18f, 0.35f);
+        m.startColor = new Color(1f, 0.42f, 0.1f, 1f);
+        m.maxParticles = 60;
+        m.simulationSpace = ParticleSystemSimulationSpace.World;
+        var e = ps.emission; e.rateOverTime = 25f;
+        var s = ps.shape; s.shapeType = ParticleSystemShapeType.Circle; s.radius = 0.15f; s.rotation = new Vector3(-90f, 0, 0);
+        var col = ps.colorOverLifetime; col.enabled = true;
+        var g = new Gradient();
+        g.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(new Color(1f, 0.3f, 0.1f), 1f) },
+                  new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0f, 1f) });
+        col.color = g;
+        var sz = ps.sizeOverLifetime; sz.enabled = true; sz.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0, 1, 1, 0.1f));
+        go.GetComponent<ParticleSystemRenderer>().sharedMaterial = ForgeWorld.Particle(new Color(2.5f, 2.5f, 2.5f, 1f));
+        ps.Play();
+    }
+
+    void UpdateChunks(float heroX)
+    {
+        while (builtUntil < heroX + 26f) { BuildChunk(builtUntil); builtUntil += 2f; }
+        for (int i = chunks.Count - 1; i >= 0; i--)
+        {
+            if (chunks[i].transform.localPosition.x < heroX - 14f) { Destroy(chunks[i]); chunks.RemoveAt(i); }
+        }
+    }
+
+    // ---------- Personnages ----------
+    void SpawnHero()
+    {
+        hero = new Fighter();
+        hero.go = ModelLib.Spawn("Characters/KnightCharacter", 1.7f, world);
+        hero.go.transform.localRotation = Quaternion.Euler(0, HeroYaw, 0);
+        hero.anim = AnimPlayer.Attach(hero.go);
+        RefreshHeroWeapon();
+    }
+
+    void RefreshHeroWeapon()
+    {
+        var eq = GameState.Data.equipped[0];
+        int key = eq.valid ? eq.circle : -1;
+        if (key == heroWeaponKey) return;
+        heroWeaponKey = key;
+        var palm = ModelLib.FindDeep(hero.go.transform, "Palm.R");
+        if (palm == null) return;
+        var old = palm.Find("Arme du héros");
+        if (old != null) Destroy(old.gameObject);
+        string path = eq.valid ? ForgeWorld.WeaponPath(eq.circle) : "Characters/Sword";
+        var w = ModelLib.Spawn(path, 1.0f, null, true);
+        w.name = "Arme du héros";
+        w.transform.SetParent(palm, false);
+        float ls = palm.lossyScale.x;
+        w.transform.localScale = Vector3.one / Mathf.Max(0.0001f, ls);
+        w.transform.localPosition = WeaponLocalPos / Mathf.Max(0.0001f, ls);
+        w.transform.localRotation = Quaternion.Euler(WeaponLocalEuler);
+        if (eq.valid) ModelLib.Tint(w, GameState.CircleColors[eq.circle], 0.35f);
+    }
+
+    // ---------- Monture : le héros se tient dessus ----------
+    static readonly string[] MountMove = { "Run", "Walk", "Running", "Walking", "Flying", "Swim", "Jump", "*" };
+    static readonly string[] MountIdle = { "Idle", "Flying", "Swim", "*" };
+
+    void UpdateMount(bool moving)
+    {
+        int id = GameState.Data.equippedMount;
+        if (id != mountKey)
+        {
+            mountKey = id;
+            if (mountObj != null) Destroy(mountObj);
+            mountObj = null; mountAnim = null; mountDef = null; mountState = "";
+            if (id >= 0 && GameState.FindMount(id) != null)
+            {
+                mountDef = ProgressionData.Mounts[id];
+                mountObj = ModelLib.Spawn(mountDef.model, mountDef.size, world);
+                mountObj.transform.localRotation = Quaternion.Euler(0f, HeroYaw, 0f);
+                ModelLib.Tint(mountObj, ProgressionData.RarityColors[mountDef.rarity], 0.15f);
+                mountAnim = AnimPlayer.Attach(mountObj);
+            }
+        }
+        float ride = 0f;
+        if (mountObj != null)
+        {
+            float bob = mountDef.fly > 0 ? Mathf.Sin(Time.time * 2f) * 0.08f : 0f;
+            mountObj.transform.localPosition = new Vector3(hero.X - 0.1f, mountDef.fly + bob, 0f);
+            ride = mountDef.fly + bob + mountDef.ride;
+            string want = moving ? "move" : "idle";
+            if (mountAnim != null && want != mountState) { mountState = want; mountAnim.Play(moving ? MountMove : MountIdle, true, 0.15f); }
+        }
+        var hp = hero.go.transform.localPosition;
+        hp.y = hero.dead ? 0f : ride;
+        hero.go.transform.localPosition = hp;
+    }
+
+    // ---------- Compagnons qui suivent le héros ----------
+    static readonly Vector3[] PetOffsets = { new Vector3(-1.1f, 0f, 0.95f), new Vector3(-1.3f, 0f, -0.95f), new Vector3(-2.3f, 0f, 0.1f) };
+    static readonly string[] PetMove = { "Walk", "Walking", "Run", "Running", "Flying", "Swim", "ArmatureAction", "Action", "*" };
+    static readonly string[] PetIdle = { "Idle", "Flying", "Swim", "ArmatureAction", "Action", "*" };
+
+    void RefreshPets()
+    {
+        string key = string.Join(",", GameState.Data.equippedPets);
+        if (key == petKey) return;
+        petKey = key;
+        foreach (var g in petObjs) if (g != null) Destroy(g);
+        petObjs.Clear(); petAnims.Clear(); petDefs.Clear();
+        int slot = 0;
+        foreach (int id in GameState.Data.equippedPets)
+        {
+            if (id < 0) continue;
+            var def = ProgressionData.Pets[id];
+            var go = ModelLib.Spawn(def.model, def.size * 1.5f, world);
+            go.transform.localRotation = Quaternion.Euler(0f, HeroYaw, 0f);
+            go.transform.localPosition = new Vector3(hero.X + PetOffsets[slot].x, def.fly, PetOffsets[slot].z);
+            ModelLib.Tint(go, ProgressionData.RarityColors[def.rarity], 0.12f);
+            petObjs.Add(go);
+            petAnims.Add(AnimPlayer.Attach(go));
+            petDefs.Add(def);
+            slot++;
+        }
+    }
+
+    readonly Dictionary<AnimPlayer, string> petState = new Dictionary<AnimPlayer, string>();
+
+    void UpdatePets(float dt, bool moving)
+    {
+        RefreshPets();
+        for (int i = 0; i < petObjs.Count; i++)
+        {
+            var go = petObjs[i];
+            var def = petDefs[i];
+            var target = new Vector3(hero.X + PetOffsets[i].x, def.fly + (def.fly > 0 ? Mathf.Sin(Time.time * 2f + i) * 0.12f : 0f), PetOffsets[i].z);
+            go.transform.localPosition = Vector3.Lerp(go.transform.localPosition, target, Mathf.Clamp01(dt * 6f));
+            var a = petAnims[i];
+            if (a == null) continue;
+            string want = moving ? "move" : "idle";
+            petState.TryGetValue(a, out string cur);
+            if (cur != want)
+            {
+                petState[a] = want;
+                a.Play(moving ? PetMove : PetIdle, true, 0.15f);
+            }
+        }
+    }
+
+    void RefreshHeroHelmet()
+    {
+        var eq = GameState.Data.equipped[1];
+        int key = eq.valid ? eq.circle : -1;
+        if (key == heroHelmetKey) return;
+        heroHelmetKey = key;
+        var head = ModelLib.FindDeep(hero.go.transform, "Head");
+        if (head == null) return;
+        var old = head.Find("Casque du héros");
+        if (old != null) Destroy(old.gameObject);
+        var h = ModelLib.Spawn(ForgeWorld.HelmetPath(eq.valid ? eq.circle : 0), 0.42f, null, true, true);
+        h.name = "Casque du héros";
+        h.transform.position = head.position + Vector3.up * HelmetUp;
+        h.transform.rotation = hero.go.transform.rotation * Quaternion.Euler(0f, HelmetYaw, 0f);
+        h.transform.SetParent(head, true);
+        if (eq.valid) ModelLib.Tint(h, GameState.CircleColors[eq.circle], 0.35f);
+    }
+
+    Fighter SpawnEnemy(string key, float x, bool boss)
+    {
+        var def = Defs[key];
+        var f = new Fighter { def = def, boss = boss };
+        float h = def.height * (boss ? 1.7f : 1f);
+        f.go = ModelLib.Spawn(def.path, h, world);
+        f.go.transform.localPosition = new Vector3(x, def.fly, 0f);
+        f.go.transform.localRotation = Quaternion.Euler(0, EnemyYaw, 0);
+        ModelLib.Tint(f.go, circleTint, boss ? 0.3f : 0.15f);
+        var bb = ModelLib.WorldBounds(f.go);
+        f.halfLen = Mathf.Clamp(bb.extents.x, 0.2f, 1.2f);
+        f.anim = AnimPlayer.Attach(f.go);
+        if (dungeon >= 0)
+        {
+            double hm = dungeon == GameState.DungeonEgg ? 0.6 : dungeon == GameState.DungeonHammer ? 6.0 : 3.0;
+            f.maxHp = f.hp = GameState.DungeonEnemyHp(dungeon, hm);
+            f.atk = GameState.DungeonEnemyAtk(dungeon, dungeon == GameState.DungeonEgg ? 0.6 : 1.4);
+        }
+        else
+        {
+            f.maxHp = f.hp = GameState.EnemyHp(boss);
+            f.atk = GameState.EnemyAtk(boss);
+        }
+        f.cooldown = 0.6f;
+        Play(f, def.move, true);
+        enemies.Add(f);
+        return f;
+    }
+
+    void Play(Fighter f, string[] keys, bool loop, bool force = false)
+    {
+        if (f.anim == null) return;
+        string k = keys[0];
+        if (!force && loop && f.state == k) return;
+        f.state = k;
+        f.anim.Play(keys, loop, 0.12f, 1f, !loop);
+    }
+
+    // ---------- Donjons ----------
+    public bool StartDungeon(int type)
+    {
+        if (dungeon >= 0 || !GameState.CanEnterDungeon(type)) return false;
+        dungeon = type;
+        pauseTimer = 0f;
+        hero.go.SetActive(true);
+        Play(hero, HeroIdle, true, true);
+        StartStage();
+        return true;
+    }
+
+    // ---------- Étapes et vagues ----------
+    void StartStage()
+    {
+        foreach (var e in enemies) Destroy(e.go);
+        enemies.Clear();
+        int circle = GameState.StageCircle;
+        circleTint = Color.Lerp(GameState.CircleColors[circle], new Color(0.6f, 0.05f, 0.02f), 0.4f);
+        var lavaCol = Color.Lerp(new Color(1f, 0.3f, 0.05f), GameState.CircleColors[circle], 0.35f) * 1.8f;
+        riverMat.SetColor("_BaseColor", Color.Lerp(new Color(2.6f, 1.3f, 0.7f), GameState.CircleColors[circle] * 2.6f, 0.3f));
+        wave = 0;
+        waveCount = dungeon == GameState.DungeonHammer ? 1 : dungeon >= 0 ? 3 : GameState.IsBossStage ? 2 : 3;
+        waveSpawned = false;
+        if (dungeon >= 0)
+        {
+            var dc = GameState.DungeonColors[dungeon];
+            circleTint = Color.Lerp(dc, new Color(0.5f, 0.05f, 0.02f), 0.3f);
+            riverMat.SetColor("_BaseColor", Color.Lerp(new Color(2.6f, 1.3f, 0.7f), dc * 2.6f, 0.45f));
+        }
+        hero.maxHp = hero.hp = GameState.TotalHp();
+        hero.atk = GameState.TotalAtk();
+        hero.dead = false;
+        phase = "walk";
+        if (dungeon >= 0)
+        {
+            stageText.text = GameState.DungeonNames[dungeon] + "  niv. " + (GameState.Data.dungeonLevel[dungeon] + 1);
+            ShowBanner("DONJON !", GameState.DungeonColors[dungeon]);
+        }
+        else
+        {
+            stageText.text = GameState.StageLabel;
+            if (GameState.IsBossStage) ShowBanner("BOSS !", new Color(1f, 0.3f, 0.2f));
+        }
+    }
+
+    static readonly string[] EggDungeonPool = { "Rat", "Spider", "Frog" };
+
+    void SpawnWave()
+    {
+        float x = hero.X + 9f;
+        if (dungeon >= 0)
+        {
+            if (dungeon == GameState.DungeonHammer) SpawnEnemy("Zombie", x, true);
+            else if (dungeon == GameState.DungeonEgg)
+                for (int i = 0; i < 4; i++) SpawnEnemy(EggDungeonPool[Random.Range(0, 3)], x + i * 1.4f, false);
+            else SpawnEnemy(dungeon == GameState.DungeonPotion ? "Slime" : "Skeleton", x, true);
+            waveSpawned = true;
+            return;
+        }
+        var pool = CircleEnemies[GameState.StageCircle];
+        bool bossWave = GameState.IsBossStage && wave == waveCount - 1;
+        if (bossWave) { SpawnEnemy(pool[3], x, true); }
+        else
+        {
+            int count = 2 + (wave == 2 ? 1 : 0);
+            for (int i = 0; i < count; i++)
+                SpawnEnemy(pool[Random.Range(0, 3)], x + i * Spacing * 1.3f, false);
+        }
+        waveSpawned = true;
+    }
+
+    // ---------- Boucle de combat ----------
+    void Update()
+    {
+        float dt = Time.deltaTime;
+        RefreshHeroWeapon();
+        RefreshHeroHelmet();
+
+        // Les stats suivent l'équipement en temps réel.
+        double newMax = GameState.TotalHp();
+        if (System.Math.Abs(newMax - hero.maxHp) > 0.5 && !hero.dead)
+        {
+            hero.hp = hero.hp / hero.maxHp * newMax;
+            hero.maxHp = newMax;
+        }
+        hero.atk = GameState.TotalAtk();
+
+        // Régénération (statistique secondaire) : % de la vie max par seconde.
+        if (!hero.dead && phase == "walk" && hero.hp < hero.maxHp)
+            hero.hp = System.Math.Min(hero.maxHp, hero.hp + hero.maxHp * GameState.RegenPerSecond * dt);
+
+        if (pauseTimer > 0f)
+        {
+            pauseTimer -= dt;
+            if (pauseTimer <= 0f)
+            {
+                if (phase == "dead") { hero.go.SetActive(true); Play(hero, HeroIdle, true, true); StartStage(); }
+                else if (phase == "clear") StartStage();
+            }
+        }
+
+        Fighter front = null;
+        foreach (var e in enemies) if (!e.dead) { front = e; break; }
+
+        if (phase == "walk")
+        {
+            if (front == null)
+            {
+                if (waveSpawned && enemies.TrueForAll(x => x.dead))
+                {
+                    waveSpawned = false;
+                    wave++;
+                    if (dungeon < 0) GameState.WaveCleared();
+                    if (wave >= waveCount && dungeon >= 0)
+                    {
+                        string reward = GameState.DungeonWon(dungeon);
+                        ShowBanner("Donjon réussi !  " + reward, new Color(1f, 0.85f, 0.35f));
+                        DungeonEnded?.Invoke("Donjon réussi : " + reward);
+                        dungeon = -1;
+                        phase = "clear";
+                        pauseTimer = 2.2f;
+                    }
+                    else if (wave >= waveCount)
+                    {
+                        long shellsBefore = GameState.Data.eggshells;
+                        int gems = GameState.StageCleared();
+                        long shells = GameState.Data.eggshells - shellsBefore;
+                        ShowBanner("Étape réussie !  +" + gems + " gemmes" + (shells > 0 ? "  +" + shells + " coquilles" : ""), new Color(1f, 0.85f, 0.35f));
+                        phase = "clear";
+                        pauseTimer = 1.6f;
+                    }
+                }
+                if (phase == "walk" && !waveSpawned) SpawnWave();
+            }
+
+            bool engaged = front != null && front.X - hero.X <= Engage + front.halfLen + 0.05f;
+            heroEngaged = engaged;
+            if (!engaged)
+            {
+                hero.X += HeroSpeed * dt;
+                Play(hero, HeroRun, true);
+            }
+            else
+            {
+                hero.cooldown -= dt;
+                if (hero.cooldown <= 0f)
+                {
+                    hero.cooldown = GameState.AttackInterval;
+                    Play(hero, HeroAttack, false, true);
+                    hero.hitTimer = 0.28f;
+                }
+                if (hero.hitTimer > 0f)
+                {
+                    hero.hitTimer -= dt;
+                    if (hero.hitTimer <= 0f) HeroHits(front);
+                }
+                if (hero.cooldown < GameState.AttackInterval - 0.6f) Play(hero, HeroIdle, true);
+            }
+        }
+        else if (phase == "clear")
+        {
+            hero.X += HeroSpeed * dt;
+            Play(hero, HeroRun, true);
+        }
+
+        // Ennemis
+        int idx = 0;
+        float queueX = hero.X + Engage;
+        for (int i = 0; i < enemies.Count; i++)
+        {
+            var e = enemies[i];
+            if (e.dead)
+            {
+                e.deathTimer += dt;
+                if (e.deathTimer > 0.9f)
+                {
+                    var p = e.go.transform.localPosition;
+                    p.y -= dt * 0.8f;
+                    e.go.transform.localPosition = p;
+                }
+                if (e.deathTimer > 2.2f) { Destroy(e.go); enemies.RemoveAt(i); i--; }
+                continue;
+            }
+            float target = queueX + e.halfLen;
+            queueX = target + e.halfLen + 0.35f;
+            if (e.X > target + 0.02f)
+            {
+                e.X = Mathf.Max(target, e.X - EnemySpeed * dt);
+                Play(e, e.def.move, true);
+            }
+            else if (idx == 0 && phase == "walk" && !hero.dead)
+            {
+                e.cooldown -= dt;
+                if (e.cooldown <= 0f)
+                {
+                    e.cooldown = EnemyAttackInterval;
+                    Play(e, e.def.attack, false, true);
+                    e.hitTimer = 0.35f;
+                }
+                if (e.hitTimer > 0f)
+                {
+                    e.hitTimer -= dt;
+                    if (e.hitTimer <= 0f) EnemyHits(e);
+                }
+                if (e.cooldown < EnemyAttackInterval - 0.8f) Play(e, e.def.idle, true);
+            }
+            else Play(e, e.def.idle, true);
+            idx++;
+        }
+
+        UpdateChunks(hero.X);
+        UpdateTerrain(hero.X);
+        UpdatePets(dt, phase == "walk" && !heroEngaged || phase == "clear");
+        UpdateMount(phase == "walk" && !heroEngaged || phase == "clear");
+        // Vue de trois quarts, comme dans Forge Master : le héros à gauche, les ennemis arrivent par la droite.
+        var camPos = world.TransformPoint(new Vector3(hero.X + 2.4f, 8.2f, -9.4f));
+        cam.transform.position = camPos;
+        cam.transform.rotation = Quaternion.Euler(37f, 0f, 0f);
+        rigLight.transform.position = world.TransformPoint(new Vector3(hero.X + 1.5f, 3.2f, -2.4f));
+
+        UpdateOverlay(dt);
+    }
+
+    void HeroHits(Fighter target)
+    {
+        if (target == null || target.dead) return;
+        DealHit(target, false);
+        // Double frappe : un second coup immédiat.
+        if (!target.dead && Random.value < GameState.DoubleChance) DealHit(target, true);
+    }
+
+    void DealHit(Fighter target, bool isDouble)
+    {
+        bool crit = Random.value < GameState.CritChance;
+        double dmg = hero.atk * Random.Range(0.9f, 1.1f) * (crit ? GameState.CritMult : 1.0);
+        target.hp -= dmg;
+        float h = target.def.height * (target.boss ? 1.7f : 1f) + target.def.fly * 0.2f + (isDouble ? 0.35f : 0f);
+        string label = (isDouble ? "DOUBLE " : "") + (crit ? "CRITIQUE " : "") + GameState.Fmt(dmg);
+        ShowPopup(target.go.transform.position + Vector3.up * h, label,
+            crit ? new Color(1f, 0.55f, 0.1f) : isDouble ? new Color(0.6f, 0.85f, 1f) : Color.white, crit ? 46 : 36);
+
+        // Vol de vie
+        float ls = GameState.LifeSteal;
+        if (ls > 0f && !hero.dead)
+        {
+            double heal = System.Math.Min(hero.maxHp - hero.hp, dmg * ls);
+            if (heal >= 1) { hero.hp += heal; ShowPopup(hero.go.transform.position + Vector3.up * 2.2f, "+" + GameState.Fmt(heal), new Color(0.4f, 1f, 0.45f), 28); }
+        }
+
+        if (target.hp <= 0)
+        {
+            target.dead = true;
+            target.hp = 0;
+            float d = target.anim != null ? target.anim.Play(target.def.death, false, 0.1f) : 0f;
+            if (d <= 0f) target.go.transform.localRotation = Quaternion.Euler(0, EnemyYaw, 80f);
+            long gold = GameState.KillGold(target.boss);
+            GameState.AddGold(gold);
+            ShowPopup(target.go.transform.position + Vector3.up * 0.4f, "+" + GameState.Fmt(gold) + " or", new Color(1f, 0.82f, 0.3f), 34);
+            hero.cooldown = Mathf.Min(hero.cooldown, 0.35f);
+        }
+    }
+
+    void EnemyHits(Fighter e)
+    {
+        if (hero.dead) return;
+        if (Random.value < GameState.BlockChance)
+        {
+            ShowPopup(hero.go.transform.position + Vector3.up * 1.9f, "BLOQUÉ", new Color(0.7f, 0.85f, 1f), 30);
+            return;
+        }
+        double dmg = e.atk * Random.Range(0.9f, 1.1f);
+        hero.hp -= dmg;
+        ShowPopup(hero.go.transform.position + Vector3.up * 1.9f, "-" + GameState.Fmt(dmg), new Color(1f, 0.35f, 0.3f), 32);
+        if (hero.hp <= 0)
+        {
+            hero.hp = 0;
+            hero.dead = true;
+            if (hero.anim != null) hero.anim.Play(HeroDeath, false, 0.1f);
+            hero.state = "dead";
+            phase = "dead";
+            pauseTimer = 2.5f;
+            if (dungeon >= 0)
+            {
+                ShowBanner("Échec… la clé n'est pas consommée", new Color(1f, 0.4f, 0.35f));
+                DungeonEnded?.Invoke("Donjon échoué : la clé est conservée");
+                dungeon = -1;
+            }
+            else ShowBanner("Défaite… forge un meilleur équipement !", new Color(1f, 0.4f, 0.35f));
+        }
+    }
+
+    // ---------- Interface du combat ----------
+    void BuildOverlay()
+    {
+        var cgo = new GameObject("Interface combat");
+        cgo.transform.SetParent(transform, false);
+        var canvas = cgo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 0;
+        var scaler = cgo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1080, 1920);
+        scaler.matchWidthOrHeight = 0.5f;
+        canvasRect = (RectTransform)cgo.transform;
+
+        overlayRoot = NewRect("Zone combat", cgo.transform);
+        stageText = NewText(overlayRoot, 46, TextAnchor.UpperCenter, new Color(1f, 0.85f, 0.6f));
+        Anchor(stageText.rectTransform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -18));
+        waveText = NewText(overlayRoot, 30, TextAnchor.UpperCenter, new Color(0.95f, 0.9f, 0.85f));
+        Anchor(waveText.rectTransform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -130), new Vector2(0, -82));
+        banner = NewText(overlayRoot, 50, TextAnchor.MiddleCenter, Color.white);
+        Anchor(banner.rectTransform, new Vector2(0, 0.55f), new Vector2(1, 0.85f), Vector2.zero, Vector2.zero);
+    }
+
+    static RectTransform NewRect(string name, Transform parent)
+    {
+        var rt = (RectTransform)new GameObject(name, typeof(RectTransform)).transform;
+        rt.SetParent(parent, false);
+        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+        rt.offsetMin = rt.offsetMax = Vector2.zero;
+        return rt;
+    }
+
+    static void Anchor(RectTransform rt, Vector2 aMin, Vector2 aMax, Vector2 oMin, Vector2 oMax)
+    {
+        rt.anchorMin = aMin; rt.anchorMax = aMax; rt.offsetMin = oMin; rt.offsetMax = oMax;
+    }
+
+    Text NewText(Transform parent, int size, TextAnchor a, Color c)
+    {
+        var rt = NewRect("Texte", parent);
+        var t = rt.gameObject.AddComponent<Text>();
+        t.font = font; t.fontSize = size; t.alignment = a; t.color = c; t.raycastTarget = false;
+        t.horizontalOverflow = HorizontalWrapMode.Overflow; t.verticalOverflow = VerticalWrapMode.Overflow;
+        var sh = rt.gameObject.AddComponent<Outline>();
+        sh.effectColor = new Color(0, 0, 0, 0.85f); sh.effectDistance = new Vector2(2, -2);
+        return t;
+    }
+
+    Bar GetBar(int i)
+    {
+        while (bars.Count <= i)
+        {
+            var b = new Bar();
+            b.root = NewRect("Barre", overlayRoot);
+            b.root.anchorMin = b.root.anchorMax = new Vector2(0.5f, 0.5f);
+            b.root.sizeDelta = new Vector2(130, 16);
+            var bg = b.root.gameObject.AddComponent<Image>();
+            bg.color = new Color(0, 0, 0, 0.75f); bg.raycastTarget = false;
+            b.fill = NewRect("Vie", b.root);
+            b.fill.offsetMin = new Vector2(2, 2); b.fill.offsetMax = new Vector2(-2, -2);
+            b.fillImg = b.fill.gameObject.AddComponent<Image>();
+            b.fillImg.raycastTarget = false;
+            bars.Add(b);
+        }
+        return bars[i];
+    }
+
+    bool ToLocal(Vector3 worldPos, out Vector2 local)
+    {
+        local = Vector2.zero;
+        var sp = cam.WorldToScreenPoint(worldPos);
+        if (sp.z < 0) return false;
+        return RectTransformUtility.ScreenPointToLocalPointInRectangle(overlayRoot, sp, null, out local);
+    }
+
+    void PlaceBar(Bar b, Fighter f, Color col, float width)
+    {
+        float h = f == hero ? 1.75f : f.def.height * (f.boss ? 1.7f : 1f) + f.def.fly;
+        Vector2 local;
+        bool ok = ToLocal(f.go.transform.position + Vector3.up * (f == hero ? h : h - f.def.fly + 0.15f + f.def.fly), out local);
+        b.root.gameObject.SetActive(ok);
+        if (!ok) return;
+        b.root.anchoredPosition = local + new Vector2(0, 14);
+        b.root.sizeDelta = new Vector2(width, f.boss ? 20 : 16);
+        float r = (float)System.Math.Max(0, System.Math.Min(1, f.hp / System.Math.Max(1, f.maxHp)));
+        b.fill.anchorMax = new Vector2(r, 1);
+        b.fillImg.color = col;
+    }
+
+    void UpdateOverlay(float dt)
+    {
+        var sbw = new System.Text.StringBuilder();
+        for (int i = 0; i < waveCount; i++)
+        {
+            bool bossDot = GameState.IsBossStage && i == waveCount - 1;
+            string col = i < wave ? "#5FB8FF" : i == wave ? "#FFFFFF" : "#665555";
+            sbw.Append("<color=" + col + ">" + (bossDot ? "☠" : "●") + "</color>");
+            if (i < waveCount - 1) sbw.Append(i < wave ? "<color=#5FB8FF> ━━ </color>" : "<color=#665555> ━━ </color>");
+        }
+        waveText.text = sbw.ToString();
+        int bi = 0;
+        PlaceBar(GetBar(bi++), hero, new Color(0.3f, 0.85f, 0.35f), 150);
+        foreach (var e in enemies)
+        {
+            if (e.dead) continue;
+            PlaceBar(GetBar(bi++), e, e.boss ? new Color(1f, 0.25f, 0.1f) : new Color(0.9f, 0.2f, 0.15f), e.boss ? 220 : 110);
+        }
+        for (int i = bi; i < bars.Count; i++) bars[i].root.gameObject.SetActive(false);
+
+        for (int i = popups.Count - 1; i >= 0; i--)
+        {
+            var p = popups[i];
+            p.time += dt;
+            Vector2 local;
+            if (ToLocal(p.world + Vector3.up * p.time * 0.8f, out local)) p.t.rectTransform.anchoredPosition = local;
+            var c = p.t.color; c.a = Mathf.Clamp01(1.4f - p.time * 1.2f); p.t.color = c;
+            if (p.time > 1.2f) { Destroy(p.t.gameObject); popups.RemoveAt(i); }
+        }
+
+        if (bannerTime > 0f)
+        {
+            bannerTime -= dt;
+            var c = banner.color; c.a = Mathf.Clamp01(bannerTime / 0.5f); banner.color = c;
+        }
+    }
+
+    void ShowPopup(Vector3 worldPos, string txt, Color col, int size)
+    {
+        var t = NewText(overlayRoot, size, TextAnchor.MiddleCenter, col);
+        var rt = t.rectTransform;
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(400, 60);
+        t.text = txt;
+        popups.Add(new Popup { t = t, world = worldPos + new Vector3(Random.Range(-0.2f, 0.2f), 0, 0) });
+    }
+
+    void ShowBanner(string txt, Color col)
+    {
+        banner.text = txt;
+        banner.color = col;
+        bannerTime = 2f;
+    }
+}

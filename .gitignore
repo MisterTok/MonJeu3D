@@ -66,3 +66,6 @@ mono_crash.*
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Réglages locaux Claude
+.claude/settings.local.json
