@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-// Écran des donjons : 4 donjons, 2 clés par jour, récompenses en monnaies.
+// Écran des donjons, épuré : 4 cartes (pastille, nom, niveau, récompense, clés, bouton).
 public partial class ForgeUI
 {
     GameObject dungPanel;
@@ -12,6 +12,8 @@ public partial class ForgeUI
     readonly Text[] dungBtnText = new Text[GameState.DungeonCount];
     float dungTimer;
 
+    static readonly string[] DungeonGlyph = { "⚒", "●", "✚", "✦" };
+
     void BuildDungeonPanel(Transform R)
     {
         dungPanel = MakeRect("Donjons", R, Vector2.zero, Vector2.one, new Vector2(0, 150), new Vector2(0, -130)).gameObject;
@@ -19,49 +21,49 @@ public partial class ForgeUI
         Transform P = dungPanel.transform;
         Label(P, "DONJONS", 48, TextAnchor.UpperCenter, Ember, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
         Text closeT;
-        MakeButton(P, "Fermer", new Vector2(1, 1), new Vector2(1, 1), new Vector2(-110, -86), new Vector2(-20, -16),
+        MakeButton(P, "Fermer", new Vector2(1, 1), new Vector2(1, 1), new Vector2(-104, -84), new Vector2(-20, -16),
             new Color(0.4f, 0.12f, 0.08f), "X", 40, out closeT, () => dungPanel.SetActive(false));
-        Label(P, "Les clés se rechargent chaque jour à 22:00. Elles ne sont consommées que si tu termines le donjon.", 24,
-            TextAnchor.UpperCenter, TextDim, new Vector2(0, 1), new Vector2(1, 1), new Vector2(30, -150), new Vector2(-30, -90));
 
         for (int i = 0; i < GameState.DungeonCount; i++)
         {
             int type = i;
-            float top = -160 - i * 330, bottom = top - 310;
-            var card = Box(P, "Donjon " + i, new Vector2(0, 1), new Vector2(1, 1), new Vector2(18, bottom), new Vector2(-18, top), new Color(0.11f, 0.05f, 0.05f, 1f));
+            float top = -100 - i * 270, bottom = top - 250;
             var c = GameState.DungeonColors[i];
-            card.gameObject.AddComponent<Outline>().effectColor = c;
-            Box(card.transform, "Bande", new Vector2(0, 0), new Vector2(0, 1), new Vector2(0, 0), new Vector2(16, 0), c);
-            Label(card.transform, GameState.DungeonNames[i], 42, TextAnchor.UpperLeft, c, Vector2.zero, Vector2.one, new Vector2(40, 0), new Vector2(-20, -16));
-            Label(card.transform, GameState.DungeonDesc[i], 24, TextAnchor.UpperLeft, TextDim, Vector2.zero, Vector2.one, new Vector2(40, 0), new Vector2(-300, -72));
-            dungInfo[i] = Label(card.transform, "", 28, TextAnchor.LowerLeft, TextMain, Vector2.zero, Vector2.one, new Vector2(40, 22), new Vector2(-300, 0));
-            dungKeys[i] = Label(card.transform, "", 34, TextAnchor.UpperRight, new Color(1f, 0.85f, 0.4f), Vector2.zero, Vector2.one, new Vector2(0, 0), new Vector2(-24, -18));
+            var frame = Box(P, "Donjon " + i, new Vector2(0, 1), new Vector2(1, 1), new Vector2(16, bottom), new Vector2(-16, top), c);
+            frame.sprite = Round(); frame.type = Image.Type.Sliced;
+            var card = Box(frame.transform, "Carte", Vector2.zero, Vector2.one, new Vector2(5, 5), new Vector2(-5, -5), new Color(c.r * 0.18f + 0.04f, c.g * 0.18f + 0.03f, c.b * 0.18f + 0.03f));
+            card.sprite = Round(); card.type = Image.Type.Sliced;
+            // Pastille du donjon
+            var dot = Box(card.transform, "Pastille", new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(24, -80), new Vector2(184, 80), new Color(c.r * 0.6f, c.g * 0.6f, c.b * 0.6f));
+            dot.sprite = Circle();
+            Label(dot.transform, DungeonGlyph[i], 76, TextAnchor.MiddleCenter, Color.white);
+            Label(card.transform, GameState.DungeonNames[i], 38, TextAnchor.UpperLeft, Color.Lerp(c, Color.white, 0.3f), Vector2.zero, Vector2.one, new Vector2(206, 0), new Vector2(-270, -22));
+            dungInfo[i] = Label(card.transform, "", 28, TextAnchor.LowerLeft, TextMain, Vector2.zero, Vector2.one, new Vector2(206, 26), new Vector2(-270, 0));
+            dungKeys[i] = Label(card.transform, "", 26, TextAnchor.UpperCenter, new Color(1f, 0.85f, 0.4f), new Vector2(1, 0), new Vector2(1, 1), new Vector2(-250, 0), new Vector2(-20, -22));
             Text bt;
-            dungBtn[i] = MakeButton(card.transform, "Entrer", new Vector2(1, 0), new Vector2(1, 0), new Vector2(-270, 24), new Vector2(-24, 130),
-                new Color(0.15f, 0.45f, 0.7f), "ENTRER", 38, out bt, () => OnEnterDungeon(type));
+            dungBtn[i] = MakeButton(card.transform, "Entrer", new Vector2(1, 0), new Vector2(1, 0), new Vector2(-250, 26), new Vector2(-20, 136),
+                new Color(0.15f, 0.45f, 0.7f), "ENTRER", 36, out bt, () => OnEnterDungeon(type));
             dungBtnText[i] = bt;
         }
-        dungFooter = Label(P, "", 26, TextAnchor.LowerCenter, TextMain, new Vector2(0, 0), new Vector2(1, 0), new Vector2(20, 20), new Vector2(-20, 110));
+        dungFooter = Label(P, "", 26, TextAnchor.UpperCenter, TextDim, new Vector2(0, 1), new Vector2(1, 1), new Vector2(20, -1220), new Vector2(-20, -1180));
         dungPanel.SetActive(false);
         battle.DungeonEnded += Toast;
     }
 
     void ToggleDungeons()
     {
-        if (statsPanel != null) statsPanel.SetActive(false);
-        if (mountPanel != null) mountPanel.SetActive(false);
-        if (techPanel != null) techPanel.SetActive(false);
-        if (compPanel != null) compPanel.SetActive(false);
-        dungPanel.SetActive(!dungPanel.activeSelf);
-        if (dungPanel.activeSelf) RefreshDungeons();
+        bool open = !dungPanel.activeSelf;
+        CloseAllPanels();
+        dungPanel.SetActive(open);
+        RefreshDungeons();
     }
 
     void OnEnterDungeon(int type)
     {
-        if (battle.InDungeon) { Toast("Termine d'abord le donjon en cours"); return; }
-        if (!battle.StartDungeon(type)) { Toast("Plus de clé aujourd'hui pour ce donjon"); return; }
+        if (battle.InDungeon) { Toast("Termine d'abord le combat en cours"); return; }
+        if (!battle.StartDungeon(type)) { Toast("Plus de clé aujourd'hui"); return; }
         dungPanel.SetActive(false);
-        Toast("Entrée dans : " + GameState.DungeonNames[type]);
+        Toast(GameState.DungeonNames[type]);
     }
 
     void UpdateDungeons()
@@ -80,15 +82,11 @@ public partial class ForgeUI
         for (int i = 0; i < GameState.DungeonCount; i++)
         {
             int lvl = d.dungeonLevel[i];
-            dungInfo[i].text = "Niveau " + (lvl + 1) + "\n<color=#FFD27A>" + GameState.DungeonRewardText(i, lvl) + "</color>";
-            dungKeys[i].text = "Clés " + d.dungeonKeys[i] + "/" + GameState.DungeonKeysPerDay;
-            bool can = GameState.CanEnterDungeon(i) && !battle.InDungeon;
-            dungBtn[i].interactable = can;
+            dungInfo[i].text = "Niv. " + (lvl + 1) + "\n<color=#FFD27A>" + GameState.DungeonRewardText(i, lvl) + "</color>";
+            dungKeys[i].text = "Clés  <b>" + d.dungeonKeys[i] + "/" + GameState.DungeonKeysPerDay + "</b>";
+            dungBtn[i].interactable = GameState.CanEnterDungeon(i) && !battle.InDungeon;
             dungBtnText[i].text = d.dungeonKeys[i] > 0 ? "ENTRER" : "DEMAIN";
         }
-        var t = GameState.TimeToKeyRefresh();
-        dungFooter.text = "Recharge des clés dans " + GameState.FmtTime((long)t.TotalSeconds)
-            + "\n<color=#BFD8FF>Coquilles " + GameState.Fmt(d.eggshells) + "  ·  Potions rouges " + GameState.Fmt(d.potions)
-            + "  ·  Tickets " + GameState.Fmt(d.skillTickets) + "</color>";
+        dungFooter.text = "Nouvelles clés dans " + GameState.FmtTime((long)GameState.TimeToKeyRefresh().TotalSeconds);
     }
 }

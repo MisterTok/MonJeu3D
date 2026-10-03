@@ -247,6 +247,7 @@ public partial class ForgeUI
         }
         detailBody.text = owned ? body : "<color=#998877>Pas encore obtenu</color>";
         dpBtn.gameObject.SetActive(owned && action != null);
+        dpBtn.interactable = true;
         dpBtnText.text = action ?? "";
         dpBtn.GetComponent<Image>().color = actionColor ?? new Color(0.15f, 0.5f, 0.22f);
         detailAction = onAction;
@@ -269,5 +270,17 @@ public partial class ForgeUI
         dpBtn.gameObject.SetActive(false);
         detail.transform.SetAsLastSibling();
         detail.SetActive(true);
+    }
+
+    // Fiche texte avec un bouton d'action (recherches, missions…). enabled = false grise le bouton.
+    void ShowAction(string title, string body, string action, bool enabled, Action onAction, Color? titleColor = null)
+    {
+        ShowInfo(title, body);
+        if (titleColor.HasValue) { detailFrame.color = titleColor.Value; detailName.color = Color.Lerp(titleColor.Value, Color.white, 0.3f); }
+        dpBtn.gameObject.SetActive(action != null);
+        dpBtnText.text = action ?? "";
+        dpBtn.interactable = enabled;
+        dpBtn.GetComponent<Image>().color = new Color(0.15f, 0.5f, 0.22f);
+        detailAction = onAction;
     }
 }

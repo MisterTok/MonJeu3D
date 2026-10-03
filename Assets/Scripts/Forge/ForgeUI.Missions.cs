@@ -33,25 +33,26 @@ public partial class ForgeUI
         Text closeT;
         MakeButton(P, "Fermer", new Vector2(1, 1), new Vector2(1, 1), new Vector2(-110, -86), new Vector2(-20, -16),
             new Color(0.45f, 0.14f, 0.1f), "X", 40, out closeT, () => missionPanel.SetActive(false));
-        Label(P, "Affronte des escouades de démons. L'énergie n'est consommée qu'en cas de victoire. Le niveau des missions monte avec le Voleur de marteau.", 23,
-            TextAnchor.UpperCenter, TextDim, new Vector2(0, 1), new Vector2(1, 1), new Vector2(30, -150), new Vector2(-30, -88));
-        missionEnergy = Label(P, "", 32, TextAnchor.MiddleLeft, new Color(1f, 0.85f, 0.4f), new Vector2(0, 1), new Vector2(0.6f, 1), new Vector2(30, -230), new Vector2(0, -160));
-        refreshBtn = MakeButton(P, "Nouvelle liste", new Vector2(0.6f, 1), new Vector2(1, 1), new Vector2(0, -228), new Vector2(-20, -162),
+        missionEnergy = Label(P, "", 32, TextAnchor.MiddleLeft, new Color(1f, 0.85f, 0.4f), new Vector2(0, 1), new Vector2(0.6f, 1), new Vector2(30, -170), new Vector2(0, -96));
+        refreshBtn = MakeButton(P, "Nouvelle liste", new Vector2(0.6f, 1), new Vector2(1, 1), new Vector2(0, -168), new Vector2(-20, -98),
             new Color(0.35f, 0.2f, 0.5f), "", 24, out refreshText, () => { string e = GameState.RefreshMissionList(); if (e != null) Toast(e); RefreshMissions(); });
 
         for (int i = 0; i < MissionData.OfferCount; i++)
         {
             int slot = i;
-            float top = -240 - i * 250, bottom = top - 235;
-            var card = Box(P, "Mission " + i, new Vector2(0, 1), new Vector2(1, 1), new Vector2(18, bottom), new Vector2(-18, top), new Color(0.12f, 0.06f, 0.13f, 1f));
-            card.gameObject.AddComponent<Outline>().effectColor = MissionPurple;
-            Box(card.transform, "Bande", new Vector2(0, 0), new Vector2(0, 1), Vector2.zero, new Vector2(14, 0), MissionPurple);
-            missionTitle[i] = Label(card.transform, "", 34, TextAnchor.UpperLeft, Color.Lerp(MissionPurple, Color.white, 0.3f), Vector2.zero, Vector2.one, new Vector2(36, 0), new Vector2(-260, -14));
-            missionInfo[i] = Label(card.transform, "", 23, TextAnchor.LowerLeft, TextMain, Vector2.zero, Vector2.one, new Vector2(36, 16), new Vector2(-260, 0));
-            missionBtn[i] = MakeButton(card.transform, "Lancer", new Vector2(1, 0), new Vector2(1, 1), new Vector2(-240, 24), new Vector2(-20, -24),
+            float top = -190 - i * 205, bottom = top - 190;
+            var frame = Box(P, "Mission " + i, new Vector2(0, 1), new Vector2(1, 1), new Vector2(18, bottom), new Vector2(-18, top), MissionPurple);
+            frame.sprite = Round(); frame.type = Image.Type.Sliced;
+            var card = Box(frame.transform, "Carte", Vector2.zero, Vector2.one, new Vector2(5, 5), new Vector2(-5, -5), new Color(0.13f, 0.07f, 0.15f, 1f));
+            card.sprite = Round(); card.type = Image.Type.Sliced;
+            var cardBtn = frame.gameObject.AddComponent<Button>();
+            cardBtn.onClick.AddListener(() => OpenMission(slot));
+            missionTitle[i] = Label(card.transform, "", 32, TextAnchor.UpperLeft, Color.Lerp(MissionPurple, Color.white, 0.35f), Vector2.zero, Vector2.one, new Vector2(28, 0), new Vector2(-250, -20));
+            missionInfo[i] = Label(card.transform, "", 28, TextAnchor.LowerLeft, TextMain, Vector2.zero, Vector2.one, new Vector2(28, 22), new Vector2(-250, 0));
+            missionBtn[i] = MakeButton(card.transform, "Lancer", new Vector2(1, 0), new Vector2(1, 1), new Vector2(-230, 24), new Vector2(-20, -24),
                 new Color(0.45f, 0.22f, 0.65f), "LANCER", 34, out missionBtnText[i], () => OnStartMission(slot));
         }
-        missionFooter = Label(P, "", 24, TextAnchor.LowerCenter, TextDim, new Vector2(0, 0), new Vector2(1, 0), new Vector2(20, 16), new Vector2(-20, 70));
+        missionFooter = Label(P, "", 26, TextAnchor.UpperCenter, TextDim, new Vector2(0, 1), new Vector2(1, 1), new Vector2(20, -1240), new Vector2(-20, -1200));
         missionPanel.SetActive(false);
         GameState.MissionMessage += Toast;
     }
@@ -70,6 +71,29 @@ public partial class ForgeUI
         if (!battle.StartMission(slot)) { Toast("Plus d'énergie aujourd'hui"); return; }
         missionPanel.SetActive(false);
         Toast("Mission : " + MissionData.SquadNames[GameState.Data.missionSquad[slot]]);
+    }
+
+    // Difficulté estimée : combien de temps le héros tient face à l'escouade, comparé au temps pour la vaincre.
+    static string MissionDifficulty(int slot)
+    {
+        double heroDps = GameState.TotalAtk() / (double)GameState.AttackInterval * (1 + GameState.CritChance * (GameState.CritMult - 1));
+        double kill = GameState.MissionUnits(slot) * GameState.MissionUnitHp(slot) / System.Math.Max(1, heroDps);
+        double survive = GameState.TotalHp() / System.Math.Max(1, GameState.MissionUnitAtk(slot) / 1.3);
+        double r = survive / System.Math.Max(0.01, kill);
+        return r > 3 ? "<color=#7CFF8A>Facile</color>" : r > 1.2 ? "<color=#FFD24A>Moyen</color>" : "<color=#FF6A5A>Difficile</color>";
+    }
+
+    // Fiche d'une mission : ennemis et récompenses.
+    void OpenMission(int slot)
+    {
+        var d = GameState.Data;
+        int units = GameState.MissionUnits(slot);
+        string body = units + " ennemi" + (units > 1 ? "s" : "") + "  ·  " + MissionDifficulty(slot)
+            + "\n<size=26><color=#A89C94>Chacun : PV " + GameState.Fmt(GameState.MissionUnitHp(slot)) + "  ATQ " + GameState.Fmt(GameState.MissionUnitAtk(slot)) + "</color></size>"
+            + "\n\n" + GameState.ContentText(GameState.MissionReward(d.missionLevel[slot]), "\n");
+        bool can = GameState.CanStartMission && !battle.InDungeon;
+        ShowAction(MissionData.SquadNames[d.missionSquad[slot]] + "  niv. " + d.missionLevel[slot], body, d.missionEnergy > 0 ? "LANCER" : "DEMAIN", can,
+            () => OnStartMission(slot), MissionPurple);
     }
 
     void UpdateMissions()
@@ -96,14 +120,12 @@ public partial class ForgeUI
             int squad = d.missionSquad[i], lvl = d.missionLevel[i];
             int units = GameState.MissionUnits(i);
             missionTitle[i].text = MissionData.SquadNames[squad] + "  <size=26><color=#FFD27A>niv. " + lvl + "</color></size>";
-            missionInfo[i].text = units + " ennemi" + (units > 1 ? "s" : "") + " · chacun PV " + GameState.Fmt(GameState.MissionUnitHp(i)) + " / ATQ " + GameState.Fmt(GameState.MissionUnitAtk(i))
-                + "\n" + GameState.ContentText(GameState.MissionReward(lvl), "  ");
+            missionInfo[i].text = units + " ennemi" + (units > 1 ? "s" : "") + "  ·  " + MissionDifficulty(i);
             missionBtn[i].interactable = can;
             missionBtnText[i].text = d.missionEnergy > 0 ? "LANCER" : "DEMAIN";
         }
         var t = GameState.TimeToKeyRefresh();
-        missionFooter.text = "Recharge de l'énergie et nouvelle liste dans " + GameState.FmtTime((long)t.TotalSeconds)
-            + "\n<color=#BFD8FF>Ton héros : ATQ " + GameState.Fmt(GameState.TotalAtk()) + "  ·  PV " + GameState.Fmt(GameState.TotalHp()) + "</color>";
+        missionFooter.text = "Énergie et nouvelle liste dans " + GameState.FmtTime((long)t.TotalSeconds);
     }
 
     // ---------- Pass de progression ----------
@@ -127,7 +149,7 @@ public partial class ForgeUI
         passPanel = MakeRect("Pass de progression", R, Vector2.zero, Vector2.one, new Vector2(0, 150), new Vector2(0, -130)).gameObject;
         passPanel.AddComponent<Image>().color = new Color(0.08f, 0.05f, 0.02f, 1f);
         Transform P = passPanel.transform;
-        Label(P, "PASS DE PROGRESSION", 46, TextAnchor.UpperCenter, new Color(1f, 0.8f, 0.3f), new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
+        Label(P, "PASS", 48, TextAnchor.UpperCenter, new Color(1f, 0.8f, 0.3f), new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
         Text closeT;
         MakeButton(P, "Fermer", new Vector2(1, 1), new Vector2(1, 1), new Vector2(-110, -86), new Vector2(-20, -16),
             new Color(0.45f, 0.14f, 0.1f), "X", 40, out closeT, () => passPanel.SetActive(false));
@@ -174,7 +196,7 @@ public partial class ForgeUI
         var d = GameState.Data;
         int done = 0;
         for (int i = 0; i < MissionData.PassStage.Length; i++) if (d.passClaimed[i]) done++;
-        passHeader.text = "Franchis des étapes du chemin pour gagner des récompenses.\n<color=#FFD27A>" + done + "/" + MissionData.PassStage.Length + " paliers récupérés</color>";
+        passHeader.text = "<color=#FFD27A>" + done + " / " + MissionData.PassStage.Length + "</color> paliers";
         for (int i = 0; i < MissionData.PassStage.Length; i++)
         {
             bool reached = GameState.PassReached(i), claimed = d.passClaimed[i];

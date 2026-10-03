@@ -6,11 +6,11 @@ using UnityEngine.UI;
 public partial class ForgeUI
 {
     GameObject techPanel;
-    Text techHeader, detailTitle, detailDesc, detailCost, detailBtnText, techFinishText;
-    Button detailBtn, techFinishBtn;
+    Text techHeader, techFinishText;
+    Button techFinishBtn;
     ScrollRect techScroll;
     readonly RectTransform[] techContent = new RectTransform[3];
-    readonly Image[] techTabImg = new Image[4];
+    readonly Image[] techTabImg = new Image[3];
     readonly List<Button>[] nodeBtn = { new List<Button>(), new List<Button>(), new List<Button>() };
     readonly List<Text>[] nodeText = { new List<Text>(), new List<Text>(), new List<Text>() };
     int techTree, selNode = -1;
@@ -22,7 +22,7 @@ public partial class ForgeUI
         techPanel = MakeRect("Arbre technologique", R, Vector2.zero, Vector2.one, new Vector2(0, 150), new Vector2(0, -130)).gameObject;
         techPanel.AddComponent<Image>().color = new Color(0.1f, 0.05f, 0.05f, 1f);
         Transform P = techPanel.transform;
-        Label(P, "ARBRE TECHNOLOGIQUE", 44, TextAnchor.UpperCenter, Ember, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -76), new Vector2(0, -16));
+        Label(P, "TECHNOLOGIE", 48, TextAnchor.UpperCenter, Ember, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -76), new Vector2(0, -16));
         Text closeT;
         MakeButton(P, "Fermer", new Vector2(1, 1), new Vector2(1, 1), new Vector2(-110, -86), new Vector2(-20, -16),
             new Color(0.45f, 0.14f, 0.1f), "X", 40, out closeT, () => techPanel.SetActive(false));
@@ -31,18 +31,18 @@ public partial class ForgeUI
         techFinishBtn = MakeButton(P, "Finir recherche", new Vector2(0.72f, 1), new Vector2(1, 1), new Vector2(0, -156), new Vector2(-20, -92),
             new Color(0.15f, 0.45f, 0.65f), "", 24, out techFinishText, () => { if (!GameState.SpeedUpResearch()) Toast("Pas assez de gemmes"); });
 
-        string[] tabs = { "Forge", "Puissance", "Compagnons\n& Tech", "Clan" };
-        for (int i = 0; i < 4; i++)
+        string[] tabs = { "Forge", "Puissance", "Compagnons" };
+        for (int i = 0; i < 3; i++)
         {
             int t = i;
             Text tt;
-            var b = MakeButton(P, "Onglet " + i, new Vector2(i / 4f, 1), new Vector2((i + 1) / 4f, 1), new Vector2(8, -240), new Vector2(-8, -168),
-                new Color(0.3f, 0.12f, 0.08f), tabs[i], 26, out tt, () => SelectTechTree(t));
+            var b = MakeButton(P, "Onglet " + i, new Vector2(i / 3f, 1), new Vector2((i + 1) / 3f, 1), new Vector2(8, -240), new Vector2(-8, -172),
+                new Color(0.3f, 0.12f, 0.08f), tabs[i], 28, out tt, () => SelectTechTree(t));
             techTabImg[i] = b.GetComponent<Image>();
         }
 
-        // Zone défilante
-        var view = MakeRect("Vue", P, Vector2.zero, Vector2.one, new Vector2(10, 300), new Vector2(-10, -250));
+        // Zone défilante (toute la hauteur : la fiche d'une recherche s'ouvre au toucher)
+        var view = MakeRect("Vue", P, Vector2.zero, Vector2.one, new Vector2(10, 10), new Vector2(-10, -250));
         view.gameObject.AddComponent<Image>().color = new Color(0.06f, 0.03f, 0.03f, 0.9f);
         view.gameObject.AddComponent<RectMask2D>();
         techScroll = view.gameObject.AddComponent<ScrollRect>();
@@ -51,15 +51,6 @@ public partial class ForgeUI
         techScroll.movementType = ScrollRect.MovementType.Clamped;
         techScroll.scrollSensitivity = 60f;
         for (int tr = 0; tr < 3; tr++) BuildTree(view, tr);
-
-        // Détail de la recherche sélectionnée
-        var det = Box(P, "Détail", new Vector2(0, 0), new Vector2(1, 0), new Vector2(10, 10), new Vector2(-10, 290), Panel);
-        det.gameObject.AddComponent<Outline>().effectColor = Ember;
-        detailTitle = Label(det.transform, "Touche une recherche", 34, TextAnchor.UpperLeft, Ember, Vector2.zero, Vector2.one, new Vector2(24, 0), new Vector2(-24, -14));
-        detailDesc = Label(det.transform, "", 26, TextAnchor.UpperLeft, TextMain, Vector2.zero, Vector2.one, new Vector2(24, 0), new Vector2(-330, -64));
-        detailCost = Label(det.transform, "", 26, TextAnchor.LowerLeft, new Color(1f, 0.6f, 0.55f), Vector2.zero, Vector2.one, new Vector2(24, 18), new Vector2(-330, 0));
-        detailBtn = MakeButton(det.transform, "Rechercher", new Vector2(1, 0), new Vector2(1, 0), new Vector2(-300, 24), new Vector2(-24, 150),
-            new Color(0.2f, 0.5f, 0.25f), "RECHERCHER", 30, out detailBtnText, OnResearch);
 
         techPanel.SetActive(false);
         GameState.TechDone += Toast;
@@ -100,7 +91,8 @@ public partial class ForgeUI
                 int id = kv.Value[j];
                 Text t;
                 var b = MakeButton(content, "Nœud " + id, new Vector2((float)j / k, 1), new Vector2((float)(j + 1) / k, 1),
-                    new Vector2(10, y - 118), new Vector2(-10, y), Panel, "", 28, out t, () => SelectNode(id));
+                    new Vector2(8, y - 112), new Vector2(-8, y), Panel, "", 24, out t, () => SelectNode(id));
+                b.GetComponent<Image>().sprite = Round(); b.GetComponent<Image>().type = Image.Type.Sliced;
                 nodeBtn[tr][id] = b;
                 nodeText[tr][id] = t;
             }
@@ -112,17 +104,14 @@ public partial class ForgeUI
 
     void ToggleTech()
     {
-        if (statsPanel != null) statsPanel.SetActive(false);
-        if (mountPanel != null) mountPanel.SetActive(false);
-        if (compPanel != null) compPanel.SetActive(false);
-        if (dungPanel != null) dungPanel.SetActive(false);
-        techPanel.SetActive(!techPanel.activeSelf);
-        if (techPanel.activeSelf) SelectTechTree(techTree);
+        bool open = !techPanel.activeSelf;
+        CloseAllPanels();
+        techPanel.SetActive(open);
+        if (open) SelectTechTree(techTree);
     }
 
     void SelectTechTree(int t)
     {
-        if (t == 3) { Toast("Branche du clan : avec la guerre de clans (bientôt)"); return; }
         techTree = t;
         selNode = -1;
         for (int i = 0; i < 3; i++) techContent[i].gameObject.SetActive(i == t);
@@ -131,18 +120,31 @@ public partial class ForgeUI
         RefreshTech();
     }
 
+    // Fiche d'une recherche : effet actuel / suivant, coût, bouton.
     void SelectNode(int id)
     {
         selNode = id;
         RefreshTech();
-    }
-
-    void OnResearch()
-    {
-        if (selNode < 0) { Toast("Choisis d'abord une recherche"); return; }
-        string err = GameState.StartResearch(techTree, selNode);
-        if (err != null) Toast(err);
-        RefreshTech();
+        int tr = techTree;
+        var d = GameState.Data;
+        int st = GameState.NodeType(tr, id);
+        int sl = GameState.TechLevel(tr, id), sm = GameState.NodeMax(tr, id);
+        float per = TechData.Value[st];
+        string body = "<size=26><color=#A89C94>Palier " + Roman[GameState.NodeTier(tr, id)] + " · niv. " + sl + "/" + sm + "</color></size>\n\n"
+            + (sl > 0 ? TechText.Describe(st, per * sl) : "<color=#998877>Pas encore recherché</color>");
+        if (sl < sm) body += "\n<color=#9FE0A0>▶ " + TechText.Describe(st, per * (sl + 1)) + "</color>";
+        string action; bool can;
+        if (sl >= sm) { action = "MAXIMUM"; can = false; }
+        else if (!GameState.NodeUnlocked(tr, id)) { action = "VERROUILLÉ"; can = false; body += "\n\n<size=24><color=#998877>Recherche d'abord les précédentes</color></size>"; }
+        else
+        {
+            long cost = GameState.ResearchCost(tr, id);
+            body += "\n\n<color=#FF8A7A>" + GameState.Fmt(cost) + " potions</color>  ·  " + GameState.FmtTime(GameState.ResearchSeconds(tr, id));
+            bool busy = d.researchTree >= 0;
+            can = !busy && d.potions >= cost;
+            action = busy ? "1 À LA FOIS" : d.potions >= cost ? "RECHERCHER" : "PAS ASSEZ";
+        }
+        ShowAction(TechText.Name(st), body, action, can, () => { string e = GameState.StartResearch(tr, id); if (e != null) Toast(e); RefreshTech(); });
     }
 
     void UpdateTech()
@@ -158,23 +160,23 @@ public partial class ForgeUI
     {
         if (techPanel == null || !techPanel.activeSelf) return;
         var d = GameState.Data;
-        for (int i = 0; i < 4; i++)
-            techTabImg[i].color = i == techTree ? new Color(0.75f, 0.32f, 0.1f) : i == 3 ? new Color(0.18f, 0.12f, 0.12f) : new Color(0.3f, 0.12f, 0.08f);
+        for (int i = 0; i < 3; i++)
+            techTabImg[i].color = i == techTree ? new Color(0.75f, 0.32f, 0.1f) : new Color(0.3f, 0.12f, 0.08f);
 
         string res;
         if (d.researchTree >= 0)
         {
             int type = GameState.NodeType(d.researchTree, d.researchNode);
-            res = "En cours : <b>" + TechText.Name(type) + "</b> (" + GameState.TreeNames[d.researchTree] + ") — " + GameState.FmtTime(GameState.ResearchSecondsLeft());
+            res = "<b>" + TechText.Name(type) + "</b>  " + GameState.FmtTime(GameState.ResearchSecondsLeft());
             techFinishBtn.gameObject.SetActive(true);
             techFinishText.text = "Finir\n<size=20>" + GameState.ResearchSpeedUpCost() + " gemmes</size>";
         }
         else
         {
-            res = "Aucune recherche en cours";
+            res = "<color=#998877>Aucune recherche</color>";
             techFinishBtn.gameObject.SetActive(false);
         }
-        techHeader.text = "<color=#FF8A7A>Potions rouges " + GameState.Fmt(d.potions) + "</color>\n<size=24>" + res + "</size>";
+        techHeader.text = "<color=#FF8A7A>Potions  <b>" + GameState.Fmt(d.potions) + "</b></color>\n<size=24>" + res + "</size>";
 
         int tr = techTree;
         for (int id = 0; id < nodeBtn[tr].Count; id++)
@@ -195,34 +197,8 @@ public partial class ForgeUI
             ol.effectColor = border;
             ol.effectDistance = id == selNode ? new Vector2(5, -5) : new Vector2(3, -3);
             string col = unlocked ? "" : "<color=#7A6A66>";
-            nodeText[tr][id].text = col + "<b>" + TechText.Name(type) + "</b>\nniv. " + lvl + "/" + max + (researching ? " · en cours" : "") + (unlocked ? "" : "</color>");
+            nodeText[tr][id].text = col + TechText.Name(type) + "\n<b><size=26>" + lvl + "/" + max + "</size></b>" + (researching ? "  <color=#7FC8FF>●</color>" : "") + (unlocked ? "" : "</color>");
         }
 
-        if (selNode < 0)
-        {
-            detailTitle.text = "Touche une recherche";
-            detailDesc.text = "Les recherches améliorent durablement ta forge, ton héros et tes compagnons. Une seule recherche à la fois.";
-            detailCost.text = "";
-            detailBtn.gameObject.SetActive(false);
-            return;
-        }
-        int st = GameState.NodeType(tr, selNode);
-        int sl = GameState.TechLevel(tr, selNode), sm = GameState.NodeMax(tr, selNode);
-        float per = TechData.Value[st];
-        detailTitle.text = TechText.Name(st) + "  <size=26>(palier " + Roman[GameState.NodeTier(tr, selNode)] + ", niv. " + sl + "/" + sm + ")</size>";
-        string now = sl > 0 ? "Actuel : " + TechText.Describe(st, per * sl) : "Pas encore recherché";
-        string next = sl < sm ? "\nNiveau suivant : " + TechText.Describe(st, per * (sl + 1)) : "\nNiveau maximum atteint";
-        detailDesc.text = now + next;
-        detailBtn.gameObject.SetActive(true);
-        if (sl >= sm) { detailCost.text = ""; detailBtn.interactable = false; detailBtnText.text = "MAXIMUM"; }
-        else if (!GameState.NodeUnlocked(tr, selNode)) { detailCost.text = "Verrouillée : recherche d'abord les nœuds précédents"; detailBtn.interactable = false; detailBtnText.text = "VERROUILLÉ"; }
-        else
-        {
-            long cost = GameState.ResearchCost(tr, selNode);
-            detailCost.text = "Coût : " + GameState.Fmt(cost) + " potions rouges · " + GameState.FmtTime(GameState.ResearchSeconds(tr, selNode));
-            bool busy = d.researchTree >= 0;
-            detailBtn.interactable = !busy && d.potions >= cost;
-            detailBtnText.text = busy ? "1 À LA FOIS" : d.potions >= cost ? "RECHERCHER" : "POTIONS ?";
-        }
     }
 }

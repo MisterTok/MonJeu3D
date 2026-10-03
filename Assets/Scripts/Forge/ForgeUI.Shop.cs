@@ -38,7 +38,7 @@ public partial class ForgeUI
             new Color(0.2f, 0.55f, 0.25f), "", 32, out shopGiftBtnText, () => ShopResult(GameState.TakeFreeGift()));
 
         // Offres du jour
-        Label(P, "Offres du jour (1 achat chacune)", 30, TextAnchor.UpperLeft, TextDim, new Vector2(0, 1), new Vector2(1, 1), new Vector2(30, -345), new Vector2(0, -305));
+        Label(P, "Offres du jour", 30, TextAnchor.UpperLeft, TextDim, new Vector2(0, 1), new Vector2(1, 1), new Vector2(30, -345), new Vector2(0, -305));
         for (int i = 0; i < ShopData.DealsPerDay; i++)
         {
             int slot = i;
@@ -52,7 +52,7 @@ public partial class ForgeUI
         }
 
         // Ressources
-        Label(P, "Ressources contre des gemmes", 30, TextAnchor.UpperLeft, TextDim, new Vector2(0, 1), new Vector2(1, 1), new Vector2(30, -855), new Vector2(0, -815));
+        Label(P, "Ressources", 30, TextAnchor.UpperLeft, TextDim, new Vector2(0, 1), new Vector2(1, 1), new Vector2(30, -855), new Vector2(0, -815));
         for (int i = 0; i < ShopData.Bundles.Length; i++)
         {
             int idx = i, row = i / 3, col = i % 3;
@@ -62,16 +62,6 @@ public partial class ForgeUI
             bundleBtn[i] = MakeButton(P, "Ressource " + i, new Vector2(col / 3f, 1), new Vector2((col + 1) / 3f, 1), new Vector2(12, top - 175), new Vector2(-12, top),
                 new Color(c.r * 0.25f, c.g * 0.25f, c.b * 0.25f), "", 24, out bundleText[i], () => ShopResult(GameState.BuyBundle(idx)));
             bundleBtn[i].GetComponent<Outline>().effectColor = c;
-        }
-
-        // Packs de gemmes : affichés pour plus tard.
-        Label(P, "Packs de gemmes (achats réels : bientôt)", 30, TextAnchor.UpperLeft, TextDim, new Vector2(0, 1), new Vector2(1, 1), new Vector2(30, -1290), new Vector2(0, -1250));
-        for (int i = 0; i < ShopData.GemPacks.Length; i++)
-        {
-            var g = Box(P, "Pack " + i, new Vector2(i / 4f, 1), new Vector2((i + 1) / 4f, 1), new Vector2(10, -1440), new Vector2(-10, -1295), new Color(0.06f, 0.1f, 0.13f, 1f));
-            g.gameObject.AddComponent<Outline>().effectColor = new Color(0.3f, 0.5f, 0.6f);
-            Label(g.transform, "<b>" + ShopData.GemPacks[i] + "</b>\n<size=20>gemmes</size>\n<size=20><color=#7F98A6>" + ShopData.GemPackPrices[i] + "</color></size>", 30,
-                TextAnchor.MiddleCenter, new Color(0.5f, 0.9f, 1f));
         }
 
         shopPanel.SetActive(false);
@@ -99,7 +89,7 @@ public partial class ForgeUI
         if (shopTimerTick > 0f) return;
         shopTimerTick = 1f;
         var t = GameState.TimeToShopRefresh();
-        shopTimer.text = "Nouvelles offres dans " + GameState.FmtTime((long)t.TotalSeconds);
+        shopTimer.text = "Renouvellement " + GameState.FmtTime((long)t.TotalSeconds);
     }
 
     void RefreshShop()

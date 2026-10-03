@@ -195,14 +195,11 @@ public partial class ForgeUI : MonoBehaviour
             new Color(0.12f, 0.4f, 0.55f), "", 26, out speedUpText, OnSpeedUp);
         forgeLevelText = Label(forgeRow, "", 34, TextAnchor.LowerCenter, Ember, new Vector2(0.74f, 0.82f), new Vector2(1f, 1f), new Vector2(6, 0), new Vector2(-18, 0));
 
-        // Chances (gauche) + remise à zéro de test
-        var oddsBox = Box(forgeRow, "Chances", new Vector2(0f, 0.4f), new Vector2(0.26f, 1f), new Vector2(18, 0), new Vector2(-6, 0), Panel);
-        autoBtn = MakeButton(forgeRow, "Auto", new Vector2(0f, 0.12f), new Vector2(0.26f, 0.37f), new Vector2(18, 0), new Vector2(-6, 0),
+        // Gauche : chances (le détail s'ouvre au toucher) et forge automatique
+        MakeButton(forgeRow, "Chances", new Vector2(0f, 0.5f), new Vector2(0.26f, 0.82f), new Vector2(18, 0), new Vector2(-6, 0),
+            new Color(0.2f, 0.1f, 0.08f), "", 24, out oddsText, ShowOdds);
+        autoBtn = MakeButton(forgeRow, "Auto", new Vector2(0f, 0.12f), new Vector2(0.26f, 0.44f), new Vector2(18, 0), new Vector2(-6, 0),
             new Color(0.25f, 0.25f, 0.3f), "Auto", 28, out autoText, OnAutoToggle);
-        oddsText = Label(oddsBox.transform, "", 24, TextAnchor.UpperLeft, TextDim, Vector2.zero, Vector2.one, new Vector2(12, 12), new Vector2(-8, -10));
-        Text dummy;
-        MakeButton(forgeRow, "Reset", new Vector2(0f, 0f), new Vector2(0.26f, 0.1f), new Vector2(18, 0), new Vector2(-6, 0),
-            new Color(0.2f, 0.08f, 0.08f, 0.8f), "Reset (test)", 20, out dummy, () => { GameState.ResetAll(); world.DismissItem(false); HidePopup(); });
 
         // ----- Équipement : 2 rangées de 4, tuiles compactes -----
         var eq = MakeRect("Equipement", R, new Vector2(0, 0), new Vector2(1, 0), new Vector2(18, 530), new Vector2(-18, 850));
@@ -273,6 +270,15 @@ public partial class ForgeUI : MonoBehaviour
     }
 
     // ---------- Fiche du héros (toutes les statistiques) ----------
+    void ShowOdds()
+    {
+        var odds = GameState.CurrentOdds();
+        var sb = new System.Text.StringBuilder("<size=26><color=#A89C94>Forge niv. " + GameState.Data.forgeLevel + "</color></size>\n\n");
+        for (int i = 0; i < odds.Length; i++)
+            if (odds[i] > 0f) sb.Append("<color=" + Hex(GameState.CircleColors[i]) + ">" + GameState.CircleNames[i] + "</color>   " + odds[i].ToString("0.##") + " %\n");
+        ShowInfo("Chances de la forge", sb.ToString());
+    }
+
     void BuildStatsPanel(Transform R)
     {
         statsPanel = MakeRect("Fiche du héros", R, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero).gameObject;
@@ -285,6 +291,9 @@ public partial class ForgeUI : MonoBehaviour
         Text closeT;
         MakeButton(inner.transform, "Fermer", new Vector2(0.3f, 0f), new Vector2(0.7f, 0f), new Vector2(0, 24), new Vector2(0, 110),
             new Color(0.45f, 0.15f, 0.08f), "FERMER", 38, out closeT, ToggleStats);
+        Text resetT;
+        MakeButton(inner.transform, "Reset", new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(20, 30), new Vector2(190, 90),
+            new Color(0.2f, 0.08f, 0.08f, 0.9f), "Reset (test)", 20, out resetT, () => { GameState.ResetAll(); world.DismissItem(false); HidePopup(); ToggleStats(); });
         statsPanel.SetActive(false);
     }
 
@@ -296,11 +305,9 @@ public partial class ForgeUI : MonoBehaviour
 
     void ToggleStats()
     {
-        if (mountPanel != null) mountPanel.SetActive(false);
-        if (compPanel != null) compPanel.SetActive(false);
-        if (dungPanel != null) dungPanel.SetActive(false);
-        if (techPanel != null) techPanel.SetActive(false);
-        statsPanel.SetActive(!statsPanel.activeSelf);
+        bool open = !statsPanel.activeSelf;
+        CloseAllPanels();
+        statsPanel.SetActive(open);
         if (statsPanel.activeSelf) RefreshStatsPanel();
     }
 
@@ -534,17 +541,11 @@ public partial class ForgeUI : MonoBehaviour
         statsText.text = "<color=#FFB347><b>Puissance " + GameState.Fmt(GameState.Power()) + "</b></color>\nATQ " + GameState.Fmt(GameState.TotalAtk()) + "   PV " + GameState.Fmt(GameState.TotalHp());
 
         forgeLevelText.text = "Forge niv. " + d.forgeLevel + (GameState.IsMaxLevel ? " (max)" : "");
+        // Bouton des chances : seulement le meilleur cercle possible
         var odds = GameState.CurrentOdds();
-        var sb = new System.Text.StringBuilder("<b>Chances</b>\n");
-        bool first = true;
-        for (int i = 0; i < odds.Length; i++)
-        {
-            if (odds[i] <= 0f) continue;
-            if (!first) sb.Append("\n");
-            first = false;
-            sb.Append("<color=#" + ColorUtility.ToHtmlStringRGB(GameState.CircleColors[i]) + ">" + GameState.CircleNames[i] + " " + odds[i].ToString("0.##") + "%</color>");
-        }
-        oddsText.text = sb.ToString();
+        int best = 0;
+        for (int i = 0; i < odds.Length; i++) if (odds[i] > 0f) best = i;
+        oddsText.text = "Chances <color=#9FC8FF>(?)</color>\n<color=" + Hex(GameState.CircleColors[best]) + ">" + GameState.CircleNames[best] + " " + odds[best].ToString("0.##") + "%</color>";
 
         for (int i = 0; i < GameState.SlotCount; i++)
         {
@@ -605,7 +606,7 @@ public partial class ForgeUI : MonoBehaviour
         {
             upgradeBtn.interactable = d.gold >= GameState.NodeCost;
             string nodes = GameState.NodesNeeded > 1 ? " (" + (d.nodesPaid + 1) + "/" + GameState.NodesNeeded + ")" : "";
-            upgradeText.text = "Améliorer" + nodes + "\n<size=24>" + GameState.Fmt(GameState.NodeCost) + " or · " + GameState.FmtTime(GameState.UpgradeDuration) + "</size>";
+            upgradeText.text = "Améliorer" + nodes + "\n<size=26>" + GameState.Fmt(GameState.NodeCost) + " or</size>";
             speedUpBtn.gameObject.SetActive(false);
         }
     }
