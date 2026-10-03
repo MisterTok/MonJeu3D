@@ -46,3 +46,11 @@ Décor du chemin en KayKit Dungeon Remastered, icônes 2D peintes (packs payants
 - Faire compiler : donner le focus à Unity puis menu Assets > Refresh. Le clavier tactile Windows (textinputhost) passe souvent devant : demander l'accès computer-use à Unity ET à textinputhost.exe, puis cliquer dans Unity. Ne PAS utiliser open_application (relance un 2e Unity qui écrase Editor.log).
 - Vérifier la compilation : date de Library/ScriptAssemblies/Assembly-CSharp.dll + `strings Editor.log | grep "error CS"`.
 - Tester : Play, puis écrire dans C:\jeu\_dl\shot_request un nom → capture PNG plein écran dans C:\jeu\_dl\ (commandes de test : « forge », « item6 », « discard », « tickets » = +5000 tickets, « equipall6 » = équipe les 8 emplacements au cercle 6 — écrase l'équipement de la sauvegarde). Stager le PNG pour le regarder.
+
+## Personnages 2D (sprites Craftpix achetés, style Forge Master)
+- Source : C:\Users\pierr\MyBrute\MyBrute project\Assets (_Project/Art/Characters/* et sprites/character/skeleton_crusader). Licence Craftpix : usage dans le jeu OK, redistribution interdite.
+- Tools/make_sprite_sheets.py (à lancer dans le VM avec le dossier Assets de MyBrute monté) génère Assets/Resources/ForgeSprites/<Perso>/{idle,move,attack,death}.png + meta.json (cellules, pivot aux pieds, idleH = 240 px).
+- ForgeSprites est dans .gitignore (dépôt public) : sans ces fichiers, BattleWorld retombe sur les modèles 3D KayKit.
+- SpriteChar.cs : sprite face caméra (inclinaison CamPitch 37°), ombre au sol, flash rouge à l'impact, fondu à la mort ; sans animation de marche, petits bonds. Les planches regardent à droite, les ennemis sont retournés (flipX).
+- Assets/Editor/ForgeSpritePostprocessor.cs : import en Sprite sans mipmaps ni redimensionnement.
+- BattleWorld : héros Valkyrie_1 (1,55), ennemis 1,45 (boss ×1,7), SpriteCircleEnemies par cercle, SpriteAlias pour les anciens noms (missions, donjons).

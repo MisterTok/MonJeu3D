@@ -17,6 +17,7 @@ public class BattleWorld : MonoBehaviour
         public string path; public float height; public float fly;
         public string[] idle, move, attack, death;
         public string weapon;   // arme KayKit tenue en main droite (squelettes)
+        public string sprite;   // personnage 2D (Resources/ForgeSprites) à la place du modèle 3D
         public EnemyDef(string p, float h, float f, string[] i, string[] m, string[] a, string[] d, string w = null) { path = p; height = h; fly = f; idle = i; move = m; attack = a; death = d; weapon = w; }
         public bool Kit => path.StartsWith("KayKit/");
     }
@@ -46,6 +47,62 @@ public class BattleWorld : MonoBehaviour
         { "Dragon", new EnemyDef("Characters/Dragon", 1.6f, 0.5f, new[]{"Flying"}, new[]{"Flying"}, AttackK, DeathK) },
     };
 
+    // ---------- Personnages 2D (sprites Craftpix, style Forge Master) ----------
+    public const float CamPitch = 37f;
+    const string HeroSprite = "Valkyrie_1";
+    static readonly string[] SprIdle = { "idle" }, SprMove = { "move" }, SprAttack = { "attack" }, SprDeath = { "death" };
+    static readonly Dictionary<string, EnemyDef> SpriteDefs = new Dictionary<string, EnemyDef>();
+    // Anciens noms (missions, donjons) -> personnage 2D.
+    static readonly Dictionary<string, string> SpriteAlias = new Dictionary<string, string>
+    {
+        { "Rat", "Forest_Ranger_1" }, { "Spider", "Seer_1" }, { "Snake", "Bloody_Alchemist_1" }, { "SnakeAngry", "Bloody_Alchemist_3" },
+        { "Wasp", "Dark_Oracle_1" }, { "Bat", "Dark_Oracle_2" }, { "Frog", "Forest_Ranger_2" }, { "Slime", "Seer_2" },
+        { "Skeleton", "Skeleton_Crusader_1" }, { "Zombie", "Skeleton_Crusader_2" }, { "SkelRogue", "Reaper_Man_1" },
+        { "SkelMage", "Necromancer_of_the_Shadow_1" }, { "Dragon", "Reaper_Man_3" },
+    };
+    static readonly string[][] SpriteCircleEnemies =
+    {
+        new[]{ "Skeleton_Crusader_1", "Forest_Ranger_1", "Bloody_Alchemist_1", "Valkyrie_2" },
+        new[]{ "Skeleton_Crusader_1", "Seer_1", "Forest_Ranger_2", "Dark_Oracle_1" },
+        new[]{ "Skeleton_Crusader_2", "Bloody_Alchemist_2", "Seer_2", "Necromancer_of_the_Shadow_1" },
+        new[]{ "Skeleton_Crusader_2", "Forest_Ranger_3", "Dark_Oracle_2", "Reaper_Man_1" },
+        new[]{ "Skeleton_Crusader_3", "Seer_3", "Bloody_Alchemist_3", "Valkyrie_3" },
+        new[]{ "Skeleton_Crusader_3", "Necromancer_of_the_Shadow_2", "Dark_Oracle_3", "Reaper_Man_2" },
+        new[]{ "Skeleton_Crusader_1", "Reaper_Man_1", "Necromancer_of_the_Shadow_1", "Necromancer_of_the_Shadow_3" },
+        new[]{ "Skeleton_Crusader_2", "Reaper_Man_2", "Dark_Oracle_3", "Seer_3" },
+        new[]{ "Skeleton_Crusader_3", "Necromancer_of_the_Shadow_3", "Reaper_Man_2", "Reaper_Man_3" },
+        new[]{ "Skeleton_Crusader_3", "Reaper_Man_3", "Necromancer_of_the_Shadow_2", "Dark_Oracle_3" },
+    };
+    static bool? spritesOn;
+    static bool SpritesOn => spritesOn ?? (spritesOn = SpriteChar.Has(HeroSprite)).Value;
+
+    static EnemyDef GetDef(string key)
+    {
+        if (SpritesOn)
+        {
+            string sk = SpriteAlias.TryGetValue(key, out var a) ? a : key;
+            if (SpriteChar.Has(sk))
+            {
+                if (!SpriteDefs.TryGetValue(sk, out var d))
+                    SpriteDefs[sk] = d = new EnemyDef("", 1.45f, 0f, SprIdle, SprMove, SprAttack, SprDeath) { sprite = sk };
+                return d;
+            }
+        }
+        return Defs.TryGetValue(key, out var def) ? def : Defs["Skeleton"];
+    }
+
+    // Nom logique d'animation pour un personnage 2D.
+    static string Logical(string[] keys)
+    {
+        if (keys == HeroIdle) return "idle";
+        if (keys == HeroRun) return "move";
+        if (keys == HeroAttack) return "attack";
+        if (keys == HeroDeath) return "death";
+        return keys[0];
+    }
+
+    static float SpriteFps(string k) => k == "attack" ? 22f : k == "death" ? 20f : k == "move" ? 22f : 14f;
+
     // Ennemis par cercle : trois communs puis le boss.
     static readonly string[][] CircleEnemies =
     {
@@ -65,6 +122,7 @@ public class BattleWorld : MonoBehaviour
     {
         public GameObject go;
         public AnimPlayer anim;
+        public SpriteChar spr;
         public EnemyDef def;
         public bool boss, dead;
         public double hp, maxHp, atk;
@@ -331,6 +389,8 @@ public class BattleWorld : MonoBehaviour
     void SpawnHero()
     {
         hero = new Fighter();
+        hero.spr = SpritesOn ? SpriteChar.Spawn(HeroSprite, 1.55f, world, false, CamPitch) : null;
+        if (hero.spr != null) { hero.go = hero.spr.gameObject; return; }
         hero.go = ModelLib.SpawnKit("KayKit/Characters/Knight", 1.75f, world, KnightHide);
         hero.go.transform.localRotation = Quaternion.Euler(0, HeroYaw, 0);
         hero.anim = AnimPlayer.Attach(hero.go);
@@ -478,9 +538,19 @@ public class BattleWorld : MonoBehaviour
 
     Fighter SpawnEnemy(string key, float x, bool boss)
     {
-        var def = Defs[key];
+        var def = GetDef(key);
         var f = new Fighter { def = def, boss = boss };
         float h = def.height * (boss ? 1.7f : 1f);
+        if (def.sprite != null) f.spr = SpriteChar.Spawn(def.sprite, h, world, true, CamPitch);
+        if (f.spr != null)
+        {
+            f.go = f.spr.gameObject;
+            f.go.transform.localPosition = new Vector3(x, 0f, 0f);
+            f.halfLen = f.spr.HalfWidth * 0.85f;
+            f.spr.SetTint(Color.Lerp(Color.white, circleTint, boss ? 0.3f : 0.12f));
+        }
+        else
+        {
         f.go = def.Kit ? ModelLib.SpawnKit(def.path, h, world) : ModelLib.Spawn(def.path, h, world);
         f.go.transform.localPosition = new Vector3(x, def.fly, 0f);
         f.go.transform.localRotation = Quaternion.Euler(0, EnemyYaw, 0);
@@ -500,6 +570,7 @@ public class BattleWorld : MonoBehaviour
             f.halfLen = Mathf.Clamp(bb.extents.x, 0.2f, 1.2f);
         }
         f.anim = AnimPlayer.Attach(f.go);
+        }
         if (missionSlot >= 0)
         {
             f.maxHp = f.hp = GameState.MissionUnitHp(missionSlot) * missionMult;
@@ -524,6 +595,14 @@ public class BattleWorld : MonoBehaviour
 
     void Play(Fighter f, string[] keys, bool loop, bool force = false)
     {
+        if (f.spr != null)
+        {
+            string lk = Logical(keys);
+            if (!force && loop && f.state == lk) return;
+            f.state = lk;
+            f.spr.Play(lk, loop, SpriteFps(lk));
+            return;
+        }
         if (f.anim == null) return;
         string k = keys[0];
         if (!force && loop && f.state == k) return;
@@ -625,7 +704,7 @@ public class BattleWorld : MonoBehaviour
             waveSpawned = true;
             return;
         }
-        var pool = CircleEnemies[GameState.StageCircle];
+        var pool = (SpritesOn ? SpriteCircleEnemies : CircleEnemies)[GameState.StageCircle];
         bool bossWave = GameState.IsBossStage && wave == waveCount - 1;
         if (bossWave) { SpawnEnemy(pool[3], x, true); }
         else
@@ -710,7 +789,8 @@ public class BattleWorld : MonoBehaviour
                 if (phase == "walk" && !waveSpawned) SpawnWave();
             }
 
-            bool engaged = front != null && front.X - hero.X <= Engage + front.halfLen + 0.05f;
+            float gap = hero.spr != null ? Engage + 0.3f : Engage;
+            bool engaged = front != null && front.X - hero.X <= gap + front.halfLen + 0.05f;
             heroEngaged = engaged;
             if (!engaged)
             {
@@ -742,14 +822,15 @@ public class BattleWorld : MonoBehaviour
 
         // Ennemis
         int idx = 0;
-        float queueX = hero.X + Engage;
+        float queueX = hero.X + (hero.spr != null ? Engage + 0.3f : Engage);
         for (int i = 0; i < enemies.Count; i++)
         {
             var e = enemies[i];
             if (e.dead)
             {
                 e.deathTimer += dt;
-                if (e.deathTimer > 0.9f)
+                if (e.spr != null) e.spr.Alpha = Mathf.Clamp01(1f - (e.deathTimer - 1.2f));
+                else if (e.deathTimer > 0.9f)
                 {
                     var p = e.go.transform.localPosition;
                     p.y -= dt * 0.8f;
@@ -759,7 +840,7 @@ public class BattleWorld : MonoBehaviour
                 continue;
             }
             float target = queueX + e.halfLen;
-            queueX = target + e.halfLen + 0.35f;
+            queueX = target + e.halfLen + (e.spr != null ? 0.55f : 0.35f);
             if (e.X > target + 0.02f)
             {
                 e.X = Mathf.Max(target, e.X - EnemySpeed * dt);
@@ -793,7 +874,7 @@ public class BattleWorld : MonoBehaviour
         // Vue de trois quarts, comme dans Forge Master : le héros à gauche, les ennemis arrivent par la droite.
         var camPos = world.TransformPoint(new Vector3(hero.X + 2.4f, 8.2f, -9.4f));
         cam.transform.position = camPos;
-        cam.transform.rotation = Quaternion.Euler(37f, 0f, 0f);
+        cam.transform.rotation = Quaternion.Euler(CamPitch, 0f, 0f);
         rigLight.transform.position = world.TransformPoint(new Vector3(hero.X + 1.5f, 3.2f, -2.4f));
 
         UpdateOverlay(dt);
@@ -812,6 +893,7 @@ public class BattleWorld : MonoBehaviour
         bool crit = Random.value < GameState.CritChance;
         double dmg = hero.atk * Random.Range(0.9f, 1.1f) * (crit ? GameState.CritMult : 1.0);
         target.hp -= dmg;
+        if (target.spr != null) target.spr.Flash();
         float h = target.def.height * (target.boss ? 1.7f : 1f) + target.def.fly * 0.2f + (isDouble ? 0.35f : 0f);
         string label = (isDouble ? "DOUBLE " : "") + (crit ? "CRITIQUE " : "") + GameState.Fmt(dmg);
         ShowPopup(target.go.transform.position + Vector3.up * h, label,
@@ -832,7 +914,9 @@ public class BattleWorld : MonoBehaviour
     {
         target.dead = true;
         target.hp = 0;
-        float d = target.anim != null ? target.anim.Play(target.def.death, false, 0.1f) : 0f;
+        target.state = "death";
+        float d = target.spr != null ? target.spr.Play("death", false, SpriteFps("death"))
+                : target.anim != null ? target.anim.Play(target.def.death, false, 0.1f) : 0f;
         if (d <= 0f) target.go.transform.localRotation = Quaternion.Euler(0, EnemyYaw, 80f);
         long gold = GameState.KillGold(target.boss);
         GameState.AddGold(gold);
@@ -850,12 +934,14 @@ public class BattleWorld : MonoBehaviour
         }
         double dmg = e.atk * Random.Range(0.9f, 1.1f);
         hero.hp -= dmg;
+        if (hero.spr != null) hero.spr.Flash();
         ShowPopup(hero.go.transform.position + Vector3.up * 1.9f, "-" + GameState.Fmt(dmg), new Color(1f, 0.35f, 0.3f), 32);
         if (hero.hp <= 0)
         {
             hero.hp = 0;
             hero.dead = true;
-            if (hero.anim != null) hero.anim.Play(HeroDeath, false, 0.1f);
+            if (hero.spr != null) hero.spr.Play("death", false, SpriteFps("death"));
+            else if (hero.anim != null) hero.anim.Play(HeroDeath, false, 0.1f);
             hero.state = "dead";
             phase = "dead";
             ResetSkills();
@@ -1076,6 +1162,7 @@ public class BattleWorld : MonoBehaviour
         if (target == null || target.dead) return;
         dmg *= Random.Range(0.95f, 1.05f);
         target.hp -= dmg;
+        if (target.spr != null) target.spr.Flash();
         float h = target.def.height * (target.boss ? 1.7f : 1f) + target.def.fly * 0.2f + 0.5f;
         ShowPopup(target.go.transform.position + Vector3.up * h, GameState.Fmt(dmg), Color.Lerp(c, Color.white, 0.2f), 42);
         if (target.hp <= 0) KillEnemy(target);
@@ -1188,7 +1275,7 @@ public class BattleWorld : MonoBehaviour
 
     void PlaceBar(Bar b, Fighter f, Color col, float width)
     {
-        float h = f == hero ? 1.75f : f.def.height * (f.boss ? 1.7f : 1f) + f.def.fly;
+        float h = f == hero ? (hero.spr != null ? 1.55f : 1.75f) : f.def.height * (f.boss ? 1.7f : 1f) + f.def.fly;
         Vector2 local;
         bool ok = ToLocal(f.go.transform.position + Vector3.up * (f == hero ? h : h - f.def.fly + 0.15f + f.def.fly), out local);
         b.root.gameObject.SetActive(ok);
