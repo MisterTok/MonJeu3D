@@ -823,7 +823,7 @@ public class BattleWorld : MonoBehaviour
                         long shellsBefore = GameState.Data.eggshells;
                         int gems = GameState.StageCleared();
                         long shells = GameState.Data.eggshells - shellsBefore;
-                        ShowBanner("Étape réussie !  +" + gems + " gemmes" + (shells > 0 ? "  +" + shells + " coquilles" : ""), new Color(1f, 0.85f, 0.35f));
+                        ShowBanner("Étape réussie !" + (gems > 0 ? "  +" + gems + " gemmes" : "") + (shells > 0 ? "  +" + shells + " coquilles" : ""), new Color(1f, 0.85f, 0.35f));
                         phase = "clear";
                         pauseTimer = 1.6f;
                     }

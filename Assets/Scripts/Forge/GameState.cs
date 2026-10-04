@@ -63,7 +63,7 @@ public class SaveData
 {
     public int version = 1;
     public long gold;
-    public long gems = 300;
+    public long gems = 30;   // comme Forge Master : 30 gemmes au départ
     public int hammers = 60;
     public long lastHammerTicks;
     public int forgeLevel = 1;
@@ -630,7 +630,7 @@ public static class GameState
         return Math.Max(0, (inc.endTicks - DateTime.UtcNow.Ticks) / TimeSpan.TicksPerSecond);
     }
 
-    public static int IncubatorSpeedUpCost(int slot) => Math.Max(1, (int)Math.Ceiling(IncubatorSecondsLeft(slot) / 180.0));
+    public static int IncubatorSpeedUpCost(int slot) => Math.Max(1, (int)Math.Ceiling(IncubatorSecondsLeft(slot) * 0.001)); // 0,001 gemme/s (Forge Master)
 
     public static bool SpeedUpIncubator(int slot)
     {
@@ -1385,8 +1385,8 @@ public static class GameState
 
     public static int StageCleared()
     {
-        int gems = IsBossStage ? 20 : 2;
-        Data.gems += gems;
+        // Comme Forge Master : les étapes ne donnent pas de gemmes (elles viennent du pass, du cadeau du jour et des offres).
+        int gems = 0;
         if (IsBossStage && Data.stage >= Data.bestStage) { Data.eggshells += BossShellReward; Data.winders += BossWinderReward; Data.skillTickets += BossTicketReward; }
         Data.stage = Math.Min(MaxStage, Data.stage + 1);
         Data.bestStage = Math.Max(Data.bestStage, Data.stage);
