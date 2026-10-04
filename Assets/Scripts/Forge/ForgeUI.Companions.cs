@@ -85,6 +85,7 @@ public partial class ForgeUI
     {
         var got = GameState.SummonEggs(count);
         if (got == null) { Toast("Pas assez de coquilles"); return; }
+        Sfx.Summon();
         var sb = new System.Text.StringBuilder("Œufs : ");
         bool first = true;
         for (int r = 5; r >= 0; r--)

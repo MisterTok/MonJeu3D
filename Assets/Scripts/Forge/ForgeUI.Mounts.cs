@@ -49,7 +49,7 @@ public partial class ForgeUI
 
     void OnSummonMounts(int count)
     {
-        if (GameState.SummonMounts(count) == null) Toast("Pas assez de remontoirs");
+        if (GameState.SummonMounts(count) == null) Toast("Pas assez de remontoirs"); else Sfx.Summon();
         RefreshMounts();
     }
 

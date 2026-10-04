@@ -465,6 +465,7 @@ public class ForgeWorld : MonoBehaviour
         var sm = sparks.main;
         sm.startColor = new Color(c.r * 2f, c.g * 2f, c.b * 2f, 1f);
         sparks.Emit(30);
+        Sfx.Anvil(0.6f);
         flashLight.intensity = 12f;
         shake = 0.3f;
         yield return Rotate(hammerPivot, 10f, -55f, 0.15f);
@@ -487,6 +488,7 @@ public class ForgeWorld : MonoBehaviour
             yield return Rotate(hammerPivot, -55f, -80f, 0.18f);
             yield return Rotate(hammerPivot, -80f, 10f, 0.08f);
             sparks.Emit(rare ? 60 : 35);
+            Sfx.Anvil(rare ? 1f : 0.8f);
             flashLight.intensity = 18f;
             shake = rare ? 0.9f : 0.5f;
             yield return Rotate(hammerPivot, 10f, -55f, 0.2f);
@@ -500,6 +502,7 @@ public class ForgeWorld : MonoBehaviour
         var bmain = burst.main;
         bmain.startColor = new Color(c.r * 2f, c.g * 2f, c.b * 2f, 1f);
         burst.Emit(30 + item.circle * 25);
+        Sfx.Reveal(item.circle);
 
         float t = 0f;
         while (t < 1f)
@@ -576,6 +579,7 @@ public class ForgeWorld : MonoBehaviour
 
     public void CelebrateLevelUp()
     {
+        Sfx.Fanfare();
         var bmain = burst.main;
         bmain.startColor = new Color(3f, 1.4f, 0.3f, 1f);
         burst.Emit(150);

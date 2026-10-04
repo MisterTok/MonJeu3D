@@ -57,7 +57,7 @@ public partial class ForgeUI
 
     void OnSummonSkills(int count)
     {
-        if (GameState.SummonSkills(count) == null) Toast("Pas assez de tickets");
+        if (GameState.SummonSkills(count) == null) Toast("Pas assez de tickets"); else Sfx.Summon();
         RefreshSkills();
     }
 

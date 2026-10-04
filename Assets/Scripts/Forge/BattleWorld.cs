@@ -822,6 +822,7 @@ public class BattleWorld : MonoBehaviour
                     {
                         long shellsBefore = GameState.Data.eggshells;
                         int gems = GameState.StageCleared();
+                        Sfx.Fanfare();
                         long shells = GameState.Data.eggshells - shellsBefore;
                         ShowBanner("Étape réussie !" + (gems > 0 ? "  +" + gems + " gemmes" : "") + (shells > 0 ? "  +" + shells + " coquilles" : ""), new Color(1f, 0.85f, 0.35f));
                         phase = "clear";
@@ -936,6 +937,7 @@ public class BattleWorld : MonoBehaviour
         double dmg = hero.atk * Random.Range(0.9f, 1.1f) * (crit ? GameState.CritMult : 1.0);
         target.hp -= dmg;
         if (target.spr != null) target.spr.Flash();
+        if (crit) Sfx.Crit(); else Sfx.Hit();
         float h = target.def.height * (target.boss ? 1.7f : 1f) + target.def.fly * 0.2f + (isDouble ? 0.35f : 0f);
         string label = (isDouble ? "DOUBLE " : "") + (crit ? "CRITIQUE " : "") + GameState.Fmt(dmg);
         ShowPopup(target.go.transform.position + Vector3.up * h, label,
@@ -960,6 +962,7 @@ public class BattleWorld : MonoBehaviour
         float d = target.spr != null ? target.spr.Play("death", false, SpriteFps("death"))
                 : target.anim != null ? target.anim.Play(target.def.death, false, 0.1f) : 0f;
         if (d <= 0f) target.go.transform.localRotation = Quaternion.Euler(0, EnemyYaw, 80f);
+        Sfx.Coin();
         long gold = GameState.KillGold(target.boss);
         GameState.AddGold(gold);
         ShowPopup(target.go.transform.position + Vector3.up * 0.4f, "+" + GameState.Fmt(gold) + " or", new Color(1f, 0.82f, 0.3f), 34);
@@ -972,11 +975,13 @@ public class BattleWorld : MonoBehaviour
         if (Random.value < GameState.BlockChance)
         {
             ShowPopup(hero.go.transform.position + Vector3.up * 1.9f, "BLOQUÉ", new Color(0.7f, 0.85f, 1f), 30);
+            Sfx.Block();
             return;
         }
         double dmg = e.atk * Random.Range(0.9f, 1.1f);
         hero.hp -= dmg;
         if (hero.spr != null) hero.spr.Flash();
+        Sfx.Hurt();
         ShowPopup(hero.go.transform.position + Vector3.up * 1.9f, "-" + GameState.Fmt(dmg), new Color(1f, 0.35f, 0.3f), 32);
         if (hero.hp <= 0)
         {
@@ -1139,6 +1144,7 @@ public class BattleWorld : MonoBehaviour
     void Cast(SkillSlot sl, SkillData.SkillDef def, OwnedSkill own)
     {
         sl.cd = def.cooldown;
+        Sfx.Cast();
         Vector3 heroPos = hero.go.transform.position;
         ShowPopup(heroPos + Vector3.up * 2.7f, def.name, Color.Lerp(def.color, Color.white, 0.3f), 30);
         double dmg = GameState.SkillDamage(own);

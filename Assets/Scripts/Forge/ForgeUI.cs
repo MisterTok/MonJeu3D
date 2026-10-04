@@ -94,6 +94,7 @@ public partial class ForgeUI : MonoBehaviour
         colors.pressedColor = new Color(0.75f, 0.75f, 0.75f);
         colors.disabledColor = new Color(0.45f, 0.45f, 0.45f, 0.8f);
         b.colors = colors;
+        b.onClick.AddListener(Sfx.Click);
         b.onClick.AddListener(onClick);
         // Liseré
         var outline = img.gameObject.AddComponent<Outline>();
@@ -271,11 +272,17 @@ public partial class ForgeUI : MonoBehaviour
         card.gameObject.AddComponent<Outline>().effectColor = new Color(0.5f, 0.2f, 0.08f);
         statsPanelText = Label(card.transform, "", 36, TextAnchor.UpperLeft, TextMain, Vector2.zero, Vector2.one, new Vector2(44, 30), new Vector2(-44, -30));
         statsPanelText.lineSpacing = 1.15f;
+        MakeButton(P, "Son", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-260, 24), new Vector2(-24, 84),
+            new Color(0.25f, 0.12f, 0.1f), "", 26, out soundText, () => { GameState.Data.muted = !GameState.Data.muted; GameState.Save(); RefreshSoundButton(); });
+        RefreshSoundButton();
         Text resetT;
         MakeButton(P, "Reset", new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(24, 24), new Vector2(200, 84),
             new Color(0.2f, 0.08f, 0.08f, 0.9f), "Reset (test)", 20, out resetT, () => { GameState.ResetAll(); world.DismissItem(false); HidePopup(); statsPanel.SetActive(false); });
         statsPanel.SetActive(false);
     }
+
+    Text soundText;
+    void RefreshSoundButton() { if (soundText != null) soundText.text = GameState.Data.muted ? "Son : coupé" : "Son : activé"; }
 
     void CloseAllPanels()
     {
@@ -348,6 +355,7 @@ public partial class ForgeUI : MonoBehaviour
 
     void OnEquip()
     {
+        Sfx.Equip();
         long g = GameState.EquipPending();
         world.DismissItem(true);
         HidePopup();
@@ -356,6 +364,7 @@ public partial class ForgeUI : MonoBehaviour
 
     void OnSell()
     {
+        Sfx.Coin();
         long g = GameState.SellPending();
         world.DismissItem(false);
         HidePopup();
