@@ -330,7 +330,7 @@ public partial class ForgeUI : MonoBehaviour
         popPills = MakePills(c, new Vector2(20, -380), new Vector2(-20, -236));
         popCompare = Label(c, "", 30, TextAnchor.UpperCenter, TextMain, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-20, -322));
         Text eqText;
-        MakeButton(c, "Equiper", new Vector2(0, 0), new Vector2(0.5f, 0), new Vector2(30, 30), new Vector2(-15, 170),
+        popEquipBtn = MakeButton(c, "Equiper", new Vector2(0, 0), new Vector2(0.5f, 0), new Vector2(30, 30), new Vector2(-15, 170),
             new Color(0.15f, 0.5f, 0.2f), "ÉQUIPER", 48, out eqText, OnEquip);
         MakeButton(c, "Vendre", new Vector2(0.5f, 0), new Vector2(1, 0), new Vector2(15, 30), new Vector2(-30, 170),
             new Color(0.5f, 0.14f, 0.1f), "", 40, out popSellText, OnSell);
@@ -382,6 +382,7 @@ public partial class ForgeUI : MonoBehaviour
     {
         toast.text = msg;
         toastTime = 2.2f;
+        toast.transform.SetAsLastSibling();   // au-dessus des panneaux
     }
 
     // ---------- Fenêtre de la nouvelle pièce ----------
@@ -401,6 +402,7 @@ public partial class ForgeUI : MonoBehaviour
 
         var cur = GameState.Data.equipped[it.slot];
         long pDiff = GameState.PowerIfEquipped(it) - GameState.Power();
+        popBetter = pDiff > 0 || !GameState.Data.equipped[it.slot].valid;
         string pCol = pDiff > 0 ? "#6EE07A" : pDiff < 0 ? "#FF6A5A" : "#CCCCCC";
         string pTxt = "Puissance <color=" + pCol + ">" + (pDiff > 0 ? "▲ +" : pDiff < 0 ? "▼ " : "= ") + GameState.Fmt(pDiff) + "</color>";
         if (!cur.valid)
@@ -416,6 +418,8 @@ public partial class ForgeUI : MonoBehaviour
     }
 
     Pills popPills;
+    Button popEquipBtn;
+    bool popBetter;
 
     static string SubsRich(Item it, string sep)
     {

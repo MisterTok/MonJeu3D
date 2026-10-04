@@ -186,7 +186,7 @@ public partial class ForgeUI
         for (int i = 0; i < 3; i++)
         {
             var p = GameState.FindPet(d.equippedPets[i]);
-            if (p == null) { SetEmptySlot(eqPetTile[i]); continue; }
+            if (p == null) { SetEmptySlot(eqPetTile[i]); LockSlot(eqPetTile[i], GameState.UnlockPetSlot[i]); continue; }
             var def = ProgressionData.Pets[p.id];
             var c = ProgressionData.RarityColors[def.rarity];
             SetTile(eqPetTile[i], def.rarity, ItemIcons.GetCreature(def.model, c, 0.12f), null, c, p.level, p.copies, GameState.CopiesForNext(p.level), false);

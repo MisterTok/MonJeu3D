@@ -127,6 +127,13 @@ public partial class ForgeUI
         tl.check.gameObject.SetActive(equipped);
     }
 
+    // Emplacement encore fermé : affiche l'étape qui l'ouvre.
+    void LockSlot(Tile tl, int stage)
+    {
+        if (GameState.Reached(stage)) return;
+        tl.glyph.text = "<size=26>étape\n" + (stage / 10 + 1) + "-" + (stage % 10 + 1) + "</size>";
+    }
+
     void SetEmptySlot(Tile tl)
     {
         tl.frame.color = new Color(0.3f, 0.18f, 0.14f);

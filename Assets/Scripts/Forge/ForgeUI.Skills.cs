@@ -87,7 +87,7 @@ public partial class ForgeUI
         {
             int id = d.equippedSkills[i];
             var s = GameState.FindSkill(id);
-            if (s == null) { SetEmptySlot(eqSkillTile[i]); continue; }
+            if (s == null) { SetEmptySlot(eqSkillTile[i]); LockSlot(eqSkillTile[i], GameState.UnlockSkillSlot[i]); continue; }
             var def = SkillData.Skills[id];
             SetTile(eqSkillTile[i], def.rarity, SkillData.Icon(id), KindGlyph[def.kind], SkillColor(def), s.level, s.copies, GameState.SkillCopiesForNext(s.level), false);
         }

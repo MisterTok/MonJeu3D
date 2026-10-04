@@ -85,7 +85,8 @@ public partial class ForgeUI
             dungInfo[i].text = "Niv. " + (lvl + 1) + "\n<color=#FFD27A>" + GameState.DungeonRewardText(i, lvl) + "</color>";
             dungKeys[i].text = "Clés  <b>" + d.dungeonKeys[i] + "/" + GameState.DungeonKeysPerDay + "</b>";
             dungBtn[i].interactable = GameState.CanEnterDungeon(i) && !battle.InDungeon;
-            dungBtnText[i].text = d.dungeonKeys[i] > 0 ? "ENTRER" : "DEMAIN";
+            dungBtnText[i].text = !GameState.Reached(GameState.UnlockDungeon[i]) ? "<size=24>Étape\n" + (GameState.UnlockDungeon[i] / 10 + 1) + "-" + (GameState.UnlockDungeon[i] % 10 + 1) + "</size>"
+                : d.dungeonKeys[i] > 0 ? "ENTRER" : "DEMAIN";
         }
         dungFooter.text = "Nouvelles clés dans " + GameState.FmtTime((long)GameState.TimeToKeyRefresh().TotalSeconds);
     }

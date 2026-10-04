@@ -74,6 +74,7 @@ public class ForgeGame : MonoBehaviour
             GameState.AddEggshells(0);
             return;
         }
+        if (name.StartsWith("best")) { int b = -1; int.TryParse(name.Substring(4), out b); GameState.TestBestOverride = name.Length > 4 ? b : -1; GameState.AddEggshells(0); return; } // outil de test : « best5 », « best » pour annuler
         if (name == "tickets") { GameState.Data.skillTickets += 5000; GameState.AddEggshells(0); return; } // outil de test : tickets de compétences
         if (name.StartsWith("forge")) { GameState.Data.hammers = Mathf.Max(GameState.Data.hammers, 1); FindAnyObjectByType<ForgeUI>()?.SendMessage("OnForge"); return; }
         ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(dir, name + ".png"));

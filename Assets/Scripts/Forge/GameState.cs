@@ -551,7 +551,12 @@ public static class GameState
         int idx = Array.IndexOf(Data.equippedPets, id);
         if (idx >= 0) { Data.equippedPets[idx] = -1; Notify(); return null; }
         int free = Array.IndexOf(Data.equippedPets, -1);
-        if (free < 0) return "3 compagnons maximum : retires-en un d'abord";
+        int open = SlotsOpen(UnlockPetSlot);
+        if (free < 0 || free >= open)
+        {
+            for (int i = 0; i < 3; i++) if (!Reached(UnlockPetSlot[i])) return open + " emplacement(s) ouvert(s) : le suivant à l'étape " + StageName(UnlockPetSlot[i]);
+            return "3 compagnons maximum : retires-en un d'abord";
+        }
         Data.equippedPets[free] = id;
         Notify();
         return null;
@@ -672,7 +677,7 @@ public static class GameState
             RollSubsInto(ProgressionData.PetSubCount[rarity], out owned.subs, out owned.subVals);
             Data.pets.Add(owned);
             int free = Array.IndexOf(Data.equippedPets, -1);
-            if (free >= 0) Data.equippedPets[free] = id;
+            if (free >= 0 && free < SlotsOpen(UnlockPetSlot)) Data.equippedPets[free] = id;
             msg = "Nouveau compagnon : " + def.name + " (" + ProgressionData.Rarities[rarity] + ") !";
         }
         else
@@ -836,7 +841,12 @@ public static class GameState
         int idx = Array.IndexOf(Data.equippedSkills, id);
         if (idx >= 0) { Data.equippedSkills[idx] = -1; Notify(); return null; }
         int free = Array.IndexOf(Data.equippedSkills, -1);
-        if (free < 0) return "3 compétences maximum : retires-en une d'abord";
+        int open = SlotsOpen(UnlockSkillSlot);
+        if (free < 0 || free >= open)
+        {
+            for (int i = 0; i < 3; i++) if (!Reached(UnlockSkillSlot[i])) return open + " emplacement(s) ouvert(s) : le suivant à l'étape " + StageName(UnlockSkillSlot[i]);
+            return "3 compétences maximum : retires-en une d'abord";
+        }
         Data.equippedSkills[free] = id;
         Notify();
         return null;
@@ -1335,7 +1345,7 @@ public static class GameState
     public static double DungeonEnemyHp(int type, double mult) => 30 * Math.Pow(1.16, DungeonEquivalentStage(type)) * mult;
     public static double DungeonEnemyAtk(int type, double mult) => 5 * Math.Pow(1.16, DungeonEquivalentStage(type)) * mult;
 
-    public static bool CanEnterDungeon(int type) => Data.dungeonKeys[type] > 0 && Data.dungeonLevel[type] <= DungeonMaxLevel;
+    public static bool CanEnterDungeon(int type) => Reached(UnlockDungeon[type]) && Data.dungeonKeys[type] > 0 && Data.dungeonLevel[type] <= DungeonMaxLevel;
 
     // Victoire : la clé n'est consommée qu'à la réussite, la récompense tombe et le niveau du donjon augmente.
     public static string DungeonWon(int type)
@@ -1356,6 +1366,16 @@ public static class GameState
     }
 
     // ---------- Combat : le chemin des Enfers ----------
+    // ---------- Déblocages progressifs (UnlockConditions de Forge Master, 20 combats par âge -> 10 étapes par cercle) ----------
+    public const int UnlockShop = 10, UnlockDungeons = 14, UnlockSkills = 17, UnlockPets = 20, UnlockMounts = 24, UnlockTech = 30;
+    public static readonly int[] UnlockDungeon = { 14, 20, 30, 17 };   // marteau, œufs, potions, compétences
+    public static readonly int[] UnlockSkillSlot = { 17, 30, 40 };
+    public static readonly int[] UnlockPetSlot = { 20, 34, 50 };
+    public static int TestBestOverride = -1;   // outil de test (non sauvegardé) : simule une progression
+    public static bool Reached(int stage) => (TestBestOverride >= 0 ? TestBestOverride : Data.bestStage) >= stage;
+    public static string UnlockText(int stage) => "Débloqué à l'étape " + StageName(stage);
+    public static int SlotsOpen(int[] table) { int n = 0; foreach (int s in table) if (Reached(s)) n++; return n; }
+
     public const int StagesPerCircle = 10;
     public const int MaxStage = 99;
     public static int StageCircle => Mathf.Clamp(Data.stage / StagesPerCircle, 0, 9);
