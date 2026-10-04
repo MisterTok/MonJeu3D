@@ -125,7 +125,7 @@ public partial class ForgeUI
         if (p == null) { ShowDetail(def.name, def.rarity, icon, null, c, -1, 0, 0, null, null, null); return; }
         string body = "ATQ <color=#FFC07A>+" + GameState.Fmt(GameState.PetDamage(p)) + "</color>     PV <color=#FFC07A>+" + GameState.Fmt(GameState.PetHealth(p)) + "</color>";
         if (p.subs != null)
-            for (int i = 0; i < p.subs.Length; i++) body += "\n<color=#BFD8FF>+" + GameState.FmtPct(p.subVals[i]) + " " + GameState.SubNames[p.subs[i]] + "</color>";
+            for (int i = 0; i < p.subs.Length; i++) body += "\n" + SubRich(p.subs[i], p.subVals[i]);
         bool eq = GameState.IsPetEquipped(id);
         ShowDetail(def.name, def.rarity, icon, null, c, p.level, p.copies, GameState.CopiesForNext(p.level), body,
             eq ? "RETIRER" : "ÉQUIPER", () => { string e = GameState.TogglePetEquip(id); if (e != null) Toast(e); RefreshCompanions(); },

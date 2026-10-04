@@ -145,32 +145,7 @@ public partial class ForgeUI : MonoBehaviour
         var gemBox = Box(top.transform, "Gemmes", new Vector2(0.75f, 0.5f), new Vector2(1f, 0.5f), new Vector2(8, -30), new Vector2(-18, 30), new Color(0, 0, 0, 0.6f));
         gemText = Label(gemBox.transform, "", 36, TextAnchor.MiddleRight, new Color(0.5f, 0.9f, 1f), Vector2.zero, Vector2.one, new Vector2(10, 0), new Vector2(-14, 0));
 
-        // ----- Barre de navigation (emplacements pour la suite) -----
-        var nav = Box(R, "Navigation", new Vector2(0, 0), new Vector2(1, 0), Vector2.zero, new Vector2(0, 150), new Color(0.07f, 0.04f, 0.05f, 0.97f));
-        string[] navNames = { "Héros", "Donjons", "Compa-\ngnons", "Montures", "Compé-\ntences", "Techno", "Missions", "Boutique" };
-        int navCount = navNames.Length;
-        for (int i = 0; i < navCount; i++)
-        {
-            Text nt;
-            int idx = i;
-            MakeButton(nav.transform, navNames[i], new Vector2(i / (float)navCount, 0), new Vector2((i + 1) / (float)navCount, 1), new Vector2(3, 12), new Vector2(-3, -12),
-                new Color(0.32f, 0.13f, 0.1f), navNames[i], 21, out nt, () =>
-                {
-                    if (idx != 4 && skillPanel != null) skillPanel.SetActive(false);
-                    if (idx != 7 && shopPanel != null) shopPanel.SetActive(false);
-                    if (idx != 6 && missionPanel != null) missionPanel.SetActive(false);
-                    if (passPanel != null) passPanel.SetActive(false);
-                    if (idx == 0) ToggleStats();
-                    else if (idx == 1) ToggleDungeons();
-                    else if (idx == 2) ToggleCompanions();
-                    else if (idx == 3) { if (mountPanel.activeSelf) mountPanel.SetActive(false); else ToggleMounts(); }
-                    else if (idx == 4) ToggleSkills();
-                    else if (idx == 5) ToggleTech();
-                    else if (idx == 6) ToggleMissions();
-                    else if (idx == 7) ToggleShop();
-                    else Toast(navNames[idx].Replace("\n", "") + " : bientôt !");
-                });
-        }
+        BuildNav(R);
 
         // ----- Rangée de la forge : enclume tactile au centre, niveau de forge à droite -----
         var forgeRow = MakeRect("Rangée forge", R, new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 165), new Vector2(0, 520));
@@ -233,6 +208,7 @@ public partial class ForgeUI : MonoBehaviour
         BuildShopPanel(R);
         BuildMissionPanel(R);
         BuildPassPanel(R);
+        BuildSubTabs(R);
         BuildDetailPopup(R);
 
         toast = Label(R, "", 40, TextAnchor.MiddleCenter, new Color(1f, 0.85f, 0.4f), new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 860), new Vector2(0, 930));
@@ -283,19 +259,21 @@ public partial class ForgeUI : MonoBehaviour
 
     void BuildStatsPanel(Transform R)
     {
-        statsPanel = MakeRect("Fiche du héros", R, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero).gameObject;
-        var shade = Box(statsPanel.transform, "Voile", Vector2.zero, Vector2.one, new Vector2(0, 150), new Vector2(0, -130), new Color(0, 0, 0, 0.6f));
-        shade.raycastTarget = true;
-        var frame = Box(statsPanel.transform, "Cadre", new Vector2(0.07f, 0.2f), new Vector2(0.93f, 0.85f), Vector2.zero, Vector2.zero, Ember);
-        var inner = Box(frame.transform, "Carte", Vector2.zero, Vector2.one, new Vector2(6, 6), new Vector2(-6, -6), new Color(0.07f, 0.035f, 0.035f, 0.98f));
-        Label(inner.transform, "HÉROS", 50, TextAnchor.UpperCenter, Ember, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-20, -24));
-        statsPanelText = Label(inner.transform, "", 34, TextAnchor.UpperLeft, TextMain, Vector2.zero, Vector2.one, new Vector2(50, 130), new Vector2(-50, -110));
+        // Panneau plein comme les autres (sous-onglet « Héros ») : statistiques détaillées.
+        statsPanel = MakeRect("Fiche du héros", R, Vector2.zero, Vector2.one, new Vector2(0, 150), new Vector2(0, -130)).gameObject;
+        statsPanel.AddComponent<Image>().color = new Color(0.07f, 0.035f, 0.035f, 1f);
+        Transform P = statsPanel.transform;
+        Label(P, "HÉROS", 48, TextAnchor.UpperCenter, Ember, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
         Text closeT;
-        MakeButton(inner.transform, "Fermer", new Vector2(0.3f, 0f), new Vector2(0.7f, 0f), new Vector2(0, 24), new Vector2(0, 110),
-            new Color(0.45f, 0.15f, 0.08f), "FERMER", 38, out closeT, ToggleStats);
+        MakeButton(P, "Fermer", new Vector2(1, 1), new Vector2(1, 1), new Vector2(-104, -84), new Vector2(-20, -16),
+            new Color(0.45f, 0.14f, 0.1f), "X", 40, out closeT, () => statsPanel.SetActive(false));
+        var card = Box(P, "Carte", new Vector2(0, 1), new Vector2(1, 1), new Vector2(24, -1060), new Vector2(-24, -110), new Color(0.13f, 0.07f, 0.06f, 1f));
+        card.gameObject.AddComponent<Outline>().effectColor = new Color(0.5f, 0.2f, 0.08f);
+        statsPanelText = Label(card.transform, "", 36, TextAnchor.UpperLeft, TextMain, Vector2.zero, Vector2.one, new Vector2(44, 30), new Vector2(-44, -30));
+        statsPanelText.lineSpacing = 1.15f;
         Text resetT;
-        MakeButton(inner.transform, "Reset", new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(20, 30), new Vector2(190, 90),
-            new Color(0.2f, 0.08f, 0.08f, 0.9f), "Reset (test)", 20, out resetT, () => { GameState.ResetAll(); world.DismissItem(false); HidePopup(); ToggleStats(); });
+        MakeButton(P, "Reset", new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(24, 24), new Vector2(200, 84),
+            new Color(0.2f, 0.08f, 0.08f, 0.9f), "Reset (test)", 20, out resetT, () => { GameState.ResetAll(); world.DismissItem(false); HidePopup(); statsPanel.SetActive(false); });
         statsPanel.SetActive(false);
     }
 
@@ -315,6 +293,7 @@ public partial class ForgeUI : MonoBehaviour
 
     void RefreshStatsPanel()
     {
+        string G(int t) => "<color=" + Hex(SubColors[t]) + ">" + SubGlyphs[t] + "</color> ";
         string L(string name, string val) => name + "<color=#FFC07A>  " + val + "</color>\n";
         var sb = new System.Text.StringBuilder();
         sb.Append(L("Puissance", GameState.Fmt(GameState.Power())));
@@ -322,16 +301,16 @@ public partial class ForgeUI : MonoBehaviour
         sb.Append(L("Points de vie", GameState.Fmt(GameState.TotalHp())));
         sb.Append(L("Attaques par seconde", (1f / GameState.AttackInterval).ToString("0.00")));
         sb.Append("\n");
-        sb.Append(L("Chance de critique", GameState.FmtPct(GameState.CritChance)));
-        sb.Append(L("Dégâts critiques", "x" + GameState.CritMult.ToString("0.##")));
-        sb.Append(L("Double frappe", GameState.FmtPct(GameState.DoubleChance)));
-        sb.Append(L("Vitesse d'attaque", "+" + GameState.FmtPct(GameState.AttackSpeedBonus)));
-        sb.Append(L("Dégâts", "+" + GameState.FmtPct(GameState.SubTotal(GameState.SubDamage))));
-        sb.Append(L("Dégâts en mêlée", "+" + GameState.FmtPct(GameState.SubTotal(GameState.SubMelee))));
-        sb.Append(L("Santé", "+" + GameState.FmtPct(GameState.SubTotal(GameState.SubHealth))));
-        sb.Append(L("Vol de vie", GameState.FmtPct(GameState.LifeSteal)));
-        sb.Append(L("Blocage", GameState.FmtPct(GameState.BlockChance)));
-        sb.Append(L("Régénération", GameState.FmtPct(GameState.RegenPerSecond) + " / s"));
+        sb.Append(G(0) + L("Chance de critique", GameState.FmtPct(GameState.CritChance)));
+        sb.Append(G(1) + L("Dégâts critiques", "x" + GameState.CritMult.ToString("0.##")));
+        sb.Append(G(5) + L("Double frappe", GameState.FmtPct(GameState.DoubleChance)));
+        sb.Append(G(8) + L("Vitesse d'attaque", "+" + GameState.FmtPct(GameState.AttackSpeedBonus)));
+        sb.Append(G(6) + L("Dégâts", "+" + GameState.FmtPct(GameState.SubTotal(GameState.SubDamage))));
+        sb.Append(G(7) + L("Dégâts en mêlée", "+" + GameState.FmtPct(GameState.SubTotal(GameState.SubMelee))));
+        sb.Append(G(9) + L("Santé", "+" + GameState.FmtPct(GameState.SubTotal(GameState.SubHealth))));
+        sb.Append(G(4) + L("Vol de vie", GameState.FmtPct(GameState.LifeSteal)));
+        sb.Append(G(2) + L("Blocage", GameState.FmtPct(GameState.BlockChance)));
+        sb.Append(G(3) + L("Régénération", GameState.FmtPct(GameState.RegenPerSecond) + " / s"));
         statsPanelText.text = sb.ToString();
     }
 
@@ -348,6 +327,7 @@ public partial class ForgeUI : MonoBehaviour
         popInfo = Label(c, "", 34, TextAnchor.UpperCenter, TextDim, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-20, -105));
         popStat = Label(c, "", 56, TextAnchor.UpperCenter, Color.white, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-20, -160));
         popSubs = Label(c, "", 34, TextAnchor.UpperCenter, new Color(0.75f, 0.85f, 1f), Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-20, -228));
+        popPills = MakePills(c, new Vector2(20, -380), new Vector2(-20, -236));
         popCompare = Label(c, "", 30, TextAnchor.UpperCenter, TextMain, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-20, -322));
         Text eqText;
         MakeButton(c, "Equiper", new Vector2(0, 0), new Vector2(0.5f, 0), new Vector2(30, 30), new Vector2(-15, 170),
@@ -413,7 +393,11 @@ public partial class ForgeUI : MonoBehaviour
         popName.color = Color.Lerp(c, Color.white, 0.25f);
         popInfo.text = "Cercle " + (it.circle + 1) + " : " + GameState.CircleNames[it.circle] + "  ·  Niveau " + it.level;
         popStat.text = it.StatLabel + " +" + GameState.Fmt(it.MainStat);
-        popSubs.text = SubsText(it, "\n");
+        popSubs.text = "";
+        SetPills(popPills, it.subs, it.subVals);
+        // Le texte de comparaison descend sous les pastilles.
+        int rows = (it.SubCount + 1) / 2;
+        popCompare.rectTransform.offsetMax = new Vector2(-20, rows == 0 ? -236 : -250 - rows * 72);
 
         var cur = GameState.Data.equipped[it.slot];
         long pDiff = GameState.PowerIfEquipped(it) - GameState.Power();
@@ -423,12 +407,22 @@ public partial class ForgeUI : MonoBehaviour
             popCompare.text = pTxt + "\nEmplacement vide : <color=#6EE07A>équipe-la !</color>";
         else
         {
-            string curSubs = cur.SubCount > 0 ? "\n<color=#8A8A9A>" + SubsText(cur, "  ·  ") + "</color>" : "";
+            string curSubs = cur.SubCount > 0 ? "\n" + SubsRich(cur, "   ") : "";
             popCompare.text = pTxt + "\n<color=#A89C94>Équipé : " + cur.Name + " (niv. " + cur.level + ") · " + cur.StatLabel + " " + GameState.Fmt(cur.MainStat) + "</color>" + curSubs;
         }
         popSellText.text = "VENDRE\n+" + GameState.Fmt(it.SellValue) + " or";
         popup.SetActive(true);
         Refresh();
+    }
+
+    Pills popPills;
+
+    static string SubsRich(Item it, string sep)
+    {
+        if (it.SubCount == 0) return "";
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < it.SubCount; i++) { if (i > 0) sb.Append(sep); sb.Append(SubRich(it.subs[i], it.subVals[i])); }
+        return sb.ToString();
     }
 
     static string SubsText(Item it, string sep)
@@ -517,6 +511,7 @@ public partial class ForgeUI : MonoBehaviour
     {
         if (passBtn != null) passBtn.gameObject.SetActive(!AnyPanelOpen() && !popup.activeSelf);
         UpdateAuto();
+        UpdateNav();
         UpdateTech();
         UpdateCompanions();
         UpdateDungeons();
@@ -571,7 +566,7 @@ public partial class ForgeUI : MonoBehaviour
                 ol.effectColor = c;
                 slotIcon[i].texture = ItemIcons.Get(i, it.circle);
                 slotIcon[i].color = Color.white;
-                slotLevel[i].text = "<b>Niv. " + it.level + "</b>" + (it.SubCount > 0 ? "\n<size=19><color=#BFD8FF>+" + it.SubCount + " bonus</color></size>" : "");
+                slotLevel[i].text = "<b>Niv. " + it.level + "</b>" + (it.SubCount > 0 ? "\n<size=30>" + SubDots(it.subs) + "</size>" : "");
                 slotText[i].text = "<size=23>" + it.StatLabel + " " + GameState.Fmt(it.MainStat) + "</size>";
             }
             else
