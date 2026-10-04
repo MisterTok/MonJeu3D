@@ -72,6 +72,7 @@ public class SaveData
     public long upgradeEndTicks;
     public Item[] equipped;
     public Item pending = new Item();
+    public System.Collections.Generic.List<Item> forged = new System.Collections.Generic.List<Item>();   // pièces forgées pas encore examinées
     public long totalForged;
     public long eggshells;          // coquilles : monnaie d'invocation des œufs
     public long winders;            // remontoirs : monnaie d'invocation des montures
@@ -181,6 +182,7 @@ public static class GameState
         }
         for (int i = 0; i < SlotCount; i++) if (Data.equipped[i] == null) Data.equipped[i] = new Item();
         if (Data.pending == null) Data.pending = new Item();
+        if (Data.forged == null) Data.forged = new System.Collections.Generic.List<Item>();
         if (Data.eggs == null || Data.eggs.Length != 6) Data.eggs = new int[6];
         if (Data.incubators == null || Data.incubators.Length != ProgressionData.IncubatorMax)
         {
@@ -385,7 +387,21 @@ public static class GameState
     }
 
     // ---------- Forge ----------
-    public static bool CanForge => Data.hammers > 0 && !Data.pending.valid;
+    // Comme Forge Master : on forge plusieurs fois d'affilée, les pièces s'empilent puis on les examine une par une.
+    public const int ForgeQueueMax = 50;
+    public static int QueueCount => Data.forged.Count + (Data.pending.valid ? 1 : 0);
+    public static bool CanForge => Data.hammers > 0 && Data.forged.Count < ForgeQueueMax;
+
+    // Passe à la pièce suivante de la pile (devient la pièce « en attente » affichée dans la fiche).
+    public static Item TakeNext()
+    {
+        if (Data.pending.valid) return Data.pending;
+        if (Data.forged.Count == 0) return null;
+        Data.pending = Data.forged[0];
+        Data.forged.RemoveAt(0);
+        Notify();
+        return Data.pending;
+    }
 
     public static float[] CurrentOdds() => ForgeData.CircleOdds[Mathf.Clamp(Data.forgeLevel, 1, ForgeData.MaxLevel) - 1];
 
@@ -429,10 +445,11 @@ public static class GameState
         int slot = rng.Next(SlotCount);
         int maxLevel = 4 + Data.forgeLevel * 2 + (int)Math.Round(TV(SlotTech[slot] + "LevelUp"));
         int level = rng.Next(Math.Max(1, maxLevel - 8), maxLevel + 1);
-        Data.pending = MakeItem(slot, circle, level);
+        var made = MakeItem(slot, circle, level);
+        Data.forged.Add(made);
         Data.totalForged++;
         Notify();
-        return Data.pending;
+        return made;
     }
 
     // Équipe la pièce en attente ; l'ancienne pièce est revendue automatiquement.

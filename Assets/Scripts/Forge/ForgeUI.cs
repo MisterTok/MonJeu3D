@@ -164,6 +164,7 @@ public partial class ForgeUI : MonoBehaviour
         hammerText = Label(hammerPlate.transform, "", 32, TextAnchor.MiddleCenter, Color.white);
         anvilText = Label(anvilRect, "Touche l'enclume !", 26, TextAnchor.UpperCenter, new Color(1f, 0.75f, 0.5f), Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0, -6));
         forgeBtnText = anvilText;
+        BuildQueueBadge(anvilRect);
 
         // Niveau de forge (droite)
         upgradeBtn = MakeButton(forgeRow, "Forge niveau", new Vector2(0.74f, 0.42f), new Vector2(1f, 0.82f), new Vector2(6, 0), new Vector2(-18, 0),
@@ -218,11 +219,7 @@ public partial class ForgeUI : MonoBehaviour
         GameState.ForgeLeveledUp += OnLevelUp;
         Refresh();
 
-        if (GameState.Data.pending.valid)
-        {
-            world.ShowItemInstant(GameState.Data.pending);
-            ShowPopup(GameState.Data.pending);
-        }
+        if (GameState.Data.pending.valid) ShowPopup(GameState.Data.pending);
         if (!string.IsNullOrEmpty(GameState.OfflineMessage)) { Toast(GameState.OfflineMessage); toastTime = 5f; }
     }
 
@@ -325,11 +322,17 @@ public partial class ForgeUI : MonoBehaviour
     {
         popup = MakeRect("Nouvelle pièce", R, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero).gameObject;
         // Fond qui bloque les clics en bas seulement : la pièce 3D reste visible en haut.
-        var shade = Box(popup.transform, "Voile", new Vector2(0, 0), new Vector2(1, 0.56f), Vector2.zero, Vector2.zero, new Color(0, 0, 0, 0.55f));
+        var shade = Box(popup.transform, "Voile", new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero, new Color(0, 0, 0, 0.6f));
         shade.raycastTarget = true;
         popFrame = Box(popup.transform, "Cadre", new Vector2(0.06f, 0.08f), new Vector2(0.94f, 0.5f), Vector2.zero, Vector2.zero, Color.white);
         var inner = Box(popFrame.transform, "Carte", Vector2.zero, Vector2.one, new Vector2(6, 6), new Vector2(-6, -6), new Color(0.07f, 0.035f, 0.035f, 0.97f));
         Transform c = inner.transform;
+        // Icône de la pièce posée sur le haut de la fiche, avec un halo de la couleur du cercle.
+        popHalo = MakeRect("Halo", popup.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-210, -40), new Vector2(210, 380)).gameObject.AddComponent<Image>();
+        popHalo.sprite = Circle(); popHalo.raycastTarget = false;
+        popIcon = MakeRect("Icône", popup.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-170, 0), new Vector2(170, 340)).gameObject.AddComponent<RawImage>();
+        popIcon.raycastTarget = false;
+        popRemain = Label(c, "", 26, TextAnchor.UpperRight, TextDim, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-24, -14));
         popName = Label(c, "", 54, TextAnchor.UpperCenter, Color.white, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-20, -30));
         popInfo = Label(c, "", 34, TextAnchor.UpperCenter, TextDim, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-20, -105));
         popStat = Label(c, "", 56, TextAnchor.UpperCenter, Color.white, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-20, -160));
@@ -345,12 +348,31 @@ public partial class ForgeUI : MonoBehaviour
     }
 
     // ---------- Actions ----------
+    // Toucher l'enclume forge une pièce sur place (pas d'autre écran) ; elle rejoint la pile à examiner.
     void OnForge()
     {
-        if (world.Busy || !GameState.CanForge) return;
+        if (popup.activeSelf) return;
+        if (!GameState.CanForge)
+        {
+            if (GameState.QueueCount > 0) ReviewNext();
+            else Toast(GameState.Data.hammers <= 0 ? "Plus de marteaux" : "Pile pleine : examine tes pièces");
+            return;
+        }
+        if (world.Busy) return;
         var item = GameState.Forge();
         if (item == null) return;
-        world.PlayForge(item, () => ShowPopup(item));
+        world.QuickStrike(GameState.CircleColors[item.circle]);
+        if (item.circle >= 2) Sfx.Reveal(item.circle);
+        queuePulse = 1f;
+        if (GameState.LastForgeFree) Toast("Frappe gratuite !");
+    }
+
+    // Ouvre la fiche de la pièce suivante de la pile (ou ferme la fiche quand la pile est vide).
+    void ReviewNext()
+    {
+        var it = GameState.TakeNext();
+        if (it == null) { HidePopup(); return; }
+        ShowPopup(it);
     }
 
     void OnEquip()
@@ -358,7 +380,7 @@ public partial class ForgeUI : MonoBehaviour
         Sfx.Equip();
         long g = GameState.EquipPending();
         world.DismissItem(true);
-        HidePopup();
+        ReviewNext();
         if (g > 0) Toast("Ancienne pièce revendue : +" + GameState.Fmt(g) + " or");
     }
 
@@ -367,7 +389,7 @@ public partial class ForgeUI : MonoBehaviour
         Sfx.Coin();
         long g = GameState.SellPending();
         world.DismissItem(false);
-        HidePopup();
+        ReviewNext();
         Toast("+" + GameState.Fmt(g) + " or");
     }
 
@@ -400,6 +422,10 @@ public partial class ForgeUI : MonoBehaviour
         Color c = GameState.CircleColors[it.circle];
         popFrame.color = c;
         popName.text = it.Name;
+        popIcon.texture = ItemIcons.Get(it.slot, it.circle);
+        popHalo.color = new Color(c.r, c.g, c.b, 0.55f);
+        int left = GameState.Data.forged.Count;
+        popRemain.text = left > 0 ? "encore " + left : "";
         popName.color = Color.Lerp(c, Color.white, 0.25f);
         popInfo.text = "Cercle " + (it.circle + 1) + " : " + GameState.CircleNames[it.circle] + "  ·  Niveau " + it.level;
         popStat.text = it.StatLabel + " +" + GameState.Fmt(it.MainStat);
@@ -427,6 +453,9 @@ public partial class ForgeUI : MonoBehaviour
     }
 
     Pills popPills;
+    RawImage popIcon;
+    Image popHalo;
+    Text popRemain;
     Button popEquipBtn;
     bool popBetter;
 
@@ -503,10 +532,11 @@ public partial class ForgeUI : MonoBehaviour
         autoTimer -= Time.deltaTime;
         if (autoTimer > 0f) return;
         autoTimer = GameState.AutoForgeInterval;
-        if (GameState.Data.pending.valid) { Toast(GameState.AutoResolvePending()); return; }
+        if (GameState.TakeNext() != null) { Toast(GameState.AutoResolvePending()); return; }
         var it = GameState.Forge();
         if (it == null) return;
         world.QuickStrike(GameState.CircleColors[it.circle]);
+        GameState.TakeNext();
         string msg = GameState.AutoResolvePending();
         if (GameState.LastForgeFree) msg += "  (frappe gratuite !)";
         Toast(msg);
@@ -525,6 +555,7 @@ public partial class ForgeUI : MonoBehaviour
         if (passBtn != null) passBtn.gameObject.SetActive(!AnyPanelOpen() && !popup.activeSelf);
         UpdateAuto();
         UpdateNav();
+        UpdateQueueBadge();
         UpdateTech();
         UpdateCompanions();
         UpdateDungeons();
@@ -548,6 +579,7 @@ public partial class ForgeUI : MonoBehaviour
 
     void Refresh()
     {
+        RefreshQueueBadge();
         if (statsPanel != null && statsPanel.activeSelf) RefreshStatsPanel();
         RefreshCompanions();
         RefreshDungeons();
