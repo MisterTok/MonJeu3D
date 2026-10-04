@@ -143,6 +143,24 @@ public static class ItemIcons
         return sp;
     }
 
+    // Icône d'une pièce en sprite (lisible, recadrée, pivot au centre) : pour l'afficher à plat au-dessus de l'enclume.
+    public static Sprite ItemSprite(int slot, int circle)
+    {
+        int key = ("pièce:" + slot + ":" + circle).GetHashCode();
+        if (spriteCache.TryGetValue(key, out var sp) && sp != null) return sp;
+        var rt = Get(slot, circle) as RenderTexture;
+        if (rt == null) return null;
+        var prev = RenderTexture.active;
+        RenderTexture.active = rt;
+        var tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false);
+        tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+        tex.Apply();
+        RenderTexture.active = prev;
+        sp = Sprite.Create(tex, new Rect(0, 0, rt.width, rt.height), new Vector2(0.5f, 0.5f), rt.height);
+        spriteCache[key] = sp;
+        return sp;
+    }
+
     // Les modèles regardent vers +Z : on les tourne vers l'objectif, de trois quarts.
     static readonly Vector3 CreatureEuler = new Vector3(8f, 215f, 0f);
 

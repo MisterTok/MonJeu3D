@@ -231,6 +231,7 @@ public class ForgeWorld : MonoBehaviour
         ca.saturation.Override(6f);
         vol.profile = profile;
 
+        int decorStart = r.childCount;
         // Sol en pierre et fissures de lave
         var stone = Lit(new Color(0.09f, 0.07f, 0.07f), 0f, 0.15f);
         Prim(PrimitiveType.Cube, r, new Vector3(0, -0.25f, 2f), new Vector3(30f, 0.5f, 30f), GroundMaterial(10f));
@@ -275,6 +276,7 @@ public class ForgeWorld : MonoBehaviour
         ModelLib.Raw("Dungeon/Sword_WallMount", r, new Vector3(0f, 2.75f, 3.35f), 180f, 1.2f);
         ModelLib.Raw("Dungeon/Column", r, new Vector3(-2.4f, 0f, 2.6f), 0f, 0.9f);
         ModelLib.Raw("Dungeon/Column", r, new Vector3(2.4f, 0f, 2.6f), 0f, 0.9f);
+        int decorEnd = r.childCount;
 
         // Éclairage de l'enclume (lumière chaude venant de face)
         var keyLight = new GameObject("Lumière enclume").AddComponent<Light>();
@@ -314,7 +316,7 @@ public class ForgeWorld : MonoBehaviour
         body.transform.SetParent(anvil, false);
         body.transform.localPosition = new Vector3(0, 0.42f, 0);
         body.AddComponent<MeshFilter>().sharedMesh = ProcGen.Anvil();
-        body.AddComponent<MeshRenderer>().sharedMaterial = Lit(new Color(0.3f, 0.28f, 0.3f), 0.75f, 0.55f, new Color(0.06f, 0.015f, 0f));
+        body.AddComponent<MeshRenderer>().sharedMaterial = Lit(new Color(0.26f, 0.25f, 0.3f), 0.5f, 0.5f, new Color(0.06f, 0.015f, 0f));
         // Arête supérieure polie qui accroche la lumière de la fournaise
         Prim(PrimitiveType.Cube, anvil, new Vector3(0.12f, 1.392f, 0), new Vector3(1.3f, 0.012f, 0.43f), Lit(new Color(0.45f, 0.42f, 0.42f), 1f, 0.85f));
         // Lingot chauffé et runes infernales gravées
@@ -335,6 +337,7 @@ public class ForgeWorld : MonoBehaviour
         Prim(PrimitiveType.Cylinder, hammerPivot, new Vector3(-0.45f, 0, 0), new Vector3(0.07f, 0.45f, 0.07f), wood, new Vector3(0, 0, 90f));
         Prim(PrimitiveType.Cube, hammerPivot, new Vector3(-0.9f, 0, 0), new Vector3(0.22f, 0.4f, 0.22f), Lit(new Color(0.2f, 0.18f, 0.2f), 0.9f, 0.6f, new Color(0.25f, 0.05f, 0f)));
         hammerPivot.localEulerAngles = new Vector3(0, 0, -55f);
+        SetupPainted(r, decorStart, decorEnd, anvil);
 
         // Braises qui montent
         var embers = MakeParticles("Braises", new Vector3(0, 0.2f, 1.5f), new Color(1f, 0.45f, 0.1f, 1f), 400);
@@ -435,12 +438,114 @@ public class ForgeWorld : MonoBehaviour
 
         if (currentItem != null)
         {
-            currentItem.transform.Rotate(0f, 60f * Time.deltaTime, 0f, Space.World);
+            if (flatItem) currentItem.transform.rotation = cam.transform.rotation;
+            else currentItem.transform.Rotate(0f, 60f * Time.deltaTime, 0f, Space.World);
             var p = currentItem.transform.position;
             p.y = ItemShowPos.y + Mathf.Sin(Time.time * 2f) * 0.06f;
             currentItem.transform.position = p;
         }
         flashLight.intensity = Mathf.MoveTowards(flashLight.intensity, 0f, Time.deltaTime * 60f);
+        UpdateBackdrop();
+    }
+
+    // ---------- Version « peinte » (fond 2D Craftpix, contours cartoon, pièce en icône) ----------
+    Transform backdrop;
+    Material backdropMat;
+    bool flatItem;
+    static Sprite haloSprite;
+
+    void SetupPainted(Transform r, int decorStart, int decorEnd, Transform anvil)
+    {
+        var tex = Resources.Load<Texture2D>("ForgeSprites/Arenas/trone");
+        if (tex == null) return;
+        // Le décor 3D (sol, fournaise, piliers, accessoires) laisse place au fond peint.
+        for (int i = decorStart; i < decorEnd && i < r.childCount; i++) r.GetChild(i).gameObject.SetActive(false);
+        RenderSettings.fog = false;
+        var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        Destroy(q.GetComponent<Collider>());
+        q.name = "Fond peint de la forge";
+        backdrop = q.transform;
+        backdrop.SetParent(cam.transform, false);
+        backdropMat = Unlit(new Color(0.8f, 0.72f, 0.7f));
+        backdropMat.mainTexture = tex;
+        q.GetComponent<Renderer>().sharedMaterial = backdropMat;
+        flatItem = true;
+    }
+
+    void UpdateBackdrop()
+    {
+        if (backdrop == null) return;
+        const float dist = 30f;
+        float h = 2f * dist * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
+        float w = h * Mathf.Max(0.3f, cam.aspect);
+        float texAspect = 2048f / 1152f;
+        backdrop.localPosition = new Vector3(0f, 0f, dist);
+        backdrop.localRotation = Quaternion.identity;
+        backdrop.localScale = new Vector3(w, h, 1f);
+        // Image centrée, recadrée à la largeur visible (la hauteur remplit le cadre).
+        float span = Mathf.Min(1f, w / (h * texAspect));
+        backdropMat.mainTextureScale = new Vector2(span, 1f);
+        backdropMat.mainTextureOffset = new Vector2((1f - span) * 0.5f, 0f);
+    }
+
+    // Coque inversée noire, légèrement plus grande, qui ne montre que ses faces arrière : un contour.
+    static void AddOutline(Transform root, float grow)
+    {
+        var black = Unlit(new Color(0.02f, 0.01f, 0.01f));
+        black.SetFloat("_Cull", 1f);   // faces avant masquées
+        black.SetInt("_Cull", 1);
+        var list = new System.Collections.Generic.List<MeshFilter>(root.GetComponentsInChildren<MeshFilter>());
+        foreach (var mf in list)
+        {
+            if (mf.sharedMesh == null) continue;
+            var go = new GameObject("Contour");
+            go.transform.SetParent(mf.transform, false);
+            go.transform.localScale = Vector3.one * (1f + grow);
+            go.AddComponent<MeshFilter>().sharedMesh = mf.sharedMesh;
+            var mr = go.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = black;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+    }
+
+    static Sprite Halo()
+    {
+        if (haloSprite != null) return haloSprite;
+        const int n = 128;
+        var t = new Texture2D(n, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+        var px = new Color32[n * n];
+        for (int y = 0; y < n; y++)
+            for (int x = 0; x < n; x++)
+            {
+                float dx = (x + 0.5f) / n * 2f - 1f, dy = (y + 0.5f) / n * 2f - 1f;
+                float a = Mathf.Clamp01(1f - Mathf.Sqrt(dx * dx + dy * dy));
+                px[y * n + x] = new Color32(255, 255, 255, (byte)(a * a * 255));
+            }
+        t.SetPixels32(px); t.Apply();
+        haloSprite = Sprite.Create(t, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), n);
+        return haloSprite;
+    }
+
+    // Pièce affichée à plat : halo de la couleur du cercle + icône peinte de la pièce.
+    GameObject BuildItemDisplay(Item item)
+    {
+        if (!flatItem) return BuildItemModel(item);
+        var sp = ItemIcons.ItemSprite(item.slot, item.circle);
+        if (sp == null) return BuildItemModel(item);
+        var root = new GameObject("Pièce (icône)");
+        var c = GameState.CircleColors[item.circle];
+        var halo = new GameObject("Halo").AddComponent<SpriteRenderer>();
+        halo.transform.SetParent(root.transform, false);
+        halo.transform.localPosition = new Vector3(0f, 0f, 0.05f);
+        halo.transform.localScale = Vector3.one * (1.9f + item.circle * 0.08f);
+        halo.sprite = Halo();
+        halo.color = new Color(c.r, c.g, c.b, 0.85f);
+        var icon = new GameObject("Icône").AddComponent<SpriteRenderer>();
+        icon.transform.SetParent(root.transform, false);
+        icon.transform.localScale = Vector3.one * 1.5f;
+        icon.sprite = sp;
+        icon.sortingOrder = 1;
+        return root;
     }
 
     public bool Busy { get; private set; }
@@ -494,7 +599,7 @@ public class ForgeWorld : MonoBehaviour
             yield return Rotate(hammerPivot, 10f, -55f, 0.2f);
         }
 
-        currentItem = BuildItemModel(item);
+        currentItem = BuildItemDisplay(item);
         currentItem.transform.position = AnvilTop;
         currentItem.transform.localScale = Vector3.zero;
         itemLight.color = c;
@@ -567,7 +672,7 @@ public class ForgeWorld : MonoBehaviour
     public void ShowItemInstant(Item item)
     {
         ClearItem();
-        currentItem = BuildItemModel(item);
+        currentItem = BuildItemDisplay(item);
         currentItem.transform.position = ItemShowPos;
         currentItem.transform.localScale = Vector3.one * 1.15f;
         expandTarget = expandT = 1f;
