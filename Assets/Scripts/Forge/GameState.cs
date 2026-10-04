@@ -22,7 +22,7 @@ public class Item
     public long MainStat => IsAttack ? atk : hp;
     public string StatLabel => IsAttack ? "ATQ" : "PV";
     public string Name => GameState.SlotNames[slot] + " " + GameState.CircleSuffix[circle];
-    public long SellValue => (long)Math.Round(GameState.CircleBase(circle) * 0.75 * GameState.LevelMult(level) * (1 + GameState.TV("EquipmentSellPrice")));
+    public long SellValue => (long)Math.Round(GameState.CircleBase(circle) * 0.15 * GameState.LevelMult(level) * (1 + GameState.TV("EquipmentSellPrice")));
 }
 
 [Serializable]
@@ -1294,7 +1294,7 @@ public static class GameState
         if (secs < 600) return;
         double max = 14400 * (1 + TV("MaxOfflineReward"));
         secs = Math.Min(secs, max);
-        long gold = (long)Math.Round(secs * 1.0 * (1 + Data.stage * 0.15) * (1 + TV("CoinOfflineReward")));
+        long gold = (long)Math.Round(secs * 1.0 * (1 + Data.stage * 0.03) * (1 + TV("CoinOfflineReward")));
         int hammers = (int)Math.Round(secs / 60.0 * (1 + TV("HammerOfflineReward")));
         Data.gold += gold;
         Data.hammers += hammers;
@@ -1404,7 +1404,8 @@ public static class GameState
     // Équilibrage (simulation d'une partie neuve) : murs de boss adoucis, progression surtout freinée par les améliorations de forge.
     public static double EnemyHp(bool boss) => 30 * Math.Pow(1.15, Data.stage) * (boss ? 6 : 1);
     public static double EnemyAtk(bool boss) => 5 * Math.Pow(1.15, Data.stage) * (boss ? 2 : 1);
-    public static long KillGold(bool boss) => (long)Math.Round(4 * Math.Pow(1.12, Data.stage) * (boss ? 12 : 1));
+    // Or réduit (simulation) : comme dans Forge Master, l'or doit freiner les améliorations de la forge.
+    public static long KillGold(bool boss) => (long)Math.Round(1.2 * Math.Pow(1.12, Data.stage) * (boss ? 12 : 1));
 
     public static event Action StageChanged;
 
