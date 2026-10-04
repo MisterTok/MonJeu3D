@@ -26,7 +26,7 @@ public partial class ForgeUI
             new Color(0.4f, 0.12f, 0.08f), "X", 40, out closeT, () => compPanel.SetActive(false));
 
         compSummon = MakeSummonBar(P, -90, new Color(0.15f, 0.4f, 0.65f), () => OnSummonEggs(1), () => OnSummonEggs(15),
-            () => ShowInfo("Chances des œufs", OddsText(GameState.EggOdds)));
+            () => { if (GameState.AscendReady(GameState.AscPets)) ShowAscend(GameState.AscPets); else ShowInfo("Chances des œufs", OddsText(GameState.EggOdds)); });
 
         // Couveuses : l'œuf, et en dessous l'état (couver, temps, éclore)
         compEggs = Label(P, "", 24, TextAnchor.MiddleLeft, TextDim, new Vector2(0, 1), new Vector2(1, 1), new Vector2(24, -240), new Vector2(-20, -200));
@@ -146,7 +146,7 @@ public partial class ForgeUI
     {
         if (compPanel == null || !compPanel.activeSelf) return;
         var d = GameState.Data;
-        SetSummonBar(compSummon, "Coquilles", d.eggshells, ProgressionData.EggSummonCost, 1, 15, d.eggSummonLevel, d.eggSummonProgress, GameState.EggSummonRequired);
+        SetSummonBar(compSummon, "Coquilles", d.eggshells, ProgressionData.EggSummonCost, 1, 15, d.eggSummonLevel, d.eggSummonProgress, GameState.EggSummonRequired, GameState.AscPets);
 
         var sb = new System.Text.StringBuilder("Œufs ");
         bool any = false;

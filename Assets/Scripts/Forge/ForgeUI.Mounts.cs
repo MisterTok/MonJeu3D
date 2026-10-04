@@ -21,7 +21,7 @@ public partial class ForgeUI
             new Color(0.45f, 0.14f, 0.1f), "X", 40, out closeT, () => mountPanel.SetActive(false));
 
         mountSummon = MakeSummonBar(P, -90, new Color(0.5f, 0.25f, 0.65f), () => OnSummonMounts(1), () => OnSummonMounts(15),
-            () => ShowInfo("Chances des montures", OddsText(GameState.MountOdds)));
+            () => { if (GameState.AscendReady(GameState.AscMounts)) ShowAscend(GameState.AscMounts); else ShowInfo("Chances des montures", OddsText(GameState.MountOdds)); });
 
         // Monture chevauchée : grande tuile + son bonus
         mountEqTile = MakeTile(P, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(-150, -520), new Vector2(150, -215),
@@ -71,7 +71,7 @@ public partial class ForgeUI
     {
         if (mountPanel == null || !mountPanel.activeSelf) return;
         var d = GameState.Data;
-        SetSummonBar(mountSummon, "Remontoirs", d.winders, GameState.MountSummonCost, 1, 15, d.mountSummonLevel, d.mountSummonProgress, GameState.MountSummonRequired);
+        SetSummonBar(mountSummon, "Remontoirs", d.winders, GameState.MountSummonCost, 1, 15, d.mountSummonLevel, d.mountSummonProgress, GameState.MountSummonRequired, GameState.AscMounts);
 
         var eq = GameState.FindMount(d.equippedMount);
         if (eq == null)

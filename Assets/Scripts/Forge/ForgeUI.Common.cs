@@ -169,15 +169,39 @@ public partial class ForgeUI
         return sb;
     }
 
-    void SetSummonBar(SummonBar sb, string currencyName, long have, long cost1, int n1, int n2, int level, int prog, int need)
+    void SetSummonBar(SummonBar sb, string currencyName, long have, long cost1, int n1, int n2, int level, int prog, int need, int ascKind = -1)
     {
         sb.currency.text = "<size=22>" + currencyName + "</size>\n<b>" + GameState.Fmt(have) + "</b>";
         sb.t1.text = "x" + n1 + "\n<size=20>" + GameState.Fmt(cost1 * n1) + "</size>";
         sb.t2.text = "x" + n2 + "\n<size=20>" + GameState.Fmt(cost1 * n2) + "</size>";
         sb.b1.interactable = have >= cost1 * n1;
         sb.b2.interactable = have >= cost1 * n2;
-        sb.level.text = "Niv. " + (level + 1) + "  <color=#9FC8FF>(?)</color>";
+        string stars = ascKind >= 0 && GameState.Stars(ascKind) > 0 ? "<color=#FFD24A>" + GameState.StarText(GameState.Stars(ascKind)) + "</color> " : "";
+        sb.level.text = ascKind >= 0 && GameState.AscendReady(ascKind) ? stars + "MAX\n<color=#FFD24A><b>Ascension !</b></color>"
+            : stars + "Niv. " + (level + 1) + "  <color=#9FC8FF>(?)</color>";
         sb.progFill.rectTransform.anchorMax = new Vector2(need > 0 ? Mathf.Clamp01(prog / (float)need) : 1f, 1);
+    }
+
+    // Fenêtre d'ascension (forge, compagnons, montures, compétences).
+    void ShowAscend(int k)
+    {
+        int s = GameState.Stars(k);
+        string mult = "×" + GameState.Fmt((long)GameState.AscMult(s + 1));
+        string body;
+        if (k == GameState.AscForge)
+            body = "La forge revient au <b>niveau 1</b>, mais toutes les pièces forgées ensuite seront <color=#FFD24A>" + GameState.StarText(s + 1) + "</color> : attaque et vie " + mult + ".\nTon équipement actuel est conservé.\n\nCoût : <color=#FFD24A>" + GameState.Fmt(GameState.ForgeAscendCost) + " or</color>";
+        else
+            body = "Le niveau d'invocation revient au <b>niveau 1</b>, mais toute ta collection de " + GameState.AscNames[k].Replace("les ", "") + " passe à <color=#FFD24A>" + GameState.StarText(s + 1) + "</color> : " + mult + " sur leurs effets.";
+        body += "\n\nÉtoiles actuelles : " + (s > 0 ? GameState.StarText(s) : "aucune") + "  (max " + GameState.MaxStars + ")";
+        bool ready = GameState.AscendReady(k);
+        if (!ready) body += "\n\n<color=#FF8A7A>" + (k == GameState.AscForge ? "Disponible quand la forge est au niveau maximum." : "Disponible quand le niveau d'invocation est au maximum.") + "</color>";
+        ShowAction("Ascension " + (k == GameState.AscForge ? "de la forge" : "des " + GameState.AscNames[k].Replace("les ", "")), body, "ASCENSION ★", ready, () =>
+        {
+            string e = GameState.Ascend(k);
+            if (e != null) Toast(e);
+            else { Sfx.Fanfare(); Toast("Ascension ! " + GameState.StarText(GameState.Stars(k))); }
+            Refresh();
+        }, new Color(1f, 0.82f, 0.3f));
     }
 
     static string OddsText(float[] odds)

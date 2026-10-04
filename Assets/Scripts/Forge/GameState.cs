@@ -14,6 +14,7 @@ public class Item
     public long hp;
     public int[] subs;      // statistiques secondaires (index dans GameState.SubNames)
     public float[] subVals; // valeurs (0,05 = 5 %)
+    public int stars;       // étoiles d'ascension de la forge au moment où la pièce a été forgée
 
     public int SubCount => subs == null ? 0 : subs.Length;
     public string SubLine(int i) => "+" + GameState.FmtPct(subVals[i]) + " " + GameState.SubNames[subs[i]];
@@ -21,8 +22,8 @@ public class Item
     public bool IsAttack => atk > 0;
     public long MainStat => IsAttack ? atk : hp;
     public string StatLabel => IsAttack ? "ATQ" : "PV";
-    public string Name => GameState.SlotNames[slot] + " " + GameState.CircleSuffix[circle];
-    public long SellValue => (long)Math.Round(GameState.CircleBase(circle) * 0.15 * GameState.LevelMult(level) * (1 + GameState.TV("EquipmentSellPrice")));
+    public string Name => (stars > 0 ? GameState.StarText(stars) + " " : "") + GameState.SlotNames[slot] + " " + GameState.CircleSuffix[circle];
+    public long SellValue => (long)Math.Round(GameState.CircleBase(circle) * 0.15 * GameState.LevelMult(level) * GameState.AscMult(stars) * (1 + GameState.TV("EquipmentSellPrice")));
 }
 
 [Serializable]
@@ -67,6 +68,7 @@ public class SaveData
     public int hammers = 60;
     public long lastHammerTicks;
     public int forgeLevel = 1;
+    public int forgeStars, petStars, mountStars, skillStars;   // ascensions (étoiles)
     public int nodesPaid;
     public bool upgrading;
     public long upgradeEndTicks;
@@ -421,8 +423,8 @@ public static class GameState
 
     public static Item MakeItem(int slot, int circle, int level)
     {
-        double v = CircleBase(circle) * LevelMult(level) * SlotWeight[slot];
-        var it = new Item { valid = true, slot = slot, circle = circle, level = level };
+        double v = CircleBase(circle) * LevelMult(level) * SlotWeight[slot] * AscMult(Data.forgeStars);
+        var it = new Item { valid = true, slot = slot, circle = circle, level = level, stars = Data.forgeStars };
         if (SlotIsAtk[slot]) it.atk = Math.Max(1, (long)Math.Round(v));
         else it.hp = Math.Max(1, (long)Math.Round(v * 5));
         RollSubs(it);
@@ -546,13 +548,13 @@ public static class GameState
     public static double PetDamage(OwnedPet p)
     {
         var d = ProgressionData.Pets[p.id];
-        return ProgressionData.PetBaseDamage[d.rarity] * ProgressionData.PetTypeDamage[d.type] * Math.Pow(1.01, p.level - 1) * PetScale;
+        return ProgressionData.PetBaseDamage[d.rarity] * ProgressionData.PetTypeDamage[d.type] * Math.Pow(1.01, p.level - 1) * PetScale * AscMult(Data.petStars);
     }
 
     public static double PetHealth(OwnedPet p)
     {
         var d = ProgressionData.Pets[p.id];
-        return ProgressionData.PetBaseHealth[d.rarity] * ProgressionData.PetTypeHealth[d.type] * Math.Pow(1.01, p.level - 1) * PetScale;
+        return ProgressionData.PetBaseHealth[d.rarity] * ProgressionData.PetTypeHealth[d.type] * Math.Pow(1.01, p.level - 1) * PetScale * AscMult(Data.petStars);
     }
 
     static double PetsDamage() { double t = 0; if (Data.equippedPets != null) foreach (int id in Data.equippedPets) { var p = FindPet(id); if (p != null) t += PetDamage(p); } return t; }
@@ -725,7 +727,7 @@ public static class GameState
     }
 
     // Bonus en fraction (0,1 = +10 %) : base de la rareté, +1 % par niveau, renforcé par l'arbre technologique.
-    public static double MountBonus(OwnedMount m) => ProgressionData.MountBonusPct[ProgressionData.Mounts[m.id].rarity] / 100.0 * Math.Pow(1.01, m.level - 1);
+    public static double MountBonus(OwnedMount m) => ProgressionData.MountBonusPct[ProgressionData.Mounts[m.id].rarity] / 100.0 * Math.Pow(1.01, m.level - 1) * AscMult(Data.mountStars);
     public static double MountDamageBonus() { var m = FindMount(Data.equippedMount); return m == null ? 0 : MountBonus(m) * (1 + TV("MountDamage")); }
     public static double MountHealthBonus() { var m = FindMount(Data.equippedMount); return m == null ? 0 : MountBonus(m) * (1 + TV("MountHealth")); }
 
@@ -812,13 +814,13 @@ public static class GameState
     }
 
     // Valeur d'activation (dégâts par coup / attaque en plus) et vie (soin / PV en plus).
-    public static double SkillDamage(OwnedSkill s) => SkillData.Skills[s.id].damage * SkillData.LevelMult(s.level) * SkillScale * (1 + TV("SkillDamage"));
-    public static double SkillHealth(OwnedSkill s) => SkillData.Skills[s.id].health * SkillData.LevelMult(s.level) * SkillScale * (1 + TV("SkillDamage"));
+    public static double SkillDamage(OwnedSkill s) => SkillData.Skills[s.id].damage * SkillData.LevelMult(s.level) * SkillScale * (1 + TV("SkillDamage")) * AscMult(Data.skillStars);
+    public static double SkillHealth(OwnedSkill s) => SkillData.Skills[s.id].health * SkillData.LevelMult(s.level) * SkillScale * (1 + TV("SkillDamage")) * AscMult(Data.skillStars);
 
     static double PassiveBase(OwnedSkill s)
     {
         int r = SkillData.Skills[s.id].rarity;
-        return SkillData.PassiveDamage[r] * (1 + SkillData.PassiveSlope[r] * (s.level - 1)) * SkillScale;
+        return SkillData.PassiveDamage[r] * (1 + SkillData.PassiveSlope[r] * (s.level - 1)) * SkillScale * AscMult(Data.skillStars);
     }
     public static double SkillPassiveDamage(OwnedSkill s) => PassiveBase(s) * (1 + TV("SkillPassiveDamage"));
     public static double SkillPassiveHealth(OwnedSkill s) => PassiveBase(s) * 8 * (1 + TV("SkillPassiveHealth"));
@@ -1172,7 +1174,8 @@ public static class GameState
     public static string StageName(int stage)
     {
         stage = Math.Max(0, Math.Min(MaxStage, stage));
-        return CircleNames[stage / StagesPerCircle] + " " + (stage / StagesPerCircle + 1) + "-" + (stage % StagesPerCircle + 1);
+        int c = (stage / StagesPerCircle) % 10, diff = stage / (StagesPerCircle * 10);
+        return CircleNames[c] + " " + (c + 1) + "-" + (stage % StagesPerCircle + 1) + (diff > 0 ? " ✦" + (diff + 1) : "");
     }
 
     // ---------- Arbre technologique ----------
@@ -1384,6 +1387,48 @@ public static class GameState
     }
 
     // ---------- Combat : le chemin des Enfers ----------
+    // ---------- Ascension (AscensionConfigsLibrary de Forge Master) ----------
+    // Forge : au niveau max, 3 M d'or -> forge au niveau 1, pièces suivantes ★ (×50 par étoile).
+    // Compagnons / montures / compétences : au niveau d'invocation max -> invocation au niveau 1, collection ×50 par étoile.
+    public const int MaxStars = 5;
+    public const long ForgeAscendCost = 3000000;
+    public const int AscForge = 0, AscPets = 1, AscMounts = 2, AscSkills = 3;
+    public static readonly string[] AscNames = { "la forge", "les compagnons", "les montures", "les compétences" };
+    public static double AscMult(int stars) => Math.Pow(50, Math.Max(0, stars));
+    public static string StarText(int n) => n <= 0 ? "" : new string('★', n);
+    public static int Stars(int k) => k == AscForge ? Data.forgeStars : k == AscPets ? Data.petStars : k == AscMounts ? Data.mountStars : Data.skillStars;
+
+    public static bool AscendReady(int k)
+    {
+        if (Stars(k) >= MaxStars) return false;
+        switch (k)
+        {
+            case AscForge: return IsMaxLevel && !Data.upgrading;
+            case AscPets: return Data.eggSummonLevel >= EggSummonLevelMax - 1;
+            case AscMounts: return Data.mountSummonLevel >= MountSummonLevelMax - 1;
+            default: return Data.skillSummonLevel >= SkillSummonLevelMax - 1;
+        }
+    }
+
+    public static string Ascend(int k)
+    {
+        if (!AscendReady(k)) return "Ascension pas encore disponible";
+        switch (k)
+        {
+            case AscForge:
+                if (Data.gold < ForgeAscendCost) return "Il faut " + Fmt(ForgeAscendCost) + " or";
+                Data.gold -= ForgeAscendCost;
+                Data.forgeStars++; Data.forgeLevel = 1; Data.nodesPaid = 0;
+                break;
+            case AscPets: Data.petStars++; Data.eggSummonLevel = 0; Data.eggSummonProgress = 0; break;
+            case AscMounts: Data.mountStars++; Data.mountSummonLevel = 0; Data.mountSummonProgress = 0; break;
+            default: Data.skillStars++; Data.skillSummonLevel = 0; Data.skillSummonProgress = 0; break;
+        }
+        Save();
+        Notify();
+        return null;
+    }
+
     // ---------- Déblocages progressifs (UnlockConditions de Forge Master, 20 combats par âge -> 10 étapes par cercle) ----------
     public const int UnlockShop = 10, UnlockDungeons = 14, UnlockSkills = 17, UnlockPets = 20, UnlockMounts = 24, UnlockTech = 30;
     public static readonly int[] UnlockDungeon = { 14, 20, 30, 17 };   // marteau, œufs, potions, compétences
@@ -1395,17 +1440,18 @@ public static class GameState
     public static int SlotsOpen(int[] table) { int n = 0; foreach (int s in table) if (Reached(s)) n++; return n; }
 
     public const int StagesPerCircle = 10;
-    public const int MaxStage = 99;
-    public static int StageCircle => Mathf.Clamp(Data.stage / StagesPerCircle, 0, 9);
+    public const int MaxStage = 499;   // 10 cercles × 5 difficultés (après 10-10, retour aux Limbes en ✦2…)
+    public static int StageCircle => (Data.stage / StagesPerCircle) % 10;
+    public static int Difficulty => Data.stage / (StagesPerCircle * 10);
     public static int StageStep => Data.stage % StagesPerCircle;
     public static bool IsBossStage => StageStep == StagesPerCircle - 1;
-    public static string StageLabel => CircleNames[StageCircle] + "  " + (StageCircle + 1) + "-" + (StageStep + 1);
+    public static string StageLabel => CircleNames[StageCircle] + "  " + (StageCircle + 1) + "-" + (StageStep + 1) + (Difficulty > 0 ? "  ✦" + (Difficulty + 1) : "");
 
     // Équilibrage (simulation d'une partie neuve) : murs de boss adoucis, progression surtout freinée par les améliorations de forge.
     public static double EnemyHp(bool boss) => 30 * Math.Pow(1.15, Data.stage) * (boss ? 6 : 1);
     public static double EnemyAtk(bool boss) => 5 * Math.Pow(1.15, Data.stage) * (boss ? 2 : 1);
     // Or réduit (simulation) : comme dans Forge Master, l'or doit freiner les améliorations de la forge.
-    public static long KillGold(bool boss) => (long)Math.Round(1.2 * Math.Pow(1.12, Data.stage) * (boss ? 12 : 1));
+    public static long KillGold(bool boss) => (long)Math.Min(1e15, Math.Round(1.2 * Math.Pow(1.12, Data.stage) * (boss ? 12 : 1)));
 
     public static event Action StageChanged;
 

@@ -395,6 +395,7 @@ public partial class ForgeUI : MonoBehaviour
 
     void OnUpgrade()
     {
+        if (GameState.IsMaxLevel) { ShowAscend(GameState.AscForge); return; }
         if (!GameState.PayNode()) Toast("Pas assez d'or");
     }
 
@@ -593,7 +594,7 @@ public partial class ForgeUI : MonoBehaviour
         gemText.text = "<size=26>gemmes</size>  " + GameState.Fmt(d.gems);
         statsText.text = "<color=#FFB347><b>Puissance " + GameState.Fmt(GameState.Power()) + "</b></color>\nATQ " + GameState.Fmt(GameState.TotalAtk()) + "   PV " + GameState.Fmt(GameState.TotalHp());
 
-        forgeLevelText.text = "Forge niv. " + d.forgeLevel + (GameState.IsMaxLevel ? " (max)" : "");
+        forgeLevelText.text = (d.forgeStars > 0 ? "<color=#FFD24A>" + GameState.StarText(d.forgeStars) + "</color> " : "") + "Forge niv. " + d.forgeLevel + (GameState.IsMaxLevel ? " (max)" : "");
         // Bouton des chances : seulement le meilleur cercle possible
         var odds = GameState.CurrentOdds();
         int best = 0;
@@ -611,7 +612,7 @@ public partial class ForgeUI : MonoBehaviour
                 ol.effectColor = c;
                 slotIcon[i].texture = ItemIcons.Get(i, it.circle);
                 slotIcon[i].color = Color.white;
-                slotLevel[i].text = "<b>Niv. " + it.level + "</b>" + (it.SubCount > 0 ? "\n<size=30>" + SubDots(it.subs) + "</size>" : "");
+                slotLevel[i].text = (it.stars > 0 ? "<color=#FFD24A>" + GameState.StarText(it.stars) + "</color> " : "") + "<b>Niv. " + it.level + "</b>" + (it.SubCount > 0 ? "\n<size=30>" + SubDots(it.subs) + "</size>" : "");
                 slotText[i].text = "<size=23>" + it.StatLabel + " " + GameState.Fmt(it.MainStat) + "</size>";
             }
             else
@@ -643,8 +644,9 @@ public partial class ForgeUI : MonoBehaviour
 
         if (GameState.IsMaxLevel)
         {
-            upgradeBtn.interactable = false;
-            upgradeText.text = "Niveau maximum";
+            bool canAsc = GameState.Stars(GameState.AscForge) < GameState.MaxStars;
+            upgradeBtn.interactable = canAsc;
+            upgradeText.text = canAsc ? "ASCENSION ★\n<size=24>" + GameState.Fmt(GameState.ForgeAscendCost) + " or</size>" : "Ascension max";
             speedUpBtn.gameObject.SetActive(false);
         }
         else if (d.upgrading)

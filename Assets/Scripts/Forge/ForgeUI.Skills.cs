@@ -25,7 +25,7 @@ public partial class ForgeUI
             new Color(0.45f, 0.14f, 0.1f), "X", 40, out closeT, () => skillPanel.SetActive(false));
 
         skillSummon = MakeSummonBar(P, -90, new Color(0.2f, 0.5f, 0.3f), () => OnSummonSkills(SkillData.SummonSmall), () => OnSummonSkills(SkillData.SummonBig),
-            () => ShowInfo("Chances des compétences", OddsText(GameState.SkillOdds)));
+            () => { if (GameState.AscendReady(GameState.AscSkills)) ShowAscend(GameState.AscSkills); else ShowInfo("Chances des compétences", OddsText(GameState.SkillOdds)); });
 
         for (int i = 0; i < 3; i++)
         {
@@ -80,7 +80,7 @@ public partial class ForgeUI
         if (skillPanel == null || !skillPanel.activeSelf) return;
         var d = GameState.Data;
         SetSummonBar(skillSummon, "Tickets", d.skillTickets, GameState.SkillSummonCost, SkillData.SummonSmall, SkillData.SummonBig,
-            d.skillSummonLevel, d.skillSummonProgress, GameState.SkillSummonRequired);
+            d.skillSummonLevel, d.skillSummonProgress, GameState.SkillSummonRequired, GameState.AscSkills);
         skillPassive.text = "Bonus de collection  <color=#FFC07A>+" + GameState.Fmt(GameState.SkillPassiveDamage()) + " ATQ   +" + GameState.Fmt(GameState.SkillPassiveHealth()) + " PV</color>";
 
         for (int i = 0; i < 3; i++)
