@@ -1111,8 +1111,8 @@ public static class GameState
     }
 
     public static int MissionUnits(int slot) => MissionData.SquadUnits[Data.missionSquad[slot]];
-    public static double MissionUnitHp(int slot) => 30 * Math.Pow(1.16, MissionEquivalentStage(Data.missionLevel[slot])) * MissionData.SquadHealth[Data.missionSquad[slot]] / 8000.0 * 1.5;
-    public static double MissionUnitAtk(int slot) => 5 * Math.Pow(1.16, MissionEquivalentStage(Data.missionLevel[slot])) * MissionData.SquadDamage[Data.missionSquad[slot]] / 1000.0;
+    public static double MissionUnitHp(int slot) => 30 * Math.Pow(1.15, MissionEquivalentStage(Data.missionLevel[slot])) * MissionData.SquadHealth[Data.missionSquad[slot]] / 8000.0 * 1.5;
+    public static double MissionUnitAtk(int slot) => 5 * Math.Pow(1.15, MissionEquivalentStage(Data.missionLevel[slot])) * MissionData.SquadDamage[Data.missionSquad[slot]] / 1000.0;
 
     public static int[] MissionReward(int level)
     {
@@ -1360,8 +1360,8 @@ public static class GameState
 
     // Difficulté : un niveau de donjon équivaut à avancer de 4 étapes sur le chemin.
     public static int DungeonEquivalentStage(int type) => 2 + 4 * Data.dungeonLevel[type];
-    public static double DungeonEnemyHp(int type, double mult) => 30 * Math.Pow(1.16, DungeonEquivalentStage(type)) * mult;
-    public static double DungeonEnemyAtk(int type, double mult) => 5 * Math.Pow(1.16, DungeonEquivalentStage(type)) * mult;
+    public static double DungeonEnemyHp(int type, double mult) => 30 * Math.Pow(1.15, DungeonEquivalentStage(type)) * mult;
+    public static double DungeonEnemyAtk(int type, double mult) => 5 * Math.Pow(1.15, DungeonEquivalentStage(type)) * mult;
 
     public static bool CanEnterDungeon(int type) => Reached(UnlockDungeon[type]) && Data.dungeonKeys[type] > 0 && Data.dungeonLevel[type] <= DungeonMaxLevel;
 
@@ -1401,8 +1401,9 @@ public static class GameState
     public static bool IsBossStage => StageStep == StagesPerCircle - 1;
     public static string StageLabel => CircleNames[StageCircle] + "  " + (StageCircle + 1) + "-" + (StageStep + 1);
 
-    public static double EnemyHp(bool boss) => 30 * Math.Pow(1.16, Data.stage) * (boss ? 8 : 1);
-    public static double EnemyAtk(bool boss) => 5 * Math.Pow(1.16, Data.stage) * (boss ? 2.5 : 1);
+    // Équilibrage (simulation d'une partie neuve) : murs de boss adoucis, progression surtout freinée par les améliorations de forge.
+    public static double EnemyHp(bool boss) => 30 * Math.Pow(1.15, Data.stage) * (boss ? 6 : 1);
+    public static double EnemyAtk(bool boss) => 5 * Math.Pow(1.15, Data.stage) * (boss ? 2 : 1);
     public static long KillGold(bool boss) => (long)Math.Round(4 * Math.Pow(1.12, Data.stage) * (boss ? 12 : 1));
 
     public static event Action StageChanged;
