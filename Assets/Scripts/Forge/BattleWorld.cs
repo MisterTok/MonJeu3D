@@ -230,6 +230,7 @@ public class BattleWorld : MonoBehaviour
 
         BuildOverlay();
         BuildTerrain();
+        BuildArena();
         SpawnHero();
         StartStage();
     }
@@ -255,6 +256,70 @@ public class BattleWorld : MonoBehaviour
     Material groundMat, pathMat, riverMat;
     Light riverLight;
     static readonly Color Basalt = new Color(0.3f, 0.18f, 0.15f);
+
+    // ---------- Fond peint 2D (arènes Craftpix, hors dépôt) ----------
+    static readonly string[] ArenaNames = { "chateau", "terrasse", "foret", "trone" };
+    // Décor et teinte par cercle (Limbes -> Lucifer).
+    static readonly int[] CircleArena = { 0, 1, 2, 3, 0, 1, 2, 3, 0, 3 };
+    static readonly Color[] CircleArenaTint =
+    {
+        new Color(0.85f, 0.85f, 0.95f), new Color(1f, 0.85f, 0.95f), new Color(0.9f, 0.85f, 0.8f), new Color(1f, 0.9f, 0.85f),
+        new Color(1f, 0.7f, 0.65f), new Color(1f, 0.75f, 0.55f), new Color(0.95f, 0.65f, 0.6f), new Color(0.85f, 0.7f, 1f),
+        new Color(0.9f, 0.55f, 0.5f), new Color(1f, 0.55f, 0.45f),
+    };
+    readonly Texture2D[] arenaTex = new Texture2D[4];
+    Transform bgQuad;
+    Material bgMat;
+    bool UseArena => bgQuad != null;
+
+    void BuildArena()
+    {
+        if (!SpritesOn) return;
+        for (int i = 0; i < ArenaNames.Length; i++)
+        {
+            arenaTex[i] = Resources.Load<Texture2D>("ForgeSprites/Arenas/" + ArenaNames[i]);
+            if (arenaTex[i] == null) return;
+            arenaTex[i].wrapModeU = TextureWrapMode.Mirror;
+            arenaTex[i].wrapModeV = TextureWrapMode.Clamp;
+        }
+        var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        Destroy(q.GetComponent<Collider>());
+        q.name = "Fond peint";
+        bgQuad = q.transform;
+        bgQuad.SetParent(cam.transform, false);
+        bgMat = ForgeWorld.Unlit(Color.white);
+        bgMat.mainTexture = arenaTex[0];
+        q.GetComponent<Renderer>().sharedMaterial = bgMat;
+        q.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        // Le décor 3D n'est plus affiché.
+        foreach (var t in new[] { ground, path, river }) t.gameObject.SetActive(false);
+        riverLight.enabled = false;
+    }
+
+    void SetArena(int index, Color tint)
+    {
+        if (!UseArena) return;
+        bgMat.mainTexture = arenaTex[Mathf.Clamp(index, 0, arenaTex.Length - 1)];
+        bgMat.SetColor("_BaseColor", tint);
+        bgMat.color = tint;
+    }
+
+    // Le fond suit la caméra (plein cadre, loin derrière) et défile avec le héros.
+    void UpdateArena(float heroX)
+    {
+        if (!UseArena) return;
+        const float dist = 40f;
+        float h = 2f * dist * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
+        float w = h * Mathf.Max(0.5f, cam.aspect);
+        float tex = arenaTex[0] != null ? arenaTex[0].width / (float)arenaTex[0].height : 16f / 9f;
+        // Hauteur du cadre remplie ; la largeur visible = w / (h * tex) d'une image.
+        bgQuad.localPosition = new Vector3(0f, 0f, dist);
+        bgQuad.localRotation = Quaternion.identity;
+        bgQuad.localScale = new Vector3(w, h, 1f);
+        float span = w / (h * tex);
+        bgMat.mainTextureScale = new Vector2(span, 1f);
+        bgMat.mainTextureOffset = new Vector2(heroX / 15f, 0f);
+    }
 
     void BuildTerrain()
     {
@@ -701,6 +766,9 @@ public class BattleWorld : MonoBehaviour
             circleTint = Color.Lerp(dc, new Color(0.5f, 0.05f, 0.02f), 0.3f);
             riverMat.SetColor("_BaseColor", Color.Lerp(new Color(2.6f, 1.3f, 0.7f), dc * 2.6f, 0.45f));
         }
+        if (missionSlot >= 0) SetArena(3, new Color(0.85f, 0.7f, 1f));
+        else if (dungeon >= 0) SetArena(dungeon % 4, Color.Lerp(Color.white, GameState.DungeonColors[dungeon], 0.35f));
+        else SetArena(CircleArena[circle], CircleArenaTint[circle]);
         ResetSkills();
         hero.maxHp = hero.hp = GameState.TotalHp();
         hero.atk = GameState.TotalAtk();
@@ -910,8 +978,7 @@ public class BattleWorld : MonoBehaviour
         }
 
         UpdateSkills(dt);
-        UpdateChunks(hero.X);
-        UpdateTerrain(hero.X);
+        if (!UseArena) { UpdateChunks(hero.X); UpdateTerrain(hero.X); }
         UpdatePets(dt, phase == "walk" && !heroEngaged || phase == "clear");
         UpdateMount(phase == "walk" && !heroEngaged || phase == "clear");
         // Vue de trois quarts, comme dans Forge Master : le héros à gauche, les ennemis arrivent par la droite.
@@ -919,6 +986,7 @@ public class BattleWorld : MonoBehaviour
         cam.transform.position = camPos;
         cam.transform.rotation = Quaternion.Euler(CamPitch, 0f, 0f);
         rigLight.transform.position = world.TransformPoint(new Vector3(hero.X + 1.5f, 3.2f, -2.4f));
+        UpdateArena(hero.X);
 
         UpdateOverlay(dt);
     }
