@@ -9,9 +9,10 @@ public partial class ForgeUI
     static readonly string[] NavNames = { "Boutique", "Héros", "FORGE", "Aventure", "Techno" };
     readonly Image[] navImg = new Image[5];
     readonly Text[] navText = new Text[5];
+    readonly GameObject[] navDot = new GameObject[5];
     static readonly Color NavOff = new Color(0.2f, 0.09f, 0.08f), NavOn = new Color(0.78f, 0.3f, 0.08f);
 
-    class SubTabs { public RectTransform root; public Image[] img; public Text[] txt; public GameObject[] panels; public System.Action[] open; public int last; }
+    class SubTabs { public RectTransform root; public Image[] img; public Text[] txt; public GameObject[] dot; public GameObject[] panels; public System.Action[] open; public int last; }
     SubTabs heroTabs, advTabs;
     Transform navRoot;
 
@@ -27,6 +28,7 @@ public partial class ForgeUI
             var b = MakeButton(nav.transform, "Onglet " + NavNames[i], new Vector2(edges[i], 0), new Vector2(edges[i + 1], 1), new Vector2(4, 12), new Vector2(-4, -12),
                 NavOff, NavNames[i], i == 2 ? 32 : 26, out navText[i], () => OnNav(idx));
             navImg[i] = b.GetComponent<Image>();
+            navDot[i] = MakeDot(b.transform);
             if (i == 2) navText[i].fontStyle = FontStyle.Bold;
         }
     }
@@ -67,7 +69,7 @@ public partial class ForgeUI
     // Barre de sous-onglets posée sur le titre des panneaux (le bouton X reste visible à droite).
     SubTabs MakeSubTabs(Transform R, string[] names, GameObject[] panels, System.Action[] open)
     {
-        var g = new SubTabs { panels = panels, open = open, img = new Image[names.Length], txt = new Text[names.Length] };
+        var g = new SubTabs { panels = panels, open = open, img = new Image[names.Length], txt = new Text[names.Length], dot = new GameObject[names.Length] };
         g.root = MakeRect("Sous-onglets", R, new Vector2(0, 1), new Vector2(1, 1), new Vector2(12, -216), new Vector2(-114, -140));
         g.root.gameObject.AddComponent<Image>().color = new Color(0.05f, 0.025f, 0.03f, 1f);
         for (int i = 0; i < names.Length; i++)
@@ -76,6 +78,7 @@ public partial class ForgeUI
             var b = MakeButton(g.root, names[i], new Vector2(i / (float)names.Length, 0), new Vector2((i + 1) / (float)names.Length, 1), new Vector2(4, 6), new Vector2(-4, -6),
                 NavOff, names[i], 26, out g.txt[i], () => OpenTab(g, idx));
             g.img[i] = b.GetComponent<Image>();
+            g.dot[i] = MakeDot(b.transform);
         }
         g.root.gameObject.SetActive(false);
         return g;
@@ -95,8 +98,50 @@ public partial class ForgeUI
         advTabs.root.SetAsLastSibling();
     }
 
+    // Pastille rouge « ! » en haut à droite d'un bouton : quelque chose à faire là-bas.
+    GameObject MakeDot(Transform parent)
+    {
+        var rt = MakeRect("Pastille", parent, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-30, -30), new Vector2(4, 4));
+        var img = rt.gameObject.AddComponent<Image>();
+        img.sprite = Circle(); img.color = new Color(0.9f, 0.12f, 0.1f); img.raycastTarget = false;
+        rt.gameObject.AddComponent<Outline>().effectColor = new Color(0, 0, 0, 0.7f);
+        var t = Label(rt, "!", 24, TextAnchor.MiddleCenter, Color.white);
+        t.fontStyle = FontStyle.Bold;
+        rt.gameObject.SetActive(false);
+        return rt.gameObject;
+    }
+
+    static bool AnyDungeonKey()
+    {
+        for (int i = 0; i < GameState.Data.dungeonKeys.Length; i++) if (GameState.CanEnterDungeon(i)) return true;
+        return false;
+    }
+
     void UpdateNav()
     {
+        // Notifications façon Forge Master.
+        var d = GameState.Data;
+        bool gift = !d.shopFreeTaken, dung = AnyDungeonKey(), miss = GameState.CanStartMission;
+        bool skills = d.skillTickets >= GameState.SkillSummonCost * SkillData.SummonSmall;
+        if (navDot[0] != null)
+        {
+            navDot[0].SetActive(gift);
+            navDot[1].SetActive(skills);
+            navDot[3].SetActive(dung || miss);
+        }
+        if (heroTabs != null) heroTabs.dot[1].SetActive(skills);
+        if (advTabs != null) { advTabs.dot[0].SetActive(dung); advTabs.dot[1].SetActive(miss); }
+
+        // Le bouton Améliorer la forge pulse quand on peut payer.
+        if (upgradeBtn != null)
+        {
+            var img = upgradeBtn.GetComponent<Image>();
+            bool ready = upgradeBtn.interactable && !d.upgrading && !GameState.IsMaxLevel;
+            float k = ready ? 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 5f) : 0f;
+            img.color = Color.Lerp(new Color(0.62f, 0.22f, 0.06f), new Color(1f, 0.55f, 0.12f), k);
+            upgradeBtn.transform.localScale = Vector3.one * (1f + 0.04f * k);
+        }
+
         int hero = GroupOpen(heroTabs), adv = GroupOpen(advTabs);
         bool detailOpen = detail != null && detail.activeSelf;
         foreach (var (g, cur) in new[] { (heroTabs, hero), (advTabs, adv) })

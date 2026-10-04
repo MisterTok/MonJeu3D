@@ -59,3 +59,4 @@ Décor du chemin en KayKit Dungeon Remastered, icônes 2D peintes (packs payants
 - Compagnons en combat 2D : image plate du modèle 3D (ItemIcons.CreatureSprite, vue de trois quarts vers la droite), petits bonds en marchant. Monture masquée.
 - Bonus des objets (ForgeUI.Subs.cs) : une couleur + un symbole par statistique secondaire (SubColors/SubGlyphs) ; pastilles dans la fenêtre de la nouvelle pièce, symboles colorés sur les tuiles d'équipement, lignes colorées dans la fiche Héros et les compagnons.
 - Tests computer-use : computer_zoom recadre la DERNIÈRE capture (pas l'écran en direct) ; des clics trop rapprochés dans Unity sont perdus : attendre ~2 s entre deux clics de jeu.
+- Notifications (ForgeUI.Nav.cs UpdateNav) : pastille rouge « ! » sur Boutique (cadeau du jour), Héros + sous-onglet Compétences (invocation x5 payable), Aventure + sous-onglets (clé de donjon, énergie de mission) ; le bouton Améliorer la forge pulse quand il est payable.
