@@ -174,6 +174,7 @@ public partial class ForgeUI : MonoBehaviour
 
         // ----- Rangée de la forge : enclume tactile au centre, niveau de forge à droite -----
         var forgeRow = MakeRect("Rangée forge", R, new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 165), new Vector2(0, 520));
+        forgeRowGroup = forgeRow.gameObject.AddComponent<CanvasGroup>();
         anvilRect = MakeRect("Enclume", forgeRow, new Vector2(0.27f, 0f), new Vector2(0.73f, 1f), Vector2.zero, Vector2.zero);
         var anvilImg = anvilRect.gameObject.AddComponent<Image>();
         anvilImg.color = new Color(0, 0, 0, 0); // transparent : la 3D est derrière
@@ -204,6 +205,7 @@ public partial class ForgeUI : MonoBehaviour
         // ----- Équipement : 2 rangées de 4, tuiles compactes -----
         var eq = MakeRect("Equipement", R, new Vector2(0, 0), new Vector2(1, 0), new Vector2(18, 530), new Vector2(-18, 850));
         equipRect = eq;
+        equipGroup = eq.gameObject.AddComponent<CanvasGroup>();
         for (int i = 0; i < GameState.SlotCount; i++)
         {
             int row = i / 4, col = i % 4;
@@ -466,7 +468,18 @@ public partial class ForgeUI : MonoBehaviour
             battle.SetBand(battleBottom, battleTop);
         }
         battle.SetVisible(world.ExpandAmount < 0.98f);
+
+        // Pendant la révélation d'une pièce, la forge s'agrandit : on efface l'équipement et les boutons qui la recouvraient.
+        float a = 1f - Mathf.Clamp01(world.ExpandAmount * 2f);
+        foreach (var g in new[] { forgeRowGroup, equipGroup })
+        {
+            if (g == null) continue;
+            g.alpha = a;
+            g.blocksRaycasts = a > 0.99f;
+        }
     }
+
+    CanvasGroup forgeRowGroup, equipGroup;
 
     void OnAutoToggle()
     {
