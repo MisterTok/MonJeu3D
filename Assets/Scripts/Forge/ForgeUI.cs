@@ -32,6 +32,7 @@ public partial class ForgeUI : MonoBehaviour
     Image popFrame;
     Text toast;
     float toastTime;
+    CanvasGroup toastGroup;
     float refreshTimer;
 
     static readonly Color Panel = new Color(0.16f, 0.09f, 0.08f, 0.94f);
@@ -213,7 +214,16 @@ public partial class ForgeUI : MonoBehaviour
         BuildSubTabs(R);
         BuildDetailPopup(R);
 
-        toast = Label(R, "", 40, TextAnchor.MiddleCenter, new Color(1f, 0.85f, 0.4f), new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 860), new Vector2(0, 930));
+        // Messages : bandeau sombre sous le titre de l'étape (au-dessus de tout, texte sur plusieurs lignes si besoin).
+        var tb = MakeRect("Bandeau message", R, new Vector2(0, 1), new Vector2(1, 1), new Vector2(40, -500), new Vector2(-40, -330));
+        var tbImg = tb.gameObject.AddComponent<Image>();
+        tbImg.sprite = Round(); tbImg.type = Image.Type.Sliced; tbImg.color = new Color(0.05f, 0.02f, 0.02f, 0.82f); tbImg.raycastTarget = false;
+        toastGroup = tb.gameObject.AddComponent<CanvasGroup>();
+        toastGroup.alpha = 0f; toastGroup.blocksRaycasts = false;
+        toast = Label(tb, "", 34, TextAnchor.MiddleCenter, new Color(1f, 0.85f, 0.4f), Vector2.zero, Vector2.one, new Vector2(20, 8), new Vector2(-20, -8));
+        toast.horizontalOverflow = HorizontalWrapMode.Wrap;
+        toast.verticalOverflow = VerticalWrapMode.Truncate;
+        toast.resizeTextForBestFit = true; toast.resizeTextMinSize = 20; toast.resizeTextMaxSize = 34;
 
         GameState.Changed += Refresh;
         GameState.ForgeLeveledUp += OnLevelUp;
@@ -328,9 +338,9 @@ public partial class ForgeUI : MonoBehaviour
         var inner = Box(popFrame.transform, "Carte", Vector2.zero, Vector2.one, new Vector2(6, 6), new Vector2(-6, -6), new Color(0.07f, 0.035f, 0.035f, 0.97f));
         Transform c = inner.transform;
         // Icône de la pièce posée sur le haut de la fiche, avec un halo de la couleur du cercle.
-        popHalo = MakeRect("Halo", popup.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-210, -40), new Vector2(210, 380)).gameObject.AddComponent<Image>();
+        popHalo = MakeRect("Halo", popup.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-190, 30), new Vector2(190, 410)).gameObject.AddComponent<Image>();
         popHalo.sprite = Circle(); popHalo.raycastTarget = false;
-        popIcon = MakeRect("Icône", popup.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-170, 0), new Vector2(170, 340)).gameObject.AddComponent<RawImage>();
+        popIcon = MakeRect("Icône", popup.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-150, 70), new Vector2(150, 370)).gameObject.AddComponent<RawImage>();
         popIcon.raycastTarget = false;
         popRemain = Label(c, "", 26, TextAnchor.UpperRight, TextDim, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-24, -14));
         popName = Label(c, "", 54, TextAnchor.UpperCenter, Color.white, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-20, -30));
@@ -414,7 +424,7 @@ public partial class ForgeUI : MonoBehaviour
     {
         toast.text = msg;
         toastTime = 2.2f;
-        toast.transform.SetAsLastSibling();   // au-dessus des panneaux
+        toastGroup.transform.SetAsLastSibling();   // au-dessus des panneaux
     }
 
     // ---------- Fenêtre de la nouvelle pièce ----------
@@ -572,9 +582,7 @@ public partial class ForgeUI : MonoBehaviour
         if (toastTime > 0f)
         {
             toastTime -= Time.deltaTime;
-            var col = toast.color;
-            col.a = Mathf.Clamp01(toastTime / 0.5f);
-            toast.color = col;
+            toastGroup.alpha = Mathf.Clamp01(toastTime / 0.5f);
         }
     }
 
