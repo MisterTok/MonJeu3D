@@ -176,7 +176,7 @@ public static class ItemIcons
     static readonly Dictionary<int, Texture2D> flatCache = new Dictionary<int, Texture2D>();
     public static Texture2D Flat(int slot, int circle, int model = 0)
     {
-        int c = Mathf.Clamp(circle, 0, 9), m = Mathf.Clamp(model, 0, GameState.ModelNames[slot].Length - 1);
+        int c = Mathf.Clamp(circle, 0, 9), m = Mathf.Clamp(model, 0, GameState.ModelCount(slot) - 1);
         int key = slot * 1000 + c * 10 + m;
         if (!flatCache.TryGetValue(key, out var t))
             flatCache[key] = t = Resources.Load<Texture2D>("ForgeUI/Items/s" + slot + "_c" + c + "_v" + m);
