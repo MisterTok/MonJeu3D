@@ -10,13 +10,13 @@ using System.Collections.Generic;
 public static class SteppingStones
 {
     public const int Stones = 6;
-    public static readonly float[] Chance = { 0.95f, 0.8f, 0.65f, 0.5f, 0.4f, 0.3f };   // réussite du saut vers la pierre i
-    public static readonly int[] Loot = { 2, 4, 7, 11, 16, 25 };                       // éclats ajoutés en atteignant la pierre i
+    public static readonly float[] Chance = { 1f, 0.9f, 0.8f, 0.7f, 0.6f, 0.5f };   // réussite du saut vers la pierre i
+    public static readonly int[] Loot = { 3, 5, 8, 12, 18, 30 };                       // éclats ajoutés en atteignant la pierre i
     public const int FreeTokens = 8;                                                     // offerts dans la boutique, une fois par édition
     public static readonly int[] PackTokens = { 10, 30 }, PackGems = { 150, 400 };      // packs (gemmes en attendant les achats réels)
-    public const int AutoCashAt = 3;                                                     // le mode Auto encaisse à la 3e pierre
+    public const int AutoCashAt = 4;                                                     // le mode Auto encaisse à la 4e pierre
     public const int Unlock = 57;                                                        // étape 6-8
-    public static int SkinCost(HeroSkins.Def d) => d.rarity >= 5 ? 120 : 60;
+    public static int SkinCost(HeroSkins.Def d) => d.rarity >= 5 ? 80 : 40;
 
     static readonly DateTime Epoch = new DateTime(2026, 1, 5);   // un lundi : semaine 0 = semaine d'événement
     static List<string> packs;
