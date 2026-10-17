@@ -19,7 +19,9 @@ ANIMS = {"idle": "Idle", "move": "Walking", "attack": "Slashing", "hurt": "Hurt"
 # Nom de fichier -> pièce logique
 PARTS = {"Body.png": "Body", "Head.png": "Head", "Face 01.png": "Face", "Right Arm.png": "RArm", "Right Hand.png": "RHand",
          "Left Arm.png": "LArm", "Left Hand.png": "LHand", "Left Leg.png": "LLeg", "Right Leg.png": "RLeg",
-         "Sword.png": "Weapon", "Bow.png": "Weapon", "Shield.png": "Shield"}
+         "Sword.png": "Weapon", "Bow.png": "Weapon", "Weapon.png": "Weapon", "Shield.png": "Shield"}
+REF_HEAD = 395.0     # largeur opaque moyenne de la tête des packs classiques (378 à 418 px)
+REF_BODY = 320.0     # largeur du corps des packs classiques ; les packs « Tiny » (256 ou 128) sont agrandis d'autant
 
 def num(e, k, d=0.0):
     v = e.get(k); return float(v) if v is not None else d
@@ -99,6 +101,11 @@ def find_chars():
     for f in glob.glob(os.path.join(SRC, "*", "*", "PNG", "Vector Parts", "Animations.scml")):
         if "(1)" in f or "MACOSX" in f: continue
         out[os.path.normpath(f).split(os.sep)[-4]] = os.path.dirname(f)
+    # Packs « Tiny Style » : <pack>/PNG/<Perso>/Vector Parts (les boss en vue de dessus n'ont pas de Body.png : ignorés)
+    for f in glob.glob(os.path.join(SRC, "*", "PNG", "*", "Vector Parts", "Animations.scml")):
+        if "(1)" in f or "MACOSX" in f: continue
+        if os.path.exists(os.path.join(os.path.dirname(f), "Body.png")):
+            out[os.path.normpath(f).split(os.sep)[-3]] = os.path.dirname(f)
     for f in glob.glob(os.path.join(EXTRA, "Skeleton_Crusader_*", "PNG", "Vector Parts", "Animations.scml")):
         out[os.path.normpath(f).split(os.sep)[-4]] = os.path.dirname(f)
     return out
@@ -150,7 +157,14 @@ def main():
         except Exception as e: print("ignoré", cname, e); continue
         anim = "Idle" if "Idle" in sc.anims else list(sc.anims)[0]
         entry = {}
-        for o in sc.pose(anim, 0):
+        pose = sc.pose(anim, 0)
+        bw = [o["w"] * abs(o["bone"]["sx"] * o["local"]["sx"]) for o in pose if o["file"] == "Body.png"]
+        k = REF_BODY / bw[0] if bw else 1.0     # mise à l'échelle du corps, des membres et de l'arme
+        # La tête et le visage sont mis à l'échelle sur la taille réelle (pixels opaques) de la tête de référence.
+        hw = [Image.open(os.path.join(d, o["file"])).getbbox() for o in pose if o["file"] == "Head.png"]
+        hw = [(b[2] - b[0]) * abs(o["bone"]["sx"] * o["local"]["sx"]) for b, o in zip(hw, [o for o in pose if o["file"] == "Head.png"]) if b]
+        kh = REF_HEAD / hw[0] if hw and abs(k - 1) > 0.01 else k   # seulement pour les packs « Tiny »
+        for o in pose:
             p = PARTS.get(o["file"]) or ("Face" if o["file"].startswith("Face 01") else None)
             if p is None or p in entry: continue
             src = os.path.join(d, o["file"])
@@ -160,7 +174,8 @@ def main():
             os.makedirs(os.path.join(OUT, "Parts", cname), exist_ok=True)
             im.resize((w, h), Image.LANCZOS).save(os.path.join(OUT, "Parts", cname, p + ".png"))
             l = o["local"]
-            entry[p] = [round(l["x"] / H, 5), round(l["y"] / H, 5), round(l["angle"], 3), round(l["sx"], 4), round(l["sy"], 4), round(o["px"], 4), round(o["py"], 4)]
+            kk = kh if p in ("Head", "Face") else k
+            entry[p] = [round(l["x"] * kk / H, 5), round(l["y"] * kk / H, 5), round(l["angle"], 3), round(l["sx"] * kk, 4), round(l["sy"] * kk, 4), round(o["px"], 4), round(o["py"], 4)]
         parts[cname] = entry
         print(cname, sorted(entry))
     meta = {"scale": SCALE, "height_px": H, "chars": parts}
