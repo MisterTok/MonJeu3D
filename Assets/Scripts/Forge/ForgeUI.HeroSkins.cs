@@ -58,7 +58,7 @@ public partial class ForgeUI
         var c = ProgressionData.RarityColors[d.rarity];
         bool season = SteppingStones.InSeason(id);
         string body = "<color=#A89C94>" + d.pack + "</color>\n\nDégâts et vie <color=#FFC07A>+" + GameState.FmtPct(HeroSkins.Bonus(d.rarity)) + "</color> quand il est porté"
-            + (owned ? "" : season ? "\n\nÀ gagner cette semaine au <color=#FFC07A>Pas japonais</color> : " + SteppingStones.SkinCost(d) + " éclats"
+            + (owned ? "" : season ? "\n\nÀ gagner cette semaine au <color=#FFC07A>Pas japonais</color> : " + (SteppingStones.IsRare(id) ? "1 % à la pierre " + SteppingStones.RareRow + " ou au bout du chemin" : "au bout du chemin")
                                    : "\n\n<color=#998877>Reviendra lors d'une prochaine saison du Pas japonais</color>");
         string action = owned ? (on ? "RETIRER" : "PORTER") : season ? "PAS JAPONAIS" : null;
         ShowDetail(d.name, d.rarity, SkinIcon(id), "?", c, 1, 1, 1, body, action, () =>
@@ -75,7 +75,7 @@ public partial class ForgeUI
         if (skinsPanel == null || !skinsPanel.activeSelf) return;
         var gd = GameState.Data;
         skinEventText.text = SteppingStones.Unlocked
-            ? "PAS JAPONAIS\n<size=24>" + SteppingStones.SeasonPack + "</size>\n<size=22>Jetons " + gd.ssTokens + "  ·  Éclats " + gd.ssEclats + "</size>"
+            ? "PAS JAPONAIS\n<size=24>" + SteppingStones.SeasonPack + "</size>\n<size=22>Jetons " + gd.ssTokens + "</size>"
             : "PAS JAPONAIS\n<size=22>" + GameState.UnlockText(SteppingStones.Unlock) + "</size>";
         var eq = HeroSkins.Find(GameState.Data.skinEquipped);
         if (eq == null || !HeroSkins.Owned(eq.id))

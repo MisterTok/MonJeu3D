@@ -79,6 +79,7 @@ public class ForgeGame : MonoBehaviour
         if (name == "toast") { FindAnyObjectByType<ForgeUI>()?.SendMessage("Toast", "Test : +7,32k or  +188 tickets  +93 coquilles  +94 potions rouges  +70 remontoirs"); return; } // outil de test
         if (name.StartsWith("skinview")) { HeroSkins.TestView = name.Length > 9 ? name.Substring(9) : null; return; } // outil de test : aperçu d'un skin (« skinview:Golem_3 », « skinview » pour arrêter)
         if (name.StartsWith("open:")) { FindAnyObjectByType<ForgeUI>()?.SendMessage("TestOpen", name.Substring(5)); return; } // outil de test : ouvre un écran (shop, hero, skills, pets, mounts, dungeons, missions, tech, pass, odds, home)
+        if (name.StartsWith("ss:")) { FindAnyObjectByType<ForgeUI>()?.SendMessage("TestStones", name.Substring(3)); return; } // outil de test : « ss:tokens », « ss:0 »/« ss:1 » (pierre gauche/droite), « ss:auto »
         if (name == "tickets") { GameState.Data.skillTickets += 5000; GameState.AddEggshells(0); return; } // outil de test : tickets de compétences
         if (name.StartsWith("forge")) { GameState.Data.hammers = Mathf.Max(GameState.Data.hammers, 1); FindAnyObjectByType<ForgeUI>()?.SendMessage("OnForge"); return; }
         ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(dir, name + ".png"));

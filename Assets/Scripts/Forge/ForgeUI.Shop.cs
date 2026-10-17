@@ -70,7 +70,7 @@ public partial class ForgeUI
             bundleBtn[i].GetComponent<Outline>().effectColor = c;
         }
 
-        // Pas japonais : 8 jetons offerts par édition, packs (la section n'est utile que pendant la semaine de l'événement)
+        // Pas japonais : 8 jetons offerts chaque jour de l'édition, packs (la section n'est utile que pendant la semaine de l'événement)
         ssShopTitle = Label(P, "Pas japonais", 30, TextAnchor.UpperLeft, TextDim, new Vector2(0, 1), new Vector2(1, 1), new Vector2(30, -1285), new Vector2(0, -1245));
         ssShopBtn[0] = MakeButton(P, "Jetons offerts", new Vector2(0f, 1), new Vector2(1 / 3f, 1), new Vector2(12, -1460), new Vector2(-12, -1290),
             new Color(0.15f, 0.5f, 0.22f), "", 26, out ssShopText[0], () => { string e = SteppingStones.ClaimFree(); Toast(e ?? "+" + SteppingStones.FreeTokens + " jetons du Pas japonais"); RefreshShop(); });
@@ -118,7 +118,7 @@ public partial class ForgeUI
         ssShopTitle.text = ssOn ? "Pas japonais  <size=22><color=#FFC07A>" + SteppingStones.SeasonPack + "</color> · jetons " + d.ssTokens + "</size>"
             : "Pas japonais  <size=22>" + (SteppingStones.Unlocked ? "revient dans " + GameState.FmtTime((long)SteppingStones.TimeLeft.TotalSeconds) : GameState.UnlockText(SteppingStones.Unlock)) + "</size>";
         ssShopBtn[0].interactable = SteppingStones.FreeAvailable;
-        ssShopText[0].text = "<b>" + SteppingStones.FreeTokens + " jetons</b>\n<size=22>" + (SteppingStones.FreeAvailable ? "GRATUIT" : ssOn ? "pris" : "hors édition") + "</size>";
+        ssShopText[0].text = "<b>" + SteppingStones.FreeTokens + " jetons</b>\n<size=22>" + (SteppingStones.FreeAvailable ? "GRATUIT" : ssOn ? "demain" : "hors édition") + "</size>";
         for (int i = 0; i < 2; i++)
         {
             ssShopBtn[i + 1].interactable = ssOn && d.gems >= SteppingStones.PackGems[i];
