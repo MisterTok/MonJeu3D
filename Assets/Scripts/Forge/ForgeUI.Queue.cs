@@ -40,7 +40,7 @@ public partial class ForgeUI
         var next = d.forged[0];
         var c = GameState.CircleColors[next.circle];
         queueFrame.color = c;
-        queueIcon.texture = ItemIcons.Get(next.slot, next.circle);
+        queueIcon.texture = ItemIcons.Get(next);
         queueCount.text = "x" + n;
     }
 

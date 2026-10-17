@@ -12,6 +12,7 @@ public class PaperHero
     readonly SpriteRenderer hair, helmet, weapon, shield;
     readonly SpriteRenderer[] all;
     int keyW = -99, keyH = -99, keyS = -99;
+    static int Key(Item it) => it != null && it.valid ? it.circle * 10 + it.model : -1;
 
     static Sprite Part(string name)
     {
@@ -61,31 +62,32 @@ public class PaperHero
         all = rig.GetComponentsInChildren<SpriteRenderer>(true);
     }
 
-    static Sprite Icon(int slot, int circle, Vector2 pivot, float size)
+    static Sprite Icon(int slot, int circle, int model, Vector2 pivot, float size)
     {
-        var t = ItemIcons.Flat(slot, circle);
+        var t = ItemIcons.Flat(slot, circle, model);
         return t == null ? null : Sprite.Create(t, new Rect(0, 0, t.width, t.height), pivot, t.width / size, 0, SpriteMeshType.FullRect);
     }
 
-    // Cercle de chaque pièce portée (-1 = rien).
-    public void SetGear(int weaponCircle, int helmetCircle, int shieldCircle)
+    // Pièces portées (arme, heaume, bouclier) : leur modèle et leur cercle donnent l'image.
+    public void SetGear(Item w, Item h, Item s)
     {
-        if (weaponCircle != keyW)
+        int kw = Key(w), kh = Key(h), ks = Key(s);
+        if (kw != keyW)
         {
-            keyW = weaponCircle;
-            // Prise de l'épée dans l'icône (lame vers le haut à droite) : 81 px du bord, 31,6 % du bas.
-            weapon.sprite = Icon(0, Mathf.Max(0, weaponCircle), new Vector2(81f / 256f, 0.316f), 0.62f);
+            keyW = kw;
+            // Prise de l'arme dans l'icône (lame vers le haut à droite) : 81 px du bord, 31,6 % du bas, pour tous les modèles.
+            weapon.sprite = kw >= 0 ? Icon(0, w.circle, w.model, new Vector2(81f / 256f, 0.316f), 0.62f) : Icon(0, 0, 0, new Vector2(81f / 256f, 0.316f), 0.62f);
         }
-        if (helmetCircle != keyH)
+        if (kh != keyH)
         {
-            keyH = helmetCircle;
-            helmet.sprite = helmetCircle >= 0 ? Icon(1, helmetCircle, new Vector2(0.5f, 0.5f), 0.6f) : null;
-            hair.enabled = helmetCircle < 0;
+            keyH = kh;
+            helmet.sprite = kh >= 0 ? Icon(1, h.circle, h.model, new Vector2(0.5f, 0.5f), 0.6f) : null;
+            hair.enabled = kh < 0;
         }
-        if (shieldCircle != keyS)
+        if (ks != keyS)
         {
-            keyS = shieldCircle;
-            shield.sprite = shieldCircle >= 0 ? Icon(2, shieldCircle, new Vector2(0.5f, 0.5f), 0.4f) : null;
+            keyS = ks;
+            shield.sprite = ks >= 0 ? Icon(2, s.circle, s.model, new Vector2(0.5f, 0.5f), 0.4f) : null;
         }
     }
 

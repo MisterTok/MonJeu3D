@@ -1025,7 +1025,7 @@ public class BattleWorld : MonoBehaviour
         if (hero.spr != null && hero.spr.Paper != null)
         {
             var eq = GameState.Data.equipped;
-            hero.spr.Paper.SetGear(eq[0].valid ? eq[0].circle : -1, eq[1].valid ? eq[1].circle : -1, eq[2].valid ? eq[2].circle : -1);
+            hero.spr.Paper.SetGear(eq[0], eq[1], eq[2]);
         }
         else if (!UseArena) { UpdateChunks(hero.X); UpdateTerrain(hero.X); }
         UpdatePets(dt, phase == "walk" && !heroEngaged || phase == "clear");

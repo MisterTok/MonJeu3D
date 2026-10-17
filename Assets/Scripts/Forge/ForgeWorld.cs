@@ -577,7 +577,7 @@ public class ForgeWorld : MonoBehaviour
     GameObject BuildItemDisplay(Item item)
     {
         if (!flatItem) return BuildItemModel(item);
-        var sp = ItemIcons.ItemSprite(item.slot, item.circle);
+        var sp = ItemIcons.ItemSprite(item.slot, item.circle, item.model);
         if (sp == null) return BuildItemModel(item);
         var root = new GameObject("Pièce (icône)");
         var c = GameState.CircleColors[item.circle];

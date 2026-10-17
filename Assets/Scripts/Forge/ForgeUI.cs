@@ -445,7 +445,7 @@ public partial class ForgeUI : MonoBehaviour
         Color c = GameState.CircleColors[it.circle];
         popFrame.color = c;
         popName.text = it.Name;
-        popIcon.texture = ItemIcons.Get(it.slot, it.circle);
+        popIcon.texture = ItemIcons.Get(it);
         popHalo.color = new Color(c.r, c.g, c.b, 0.55f);
         int left = GameState.Data.forged.Count;
         popRemain.text = left > 0 ? "encore " + left : "";
@@ -628,7 +628,7 @@ public partial class ForgeUI : MonoBehaviour
             {
                 Color c = GameState.CircleColors[it.circle];
                 slotBg[i].color = Color.Lerp(c, Color.white, 0.12f);
-                slotIcon[i].texture = ItemIcons.Get(i, it.circle);
+                slotIcon[i].texture = ItemIcons.Get(it);
                 slotIcon[i].color = Color.white;
                 slotLevel[i].text = (it.stars > 0 ? "<color=#FFD24A>" + GameState.StarText(it.stars) + "</color> " : "") + "<b>Niv. " + it.level + "</b>" + (it.SubCount > 0 ? "\n<size=30>" + SubDots(it.subs) + "</size>" : "");
                 slotText[i].text = "<size=23>" + it.StatLabel + " " + GameState.Fmt(it.MainStat) + "</size>";

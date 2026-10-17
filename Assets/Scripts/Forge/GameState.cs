@@ -15,6 +15,7 @@ public class Item
     public int[] subs;      // statistiques secondaires (index dans GameState.SubNames)
     public float[] subVals; // valeurs (0,05 = 5 %)
     public int stars;       // étoiles d'ascension de la forge au moment où la pièce a été forgée
+    public int model;       // modèle de la pièce (épée, hache… ; GameState.ModelNames), comme les nombreux designs de Forge Master
 
     public int SubCount => subs == null ? 0 : subs.Length;
     public string SubLine(int i) => "+" + GameState.FmtPct(subVals[i]) + " " + GameState.SubNames[subs[i]];
@@ -22,7 +23,7 @@ public class Item
     public bool IsAttack => atk > 0;
     public long MainStat => IsAttack ? atk : hp;
     public string StatLabel => IsAttack ? "ATQ" : "PV";
-    public string Name => (stars > 0 ? GameState.StarText(stars) + " " : "") + GameState.SlotNames[slot] + " " + GameState.CircleSuffix[circle];
+    public string Name => (stars > 0 ? GameState.StarText(stars) + " " : "") + GameState.ModelName(slot, model) + " " + GameState.CircleSuffix[circle];
     public long SellValue => (long)Math.Round(GameState.CircleBase(circle) * 0.15 * GameState.LevelMult(level) * GameState.AscMult(stars) * (1 + GameState.TV("EquipmentSellPrice")));
 }
 
@@ -132,6 +133,19 @@ public static class GameState
 
     public static readonly string[] SlotNames =
         { "Lame", "Heaume", "Bouclier", "Gantelets", "Bottes", "Ceinture", "Amulette", "Anneau" };
+    // Modèles de chaque emplacement (icônes Tools/make_item_icons.py, s<emplacement>_c<cercle>_v<modèle>).
+    public static readonly string[][] ModelNames =
+    {
+        new[] { "Épée", "Hache", "Masse", "Lance", "Faux", "Trident" },
+        new[] { "Casque", "Heaume", "Heaume cornu", "Capuche", "Couronne" },
+        new[] { "Rondache", "Écu", "Pavois" },
+        new[] { "Gantelets", "Gants", "Griffes" },
+        new[] { "Bottes", "Solerets", "Poulaines" },
+        new[] { "Ceinture", "Ceinturon", "Sangle au crâne" },
+        new[] { "Pendentif", "Médaillon", "Croc" },
+        new[] { "Anneau", "Chevalière", "Bague griffue" },
+    };
+    public static string ModelName(int slot, int model) { var m = ModelNames[slot]; return m[Math.Max(0, Math.Min(m.Length - 1, model))]; }
     // true = l'emplacement donne de l'attaque, false = des points de vie.
     static readonly bool[] SlotIsAtk = { true, false, false, true, false, false, true, true };
     static readonly double[] SlotWeight = { 1.0, 4.0, 6.0, 0.35, 3.0, 3.5, 0.45, 0.35 };
@@ -425,7 +439,7 @@ public static class GameState
     public static Item MakeItem(int slot, int circle, int level)
     {
         double v = CircleBase(circle) * LevelMult(level) * SlotWeight[slot] * AscMult(Data.forgeStars);
-        var it = new Item { valid = true, slot = slot, circle = circle, level = level, stars = Data.forgeStars };
+        var it = new Item { valid = true, slot = slot, circle = circle, level = level, stars = Data.forgeStars, model = rng.Next(ModelNames[slot].Length) };
         if (SlotIsAtk[slot]) it.atk = Math.Max(1, (long)Math.Round(v));
         else it.hp = Math.Max(1, (long)Math.Round(v * 5));
         RollSubs(it);

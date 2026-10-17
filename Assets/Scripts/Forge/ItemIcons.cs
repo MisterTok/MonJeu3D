@@ -68,9 +68,11 @@ public static class ItemIcons
     }
 
     // Icône de la pièce (emplacement + cercle). Renvoie une texture prête pour une RawImage.
-    public static Texture Get(int slot, int circle)
+    public static Texture Get(Item it) => Get(it.slot, it.circle, it.model);
+
+    public static Texture Get(int slot, int circle, int model = 0)
     {
-        var flat = Flat(slot, circle);
+        var flat = Flat(slot, circle, model);
         if (flat != null) return flat;
         int key = slot * 100 + circle;
         if (cache.TryGetValue(key, out var rt) && rt != null && rt.IsCreated()) return rt;
@@ -146,11 +148,11 @@ public static class ItemIcons
     }
 
     // Icône d'une pièce en sprite (lisible, recadrée, pivot au centre) : pour l'afficher à plat au-dessus de l'enclume.
-    public static Sprite ItemSprite(int slot, int circle)
+    public static Sprite ItemSprite(int slot, int circle, int model = 0)
     {
-        int key = ("pièce:" + slot + ":" + circle).GetHashCode();
+        int key = ("pièce:" + slot + ":" + circle + ":" + model).GetHashCode();
         if (spriteCache.TryGetValue(key, out var sp) && sp != null) return sp;
-        var flat = Flat(slot, circle);
+        var flat = Flat(slot, circle, model);
         if (flat != null)
         {
             sp = Sprite.Create(flat, new Rect(0, 0, flat.width, flat.height), new Vector2(0.5f, 0.5f), flat.height);
@@ -172,11 +174,12 @@ public static class ItemIcons
 
     // Icônes dessinées façon Forge Master (Tools/make_item_icons.py) ; sans elles, rendu du modèle 3D.
     static readonly Dictionary<int, Texture2D> flatCache = new Dictionary<int, Texture2D>();
-    public static Texture2D Flat(int slot, int circle)
+    public static Texture2D Flat(int slot, int circle, int model = 0)
     {
-        int key = slot * 100 + Mathf.Clamp(circle, 0, 9);
+        int c = Mathf.Clamp(circle, 0, 9), m = Mathf.Clamp(model, 0, GameState.ModelNames[slot].Length - 1);
+        int key = slot * 1000 + c * 10 + m;
         if (!flatCache.TryGetValue(key, out var t))
-            flatCache[key] = t = Resources.Load<Texture2D>("ForgeUI/Items/s" + slot + "_c" + Mathf.Clamp(circle, 0, 9));
+            flatCache[key] = t = Resources.Load<Texture2D>("ForgeUI/Items/s" + slot + "_c" + c + "_v" + m);
         return t;
     }
 

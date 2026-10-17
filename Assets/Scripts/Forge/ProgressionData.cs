@@ -12,19 +12,20 @@ public static class ProgressionData
     // ---------- Arbre technologique : 5 paliers × 5 niveaux (durée en secondes, coût en potions rouges) ----------
     public static readonly long[][] TechSeconds =
     {
+        // Configs officielles (PlayerTechTreeTierLibrary, oct. 2026) = tableur Forge Master d'octobre 2026.
         new long[] { 300, 600, 1200, 2400, 4800 },                       // Palier I   : 5m → 1h20
-        new long[] { 9600, 19200, 38400, 76800, 85980 },                 // Palier II  : 2h40 → 23h53
-        new long[] { 93600, 104400, 118800, 133200, 151200 },            // Palier III : 1j2h → 1j18h
-        new long[] { 169200, 187200, 212400, 237600, 266400 },           // Palier IV  : 1j23h → 3j2h
-        new long[] { 298800, 334800, 374400, 417600, 468000 },           // Palier V   : 3j11h → 5j10h
+        new long[] { 9600, 19200, 38400, 76800, 84480 },                 // Palier II  : 2h40 → 23h28
+        new long[] { 92928, 102221, 112443, 123687, 136056 },            // Palier III : 1j1h → 1j13h
+        new long[] { 149661, 164628, 181090, 199199, 219119 },           // Palier IV  : 1j17h → 2j12h
+        new long[] { 241031, 265134, 291648, 320813, 352894 },           // Palier V   : 2j18h → 4j2h
     };
     public static readonly long[][] TechPotions =
     {
-        new long[] { 40, 56, 78, 110, 154 },
-        new long[] { 215, 301, 422, 590, 826 },
-        new long[] { 1150, 1310, 1500, 1710, 1950 },
-        new long[] { 2220, 2540, 2890, 3300, 3760 },
-        new long[] { 4280, 4880, 5570, 6350, 7240 },
+        new long[] { 30, 42, 59, 82, 115 },
+        new long[] { 161, 226, 316, 443, 620 },
+        new long[] { 868, 1007, 1168, 1354, 1571 },
+        new long[] { 1823, 2114, 2452, 2845, 3300 },
+        new long[] { 3828, 4441, 5151, 5975, 6931 },
     };
 
     // ---------- Compagnons ----------
