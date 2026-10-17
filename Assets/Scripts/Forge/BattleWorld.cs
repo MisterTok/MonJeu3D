@@ -471,7 +471,9 @@ public class BattleWorld : MonoBehaviour
     {
         hero = new Fighter();
         // Apparence choisie dans la fiche Héros : chevalier en pièces détachées (équipement visible) ou Valkyrie Craftpix.
-        hero.spr = GameState.Data.heroSkin == 0 ? SpriteChar.Spawn(SpriteChar.PaperName, 1.8f, world, false, CamPitch) : null;
+        // Chevalier : pièces Craftpix interchangeables (si présentes), sinon le héros dessiné par code.
+        hero.spr = GameState.Data.heroSkin == 0 ? SpriteChar.Spawn(SpriteChar.CraftpixName, 1.7f, world, false, CamPitch) : null;
+        if (hero.spr == null && GameState.Data.heroSkin == 0) hero.spr = SpriteChar.Spawn(SpriteChar.PaperName, 1.8f, world, false, CamPitch);
         if (hero.spr == null && SpritesOn) hero.spr = SpriteChar.Spawn(HeroSprite, 1.55f, world, false, CamPitch);
         if (hero.spr != null) { hero.go = hero.spr.gameObject; return; }
         hero.go = ModelLib.SpawnKit("KayKit/Characters/Knight", 1.75f, world, KnightHide);
@@ -1022,10 +1024,11 @@ public class BattleWorld : MonoBehaviour
 
         UpdateSkills(dt);
         if (decor != null) decor.Update(hero.X);
-        if (hero.spr != null && hero.spr.Paper != null)
+        if (hero.spr != null && (hero.spr.Paper != null || hero.spr.Craft != null))
         {
             var eq = GameState.Data.equipped;
-            hero.spr.Paper.SetGear(eq[0], eq[1], eq[2], eq[3], eq[4], eq[5]);
+            if (hero.spr.Craft != null) hero.spr.Craft.SetGear(eq[0], eq[1], eq[2], eq[3], eq[4], eq[5]);
+            else hero.spr.Paper.SetGear(eq[0], eq[1], eq[2], eq[3], eq[4], eq[5]);
         }
         else if (!UseArena) { UpdateChunks(hero.X); UpdateTerrain(hero.X); }
         UpdatePets(dt, phase == "walk" && !heroEngaged || phase == "clear");
@@ -1479,7 +1482,7 @@ public class BattleWorld : MonoBehaviour
 
     void PlaceBar(Bar b, Fighter f, Color col, float width)
     {
-        float h = f == hero ? (hero.spr != null ? (hero.spr.Paper != null ? 1.85f : 1.55f) : 1.75f) : f.def.height * (f.boss ? 1.7f : 1f) + f.def.fly;
+        float h = f == hero ? (hero.spr != null ? (hero.spr.Paper != null ? 1.85f : hero.spr.Craft != null ? 1.75f : 1.55f) : 1.75f) : f.def.height * (f.boss ? 1.7f : 1f) + f.def.fly;
         Vector2 local;
         bool ok = ToLocal(f.go.transform.position + Vector3.up * (f == hero ? h : h - f.def.fly + 0.15f + f.def.fly), out local);
         b.root.gameObject.SetActive(ok);

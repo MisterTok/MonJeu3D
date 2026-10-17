@@ -76,18 +76,21 @@ public class SpriteChar : MonoBehaviour
     public float Alpha = 1f;
 
     PaperHero paper;
+    CraftpixHero craft;
     public PaperHero Paper => paper;
-    public const string PaperName = "Paper";   // héros en pièces détachées (PaperHero)
-    public bool HasMove => paper != null || sheet.anims.ContainsKey("move");
-    public float HalfWidth => paper != null ? 0.2f * height : sheet.meta.idleW / sheet.meta.idleH * height * 0.5f;
+    public CraftpixHero Craft => craft;
+    public const string PaperName = "Paper";       // héros en pièces détachées dessiné par code (PaperHero)
+    public const string CraftpixName = "Craftpix"; // héros Craftpix à pièces interchangeables (CraftpixHero)
+    public bool HasMove => paper != null || craft != null || sheet.anims.ContainsKey("move");
+    public float HalfWidth => paper != null || craft != null ? 0.2f * height : sheet.meta.idleW / sheet.meta.idleH * height * 0.5f;
     public string Current => curName;
 
     // faceLeft : les planches regardent vers la droite, on retourne les ennemis.
     public static SpriteChar Spawn(string name, float height, Transform parent, bool faceLeft, float camPitch)
     {
-        bool isPaper = name == PaperName;
-        var s = isPaper ? null : Load(name);
-        if (isPaper ? !PaperHero.Available : s == null || !s.anims.ContainsKey("idle")) return null;
+        bool isPaper = name == PaperName, isCraft = name == CraftpixName;
+        var s = isPaper || isCraft ? null : Load(name);
+        if (isCraft ? !CraftpixHero.Available : isPaper ? !PaperHero.Available : s == null || !s.anims.ContainsKey("idle")) return null;
         var go = new GameObject("Perso " + name);
         go.transform.SetParent(parent, false);
         var sc = go.AddComponent<SpriteChar>();
@@ -103,6 +106,7 @@ public class SpriteChar : MonoBehaviour
         sc.sr.flipX = faceLeft;
         sc.sr.sortingOrder = 1;
         if (isPaper) sc.paper = new PaperHero(sc.body);
+        if (isCraft) sc.craft = new CraftpixHero(sc.body);
 
         var sh = new GameObject("Ombre").transform;
         sh.SetParent(go.transform, false);
@@ -124,9 +128,10 @@ public class SpriteChar : MonoBehaviour
     // Renvoie la durée de l'animation (0 si absente).
     public float Play(string anim, bool loop, float fps = 14f)
     {
-        if (paper != null)
+        if (paper != null || craft != null)
         {
             curName = anim; this.loop = loop; t = 0f; moving = anim == "move";
+            if (craft != null) return craft.Length(anim);
             return anim == "attack" ? 0.4f : anim == "death" ? 0.5f : 1f;
         }
         string a = anim == "move" && !HasMove ? "idle" : anim;
@@ -141,7 +146,7 @@ public class SpriteChar : MonoBehaviour
 
     void Update()
     {
-        if (paper != null) { UpdatePaper(); return; }
+        if (paper != null || craft != null) { UpdatePaper(); return; }
         if (cur == null) return;
         float dt = Time.deltaTime;
         t += dt;
@@ -174,7 +179,7 @@ public class SpriteChar : MonoBehaviour
     {
         float dt = Time.deltaTime;
         t += dt;
-        paper.Animate(curName, t);
+        if (craft != null) craft.Animate(curName, t); else paper.Animate(curName, t);
         body.localPosition = Vector3.zero;
         body.localRotation = Quaternion.Euler(pitch, 0f, 0f);
         var c = baseColor;
@@ -184,7 +189,7 @@ public class SpriteChar : MonoBehaviour
             c = Color.Lerp(c, new Color(1f, 0.25f, 0.2f), Mathf.Clamp01(flash / 0.18f));
         }
         c.a = Alpha;
-        paper.SetColor(c);
+        if (craft != null) craft.SetColor(c); else paper.SetColor(c);
         shadow.color = new Color(0f, 0f, 0f, 0.5f * Alpha);
     }
 }
