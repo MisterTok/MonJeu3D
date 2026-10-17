@@ -179,7 +179,12 @@ public static class ItemIcons
         int c = Mathf.Clamp(circle, 0, 9), m = Mathf.Clamp(model, 0, GameState.ModelCount(slot) - 1);
         int key = slot * 1000 + c * 10 + m;
         if (!flatCache.TryGetValue(key, out var t))
-            flatCache[key] = t = Resources.Load<Texture2D>("ForgeUI/Items/s" + slot + "_c" + c + "_v" + m);
+        {
+            // Emplacements visibles sur le héros Craftpix : icône tirée des mêmes pièces (Tools/make_craftpix_icons.py).
+            if (slot <= 5 && CraftpixHero.Available) t = Resources.Load<Texture2D>("ForgeSprites/ItemIcons/s" + slot + "_c" + c + "_v" + m);
+            if (t == null) t = Resources.Load<Texture2D>("ForgeUI/Items/s" + slot + "_c" + c + "_v" + m);
+            flatCache[key] = t;
+        }
         return t;
     }
 
