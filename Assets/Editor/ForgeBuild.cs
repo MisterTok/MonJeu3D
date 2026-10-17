@@ -26,7 +26,7 @@ public static class ForgeBuild
         string req = Path.Combine(DlDir, "build_request");
         if (!File.Exists(req)) return;
         File.Delete(req);
-        EditorApplication.delayCall += BuildApk;
+        BuildApk();   // pas de delayCall : il ne passe pas quand l'éditeur n'a pas le focus
     }
 
     [MenuItem("Tools/Forge : construire l'APK")]
