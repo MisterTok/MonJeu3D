@@ -70,6 +70,8 @@ public static class ItemIcons
     // Icône de la pièce (emplacement + cercle). Renvoie une texture prête pour une RawImage.
     public static Texture Get(int slot, int circle)
     {
+        var flat = Flat(slot, circle);
+        if (flat != null) return flat;
         int key = slot * 100 + circle;
         if (cache.TryGetValue(key, out var rt) && rt != null && rt.IsCreated()) return rt;
         rt = Render(slot, circle);
@@ -148,6 +150,13 @@ public static class ItemIcons
     {
         int key = ("pièce:" + slot + ":" + circle).GetHashCode();
         if (spriteCache.TryGetValue(key, out var sp) && sp != null) return sp;
+        var flat = Flat(slot, circle);
+        if (flat != null)
+        {
+            sp = Sprite.Create(flat, new Rect(0, 0, flat.width, flat.height), new Vector2(0.5f, 0.5f), flat.height);
+            spriteCache[key] = sp;
+            return sp;
+        }
         var rt = Get(slot, circle) as RenderTexture;
         if (rt == null) return null;
         var prev = RenderTexture.active;
@@ -159,6 +168,16 @@ public static class ItemIcons
         sp = Sprite.Create(tex, new Rect(0, 0, rt.width, rt.height), new Vector2(0.5f, 0.5f), rt.height);
         spriteCache[key] = sp;
         return sp;
+    }
+
+    // Icônes dessinées façon Forge Master (Tools/make_item_icons.py) ; sans elles, rendu du modèle 3D.
+    static readonly Dictionary<int, Texture2D> flatCache = new Dictionary<int, Texture2D>();
+    public static Texture2D Flat(int slot, int circle)
+    {
+        int key = slot * 100 + Mathf.Clamp(circle, 0, 9);
+        if (!flatCache.TryGetValue(key, out var t))
+            flatCache[key] = t = Resources.Load<Texture2D>("ForgeUI/Items/s" + slot + "_c" + Mathf.Clamp(circle, 0, 9));
+        return t;
     }
 
     // Les modèles regardent vers +Z : on les tourne vers l'objectif, de trois quarts.

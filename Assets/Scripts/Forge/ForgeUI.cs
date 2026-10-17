@@ -288,13 +288,17 @@ public partial class ForgeUI : MonoBehaviour
         MakeButton(P, "Son", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-260, 24), new Vector2(-24, 84),
             new Color(0.25f, 0.12f, 0.1f), "", 26, out soundText, () => { GameState.Data.muted = !GameState.Data.muted; GameState.Save(); RefreshSoundButton(); });
         RefreshSoundButton();
+        MakeButton(P, "Apparence", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-150, 24), new Vector2(150, 84),
+            new Color(0.3f, 0.18f, 0.4f), "", 26, out skinText, () => { GameState.Data.heroSkin = 1 - GameState.Data.heroSkin; GameState.Save(); RefreshSkinButton(); battle.RespawnHero(); });
+        RefreshSkinButton();
         Text resetT;
         MakeButton(P, "Reset", new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(24, 24), new Vector2(200, 84),
             new Color(0.2f, 0.08f, 0.08f, 0.9f), "Reset (test)", 20, out resetT, () => { GameState.ResetAll(); world.DismissItem(false); HidePopup(); statsPanel.SetActive(false); });
         statsPanel.SetActive(false);
     }
 
-    Text soundText;
+    Text soundText, skinText;
+    void RefreshSkinButton() { if (skinText != null) skinText.text = "Héros : " + (GameState.Data.heroSkin == 0 ? "Chevalier" : "Valkyrie"); }
     void RefreshSoundButton() { if (soundText != null) soundText.text = GameState.Data.muted ? "Son : coupé" : "Son : activé"; }
 
     void CloseAllPanels()

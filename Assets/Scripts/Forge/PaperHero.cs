@@ -1,0 +1,143 @@
+using UnityEngine;
+using UnityEngine.Rendering;
+
+// Héros en pièces détachées façon Forge Master (Tools/make_paper_hero.py) : tête, cheveux, torse, bras, jambes,
+// animés par code ; l'arme, le bouclier et le heaume équipés sont les icônes des pièces (ItemIcons.Flat).
+// Les pièces ont leur articulation au centre de l'image ; 400 px = 1 unité = taille du héros.
+public class PaperHero
+{
+    public static bool Available => Resources.Load<Texture2D>("ForgeUI/Hero/head") != null;
+
+    readonly Transform rig, hips, neck, shoulderB, shoulderF, legB, legF, torso;
+    readonly SpriteRenderer hair, helmet, weapon, shield;
+    readonly SpriteRenderer[] all;
+    int keyW = -99, keyH = -99, keyS = -99;
+
+    static Sprite Part(string name)
+    {
+        var t = Resources.Load<Texture2D>("ForgeUI/Hero/" + name);
+        return t == null ? null : Sprite.Create(t, new Rect(0, 0, t.width, t.height), new Vector2(0.5f, 0.5f), 400f, 0, SpriteMeshType.FullRect);
+    }
+
+    static Transform Node(string name, Transform parent, float x, float y)
+    {
+        var t = new GameObject(name).transform;
+        t.SetParent(parent, false);
+        t.localPosition = new Vector3(x, y, 0f);
+        return t;
+    }
+
+    static SpriteRenderer Sr(string name, Transform parent, Sprite s, int order, float x = 0f, float y = 0f)
+    {
+        var sr = Node(name, parent, x, y).gameObject.AddComponent<SpriteRenderer>();
+        sr.sprite = s;
+        sr.sortingOrder = order;
+        return sr;
+    }
+
+    public PaperHero(Transform body)
+    {
+        rig = Node("Héros en pièces", body, 0f, 0f);
+        var sg = rig.gameObject.AddComponent<SortingGroup>();
+        sg.sortingOrder = 1;
+        var arm = Part("arm");
+        hips = Node("Hanches", rig, 0f, 0.24f);
+        shoulderB = Node("Épaule arrière", rig, -0.05f, 0.5f);
+        Sr("Bras arrière", shoulderB, arm, 1).color = new Color(0.82f, 0.78f, 0.78f);
+        legB = Node("Jambe arrière", hips, -0.03f, 0f);
+        Sr("Jambe", legB, Part("leg"), 2).color = new Color(0.85f, 0.82f, 0.82f);
+        torso = Node("Torse", hips, 0f, 0f);
+        Sr("Torse", torso, Part("torso"), 3);
+        legF = Node("Jambe avant", hips, 0.04f, 0f);
+        Sr("Jambe", legF, Part("leg"), 4);
+        shield = Sr("Bouclier", shoulderB, null, 5, 0.13f, -0.17f);
+        neck = Node("Cou", rig, 0.01f, 0.53f);
+        Sr("Tête", neck, Part("head"), 6);
+        hair = Sr("Cheveux", neck, Part("hair"), 7);
+        helmet = Sr("Heaume", neck, null, 8, 0.02f, 0.4f);
+        shoulderF = Node("Épaule avant", rig, 0.06f, 0.5f);
+        weapon = Sr("Arme", shoulderF, null, 9, 0f, -0.27f);
+        Sr("Bras avant", shoulderF, arm, 10);
+        all = rig.GetComponentsInChildren<SpriteRenderer>(true);
+    }
+
+    static Sprite Icon(int slot, int circle, Vector2 pivot, float size)
+    {
+        var t = ItemIcons.Flat(slot, circle);
+        return t == null ? null : Sprite.Create(t, new Rect(0, 0, t.width, t.height), pivot, t.width / size, 0, SpriteMeshType.FullRect);
+    }
+
+    // Cercle de chaque pièce portée (-1 = rien).
+    public void SetGear(int weaponCircle, int helmetCircle, int shieldCircle)
+    {
+        if (weaponCircle != keyW)
+        {
+            keyW = weaponCircle;
+            // Prise de l'épée dans l'icône (lame vers le haut à droite) : 81 px du bord, 31,6 % du bas.
+            weapon.sprite = Icon(0, Mathf.Max(0, weaponCircle), new Vector2(81f / 256f, 0.316f), 0.62f);
+        }
+        if (helmetCircle != keyH)
+        {
+            keyH = helmetCircle;
+            helmet.sprite = helmetCircle >= 0 ? Icon(1, helmetCircle, new Vector2(0.5f, 0.5f), 0.6f) : null;
+            hair.enabled = helmetCircle < 0;
+        }
+        if (shieldCircle != keyS)
+        {
+            keyS = shieldCircle;
+            shield.sprite = shieldCircle >= 0 ? Icon(2, shieldCircle, new Vector2(0.5f, 0.5f), 0.4f) : null;
+        }
+    }
+
+    static float Key(float t, float t0, float t1, float a, float b) => Mathf.Lerp(a, b, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(t0, t1, t)));
+
+    // t = temps depuis le début de l'animation.
+    public void Animate(string anim, float t)
+    {
+        float now = Time.time;
+        float bob = 0f, legA = 0f, armB = 0f, armF = 0f, lean = 0f, fall = 0f;
+        switch (anim)
+        {
+            case "move":
+                float ph = now * 11f;
+                legA = Mathf.Sin(ph) * 26f;
+                armB = Mathf.Sin(ph) * 16f;
+                armF = -Mathf.Sin(ph) * 16f;
+                bob = Mathf.Abs(Mathf.Sin(ph)) * 0.025f;
+                lean = -5f;
+                break;
+            case "attack":
+                // Armer en arrière, frapper vers l'avant, revenir.
+                armF = t < 0.12f ? Key(t, 0f, 0.12f, 0f, -150f) : t < 0.2f ? Key(t, 0.12f, 0.2f, -150f, 70f) : Key(t, 0.2f, 0.4f, 70f, 0f);
+                lean = t < 0.12f ? Key(t, 0f, 0.12f, 0f, 6f) : Key(t, 0.12f, 0.3f, 6f, -8f);
+                armB = -10f;
+                break;
+            case "death":
+                fall = Key(t, 0f, 0.35f, 0f, 85f);
+                break;
+            default:
+                bob = Mathf.Sin(now * 3f) * 0.008f;
+                armB = Mathf.Sin(now * 2.2f) * 4f;
+                armF = -Mathf.Sin(now * 2.2f) * 4f;
+                break;
+        }
+        rig.localRotation = Quaternion.Euler(0f, 0f, fall);
+        rig.localPosition = new Vector3(-fall / 85f * 0.15f, bob, 0f);
+        legB.localRotation = Quaternion.Euler(0f, 0f, legA);
+        legF.localRotation = Quaternion.Euler(0f, 0f, -legA);
+        torso.localRotation = Quaternion.Euler(0f, 0f, lean);
+        neck.localRotation = Quaternion.Euler(0f, 0f, lean * 0.6f);
+        shoulderB.localRotation = Quaternion.Euler(0f, 0f, armB);
+        shoulderF.localRotation = Quaternion.Euler(0f, 0f, armF);
+    }
+
+    public void SetColor(Color c)
+    {
+        foreach (var sr in all)
+        {
+            // Les pièces arrière gardent leur ombrage.
+            float k = sr.name == "Bras arrière" ? 0.82f : sr.transform.parent == legB ? 0.85f : 1f;
+            sr.color = new Color(c.r * k, c.g * k, c.b * k, c.a);
+        }
+    }
+}

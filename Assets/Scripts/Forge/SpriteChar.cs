@@ -75,15 +75,19 @@ public class SpriteChar : MonoBehaviour
     Color baseColor = Color.white;
     public float Alpha = 1f;
 
-    public bool HasMove => sheet.anims.ContainsKey("move");
-    public float HalfWidth => sheet.meta.idleW / sheet.meta.idleH * height * 0.5f;
+    PaperHero paper;
+    public PaperHero Paper => paper;
+    public const string PaperName = "Paper";   // héros en pièces détachées (PaperHero)
+    public bool HasMove => paper != null || sheet.anims.ContainsKey("move");
+    public float HalfWidth => paper != null ? 0.2f * height : sheet.meta.idleW / sheet.meta.idleH * height * 0.5f;
     public string Current => curName;
 
     // faceLeft : les planches regardent vers la droite, on retourne les ennemis.
     public static SpriteChar Spawn(string name, float height, Transform parent, bool faceLeft, float camPitch)
     {
-        var s = Load(name);
-        if (s == null || !s.anims.ContainsKey("idle")) return null;
+        bool isPaper = name == PaperName;
+        var s = isPaper ? null : Load(name);
+        if (isPaper ? !PaperHero.Available : s == null || !s.anims.ContainsKey("idle")) return null;
         var go = new GameObject("Perso " + name);
         go.transform.SetParent(parent, false);
         var sc = go.AddComponent<SpriteChar>();
@@ -98,6 +102,7 @@ public class SpriteChar : MonoBehaviour
         sc.sr = sc.body.gameObject.AddComponent<SpriteRenderer>();
         sc.sr.flipX = faceLeft;
         sc.sr.sortingOrder = 1;
+        if (isPaper) sc.paper = new PaperHero(sc.body);
 
         var sh = new GameObject("Ombre").transform;
         sh.SetParent(go.transform, false);
@@ -119,6 +124,11 @@ public class SpriteChar : MonoBehaviour
     // Renvoie la durée de l'animation (0 si absente).
     public float Play(string anim, bool loop, float fps = 14f)
     {
+        if (paper != null)
+        {
+            curName = anim; this.loop = loop; t = 0f; moving = anim == "move";
+            return anim == "attack" ? 0.4f : anim == "death" ? 0.5f : 1f;
+        }
         string a = anim == "move" && !HasMove ? "idle" : anim;
         if (!sheet.anims.TryGetValue(a, out var arr)) return 0f;
         cur = arr; curName = anim; this.loop = loop; this.fps = fps; t = 0f;
@@ -131,6 +141,7 @@ public class SpriteChar : MonoBehaviour
 
     void Update()
     {
+        if (paper != null) { UpdatePaper(); return; }
         if (cur == null) return;
         float dt = Time.deltaTime;
         t += dt;
@@ -156,6 +167,24 @@ public class SpriteChar : MonoBehaviour
         }
         c.a = Alpha;
         sr.color = c;
+        shadow.color = new Color(0f, 0f, 0f, 0.5f * Alpha);
+    }
+
+    void UpdatePaper()
+    {
+        float dt = Time.deltaTime;
+        t += dt;
+        paper.Animate(curName, t);
+        body.localPosition = Vector3.zero;
+        body.localRotation = Quaternion.Euler(pitch, 0f, 0f);
+        var c = baseColor;
+        if (flash > 0f)
+        {
+            flash -= dt;
+            c = Color.Lerp(c, new Color(1f, 0.25f, 0.2f), Mathf.Clamp01(flash / 0.18f));
+        }
+        c.a = Alpha;
+        paper.SetColor(c);
         shadow.color = new Color(0f, 0f, 0f, 0.5f * Alpha);
     }
 }

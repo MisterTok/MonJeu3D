@@ -104,6 +104,7 @@ public class SaveData
     public long lastSeenTicks;      // dernière sauvegarde (gains hors ligne)
     public bool autoForge;
     public bool muted;      // son coupé
+    public int heroSkin;    // apparence du héros : 0 = chevalier en pièces détachées, 1 = Valkyrie
     public int[] dungeonLevel;      // niveau atteint dans chaque donjon
     public int[] dungeonKeys;       // clés restantes aujourd'hui
     public long keyDay;             // jour de la dernière recharge des clés (02:00 heure locale)

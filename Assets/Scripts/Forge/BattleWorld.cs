@@ -470,12 +470,26 @@ public class BattleWorld : MonoBehaviour
     void SpawnHero()
     {
         hero = new Fighter();
-        hero.spr = SpritesOn ? SpriteChar.Spawn(HeroSprite, 1.55f, world, false, CamPitch) : null;
+        // Apparence choisie dans la fiche Héros : chevalier en pièces détachées (équipement visible) ou Valkyrie Craftpix.
+        hero.spr = GameState.Data.heroSkin == 0 ? SpriteChar.Spawn(SpriteChar.PaperName, 1.8f, world, false, CamPitch) : null;
+        if (hero.spr == null && SpritesOn) hero.spr = SpriteChar.Spawn(HeroSprite, 1.55f, world, false, CamPitch);
         if (hero.spr != null) { hero.go = hero.spr.gameObject; return; }
         hero.go = ModelLib.SpawnKit("KayKit/Characters/Knight", 1.75f, world, KnightHide);
         hero.go.transform.localRotation = Quaternion.Euler(0, HeroYaw, 0);
         hero.anim = AnimPlayer.Attach(hero.go);
         RefreshHeroWeapon();
+    }
+
+    public void RespawnHero()
+    {
+        if (hero == null || hero.go == null) return;
+        float x = hero.X;
+        Destroy(hero.go);
+        var old = hero;
+        SpawnHero();
+        hero.X = x;
+        hero.hp = old.hp; hero.maxHp = old.maxHp; hero.atk = old.atk; hero.dead = old.dead;
+        heroWeaponKey = -999; heroHelmetKey = -999;
     }
 
     void RefreshHeroWeapon()
@@ -1008,6 +1022,11 @@ public class BattleWorld : MonoBehaviour
 
         UpdateSkills(dt);
         if (decor != null) decor.Update(hero.X);
+        if (hero.spr != null && hero.spr.Paper != null)
+        {
+            var eq = GameState.Data.equipped;
+            hero.spr.Paper.SetGear(eq[0].valid ? eq[0].circle : -1, eq[1].valid ? eq[1].circle : -1, eq[2].valid ? eq[2].circle : -1);
+        }
         else if (!UseArena) { UpdateChunks(hero.X); UpdateTerrain(hero.X); }
         UpdatePets(dt, phase == "walk" && !heroEngaged || phase == "clear");
         UpdateMount(phase == "walk" && !heroEngaged || phase == "clear");
@@ -1363,6 +1382,8 @@ public class BattleWorld : MonoBehaviour
         Anchor(waveText.rectTransform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -130), new Vector2(0, -82));
         banner = NewText(overlayRoot, 50, TextAnchor.MiddleCenter, Color.white);
         Anchor(banner.rectTransform, new Vector2(0, 0.55f), new Vector2(1, 0.85f), Vector2.zero, Vector2.zero);
+        banner.horizontalOverflow = HorizontalWrapMode.Wrap;   // police de jeu plus large : le message passe à la ligne
+        banner.rectTransform.offsetMin = new Vector2(30, 0); banner.rectTransform.offsetMax = new Vector2(-30, 0);
 
         // Les 3 compétences équipées (en bas à droite du chemin) : se lancent seules, ou d'une touche quand elles sont prêtes.
         cgo.AddComponent<GraphicRaycaster>();
@@ -1458,7 +1479,7 @@ public class BattleWorld : MonoBehaviour
 
     void PlaceBar(Bar b, Fighter f, Color col, float width)
     {
-        float h = f == hero ? (hero.spr != null ? 1.55f : 1.75f) : f.def.height * (f.boss ? 1.7f : 1f) + f.def.fly;
+        float h = f == hero ? (hero.spr != null ? (hero.spr.Paper != null ? 1.85f : 1.55f) : 1.75f) : f.def.height * (f.boss ? 1.7f : 1f) + f.def.fly;
         Vector2 local;
         bool ok = ToLocal(f.go.transform.position + Vector3.up * (f == hero ? h : h - f.def.fly + 0.15f + f.def.fly), out local);
         b.root.gameObject.SetActive(ok);
