@@ -45,6 +45,33 @@ public partial class ForgeUI
         return roundSprite;
     }
 
+    static readonly Color TitleColor = new Color(1f, 0.9f, 0.62f);
+
+    // Fond d'un panneau plein écran : pierre sombre bordée de bronze, bandeau rouge derrière le titre.
+    void SkinPanel(GameObject panel)
+    {
+        var img = panel.AddComponent<Image>();
+        img.color = new Color(0.07f, 0.035f, 0.035f, 1f);
+        if (UISkin.Get("panel") == null) return;
+        UISkin.Sliced(img, "panel", 0.8f);
+        img.color = Color.white;
+        var ban = Box(panel.transform, "Bandeau", new Vector2(0.17f, 1), new Vector2(0.83f, 1), new Vector2(0, -94), new Vector2(0, -6), Color.white);
+        UISkin.Sliced(ban, "banner"); ban.raycastTarget = false;
+    }
+
+    // Pastille de monnaie : icône à gauche qui déborde, montant à droite.
+    Text CurrencyPill(Transform parent, string icon, Vector2 aMin, Vector2 aMax, Vector2 offMin, Vector2 offMax, Color textColor)
+    {
+        var p = Box(parent, "Monnaie " + icon, aMin, aMax, offMin, offMax, new Color(0, 0, 0, 0.6f));
+        if (UISkin.Get("pill") != null) { UISkin.Sliced(p, "pill"); p.color = Color.white; }
+        p.raycastTarget = false;
+        UISkin.Icon(p.transform, icon, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(-14, -38), new Vector2(62, 38));
+        return Label(p.transform, "", 36, TextAnchor.MiddleRight, textColor, Vector2.zero, Vector2.one, new Vector2(56, 0), new Vector2(-18, 0));
+    }
+
+    // Les fonds sombres d'origine, éclaircis pour le sprite « tile » (qui assombrit ses bords).
+    static Color SkinTint(Color c) => UISkin.Get("tile") == null ? c : new Color(Mathf.Min(1f, c.r * 2f + 0.03f), Mathf.Min(1f, c.g * 2f + 0.02f), Mathf.Min(1f, c.b * 2f + 0.02f), c.a);
+
     static string Hex(Color c) => "#" + ColorUtility.ToHtmlStringRGB(c);
     static readonly Color Silhouette = new Color(0f, 0f, 0f, 0.55f);
     static readonly Color TileLocked = new Color(0.1f, 0.08f, 0.08f, 1f);
@@ -63,12 +90,12 @@ public partial class ForgeUI
         var tl = new Tile();
         // Cadre de rareté puis fond
         tl.frame = Box(parent, "Tuile", aMin, aMax, offMin, offMax, Color.gray);
-        tl.frame.sprite = Round(); tl.frame.type = Image.Type.Sliced;
+        tl.frame.sprite = Round(); tl.frame.type = Image.Type.Sliced; UISkin.Sliced(tl.frame, "frame", 2f);
         tl.btn = tl.frame.gameObject.AddComponent<Button>();
         tl.btn.transition = Selectable.Transition.ColorTint;
         tl.btn.onClick.AddListener(() => onClick());
         tl.bg = Box(tl.frame.transform, "Fond", Vector2.zero, Vector2.one, new Vector2(5, 5), new Vector2(-5, -5), TileLocked);
-        tl.bg.sprite = Round(); tl.bg.type = Image.Type.Sliced; tl.bg.raycastTarget = false;
+        tl.bg.sprite = Round(); tl.bg.type = Image.Type.Sliced; tl.bg.raycastTarget = false; UISkin.Sliced(tl.bg, "tile", 1.6f);
         // Icône carrée centrée
         var holder = MakeRect("Zone icône", tl.bg.transform, Vector2.zero, Vector2.one, new Vector2(8, big ? 30 : 22), new Vector2(-8, -8));
         var irt = MakeRect("Icône", holder, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
@@ -84,14 +111,15 @@ public partial class ForgeUI
         tl.glyphBg.gameObject.SetActive(false);
         // Barre de doublons en bas, niveau par-dessus
         tl.barBg = Box(tl.bg.transform, "Barre", new Vector2(0, 0), new Vector2(1, 0), new Vector2(10, 8), new Vector2(-10, big ? 34 : 26), new Color(0, 0, 0, 0.7f));
-        tl.barBg.raycastTarget = false;
+        tl.barBg.raycastTarget = false; UISkin.Sliced(tl.barBg, "bar_bg", 1.8f);
         tl.barFill = Box(tl.barBg.transform, "Remplissage", Vector2.zero, new Vector2(0.5f, 1), Vector2.zero, Vector2.zero, new Color(0.35f, 0.85f, 0.4f));
-        tl.barFill.raycastTarget = false;
+        tl.barFill.raycastTarget = false; UISkin.Sliced(tl.barFill, "bar_fill", 1.8f);
         tl.level = Label(tl.barBg.transform, "", big ? 24 : 19, TextAnchor.MiddleCenter, Color.white);
         // Coche « équipé »
         tl.check = Box(tl.bg.transform, "Équipé", new Vector2(1, 1), new Vector2(1, 1), new Vector2(-34, -34), new Vector2(-4, -4), new Color(0.25f, 0.75f, 0.3f));
         tl.check.sprite = Circle(); tl.check.raycastTarget = false;
-        Label(tl.check.transform, "✔", 20, TextAnchor.MiddleCenter, Color.white);
+        if (UISkin.Get("i_check") != null) { tl.check.sprite = UISkin.Get("i_check"); tl.check.color = Color.white; }
+        else Label(tl.check.transform, "✔", 20, TextAnchor.MiddleCenter, Color.white);
         return tl;
     }
 
@@ -101,7 +129,7 @@ public partial class ForgeUI
         var rc = ProgressionData.RarityColors[rarity];
         bool owned = level >= 0;
         tl.frame.color = owned ? rc : new Color(rc.r * 0.35f, rc.g * 0.35f, rc.b * 0.35f);
-        tl.bg.color = owned ? new Color(rc.r * 0.32f + 0.05f, rc.g * 0.32f + 0.04f, rc.b * 0.32f + 0.04f) : TileLocked;
+        tl.bg.color = owned ? Color.Lerp(rc, Color.black, 0.2f) : new Color(0.2f, 0.16f, 0.16f);
         bool useGlyph = icon == null;
         tl.icon.gameObject.SetActive(!useGlyph);
         tl.glyphBg.gameObject.SetActive(useGlyph);
@@ -136,8 +164,8 @@ public partial class ForgeUI
 
     void SetEmptySlot(Tile tl)
     {
-        tl.frame.color = new Color(0.3f, 0.18f, 0.14f);
-        tl.bg.color = new Color(0.08f, 0.05f, 0.05f);
+        tl.frame.color = new Color(0.45f, 0.3f, 0.24f);
+        tl.bg.color = new Color(0.2f, 0.14f, 0.13f);
         tl.icon.gameObject.SetActive(false);
         tl.glyphBg.gameObject.SetActive(true);
         tl.glyphBg.color = new Color(0.14f, 0.1f, 0.1f);
@@ -155,6 +183,7 @@ public partial class ForgeUI
         var sb = new SummonBar();
         var row = Box(P, "Invocation", new Vector2(0, 1), new Vector2(1, 1), new Vector2(12, top - 104), new Vector2(-12, top), new Color(0.1f, 0.06f, 0.06f, 0.95f));
         row.sprite = Round(); row.type = Image.Type.Sliced;
+        if (UISkin.Get("card") != null) { UISkin.Sliced(row, "card"); row.color = Color.white; }
         sb.currency = Label(row.transform, "", 30, TextAnchor.MiddleLeft, new Color(0.96f, 0.9f, 0.78f), new Vector2(0, 0), new Vector2(0.3f, 1), new Vector2(20, 0), Vector2.zero);
         sb.b1 = MakeButton(row.transform, "Invoquer 1", new Vector2(0.3f, 0), new Vector2(0.53f, 1), new Vector2(4, 12), new Vector2(-4, -12), btnColor, "", 24, out sb.t1, () => s1());
         sb.b2 = MakeButton(row.transform, "Invoquer 2", new Vector2(0.53f, 0), new Vector2(0.76f, 1), new Vector2(4, 12), new Vector2(-4, -12), btnColor, "", 24, out sb.t2, () => s2());
@@ -163,9 +192,9 @@ public partial class ForgeUI
         sb.level.alignment = TextAnchor.UpperCenter;
         sb.level.rectTransform.offsetMax = new Vector2(0, -6);
         var pbg = Box(lv.transform, "Progression", new Vector2(0, 0), new Vector2(1, 0), new Vector2(12, 10), new Vector2(-12, 22), new Color(0, 0, 0, 0.7f));
-        pbg.raycastTarget = false;
+        pbg.raycastTarget = false; UISkin.Sliced(pbg, "bar_bg", 2f);
         sb.progFill = Box(pbg.transform, "Remplissage", Vector2.zero, new Vector2(0.3f, 1), Vector2.zero, Vector2.zero, new Color(0.55f, 0.75f, 1f));
-        sb.progFill.raycastTarget = false;
+        sb.progFill.raycastTarget = false; UISkin.Sliced(sb.progFill, "bar_fill", 2f);
         return sb;
     }
 
@@ -230,9 +259,10 @@ public partial class ForgeUI
         closeBg.transition = Selectable.Transition.None;
         closeBg.onClick.AddListener(() => detail.SetActive(false));
         detailFrame = Box(detail.transform, "Cadre", new Vector2(0.1f, 0.27f), new Vector2(0.9f, 0.73f), Vector2.zero, Vector2.zero, Color.white);
-        detailFrame.sprite = Round(); detailFrame.type = Image.Type.Sliced;
-        var card = Box(detailFrame.transform, "Carte", Vector2.zero, Vector2.one, new Vector2(6, 6), new Vector2(-6, -6), new Color(0.08f, 0.04f, 0.04f, 1f));
+        detailFrame.sprite = Round(); detailFrame.type = Image.Type.Sliced; UISkin.Sliced(detailFrame, "frame");
+        var card = Box(detailFrame.transform, "Carte", Vector2.zero, Vector2.one, new Vector2(14, 14), new Vector2(-14, -14), new Color(0.08f, 0.04f, 0.04f, 1f));
         card.sprite = Round(); card.type = Image.Type.Sliced;
+        if (UISkin.Get("panel") != null) { UISkin.Sliced(card, "panel"); card.color = Color.white; }
         Transform C = card.transform;
         Text x;
         MakeButton(C, "Fermer", new Vector2(1, 1), new Vector2(1, 1), new Vector2(-90, -90), new Vector2(-16, -16), new Color(0.4f, 0.13f, 0.1f), "X", 36, out x, () => detail.SetActive(false));
@@ -246,8 +276,11 @@ public partial class ForgeUI
 
         detailName = Label(C, "", 46, TextAnchor.UpperCenter, Color.white, new Vector2(0, 1), new Vector2(1, 1), new Vector2(20, -400), new Vector2(-20, -335));
         detailRarity = Label(C, "", 28, TextAnchor.UpperCenter, Color.white, new Vector2(0, 1), new Vector2(1, 1), new Vector2(20, -445), new Vector2(-20, -400));
-        detailBarRoot = Box(C, "Barre", new Vector2(0.15f, 1), new Vector2(0.85f, 1), new Vector2(0, -505), new Vector2(0, -460), new Color(0, 0, 0, 0.7f)).gameObject;
+        var dbr = Box(C, "Barre", new Vector2(0.15f, 1), new Vector2(0.85f, 1), new Vector2(0, -505), new Vector2(0, -460), new Color(0, 0, 0, 0.7f));
+        UISkin.Sliced(dbr, "bar_bg", 1.6f);
+        detailBarRoot = dbr.gameObject;
         detailBarFill = Box(detailBarRoot.transform, "Remplissage", Vector2.zero, new Vector2(0.5f, 1), Vector2.zero, Vector2.zero, new Color(0.3f, 0.75f, 0.35f));
+        UISkin.Sliced(detailBarFill, "bar_fill", 1.6f);
         detailLevel = Label(detailBarRoot.transform, "", 26, TextAnchor.MiddleCenter, Color.white);
         detailBody = Label(C, "", 32, TextAnchor.UpperCenter, TextMain, new Vector2(0, 0), new Vector2(1, 1), new Vector2(30, 150), new Vector2(-30, -525));
         dpBtn = MakeButton(C, "Action", new Vector2(0.2f, 0), new Vector2(0.8f, 0), new Vector2(0, 30), new Vector2(0, 130),
@@ -280,7 +313,7 @@ public partial class ForgeUI
         dpBtn.gameObject.SetActive(owned && action != null);
         dpBtn.interactable = true;
         dpBtnText.text = action ?? "";
-        dpBtn.GetComponent<Image>().color = actionColor ?? new Color(0.15f, 0.5f, 0.22f);
+        dpBtn.GetComponent<Image>().color = UISkin.Vivid(actionColor ?? new Color(0.15f, 0.5f, 0.22f));
         detailAction = onAction;
         detail.transform.SetAsLastSibling();
         detail.SetActive(true);
@@ -311,7 +344,7 @@ public partial class ForgeUI
         dpBtn.gameObject.SetActive(action != null);
         dpBtnText.text = action ?? "";
         dpBtn.interactable = enabled;
-        dpBtn.GetComponent<Image>().color = new Color(0.15f, 0.5f, 0.22f);
+        dpBtn.GetComponent<Image>().color = UISkin.Vivid(new Color(0.15f, 0.5f, 0.22f));
         detailAction = onAction;
     }
 }

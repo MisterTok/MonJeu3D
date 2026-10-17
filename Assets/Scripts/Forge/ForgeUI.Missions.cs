@@ -27,9 +27,9 @@ public partial class ForgeUI
     void BuildMissionPanel(Transform R)
     {
         missionPanel = MakeRect("Missions", R, Vector2.zero, Vector2.one, new Vector2(0, 150), new Vector2(0, -130)).gameObject;
-        missionPanel.AddComponent<Image>().color = new Color(0.06f, 0.03f, 0.07f, 1f);
+        SkinPanel(missionPanel);
         Transform P = missionPanel.transform;
-        Label(P, "MISSIONS", 48, TextAnchor.UpperCenter, Ember, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
+        Label(P, "MISSIONS", 48, TextAnchor.UpperCenter, TitleColor, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
         Text closeT;
         MakeButton(P, "Fermer", new Vector2(1, 1), new Vector2(1, 1), new Vector2(-110, -86), new Vector2(-20, -16),
             new Color(0.45f, 0.14f, 0.1f), "X", 40, out closeT, () => missionPanel.SetActive(false));
@@ -45,6 +45,7 @@ public partial class ForgeUI
             frame.sprite = Round(); frame.type = Image.Type.Sliced;
             var card = Box(frame.transform, "Carte", Vector2.zero, Vector2.one, new Vector2(5, 5), new Vector2(-5, -5), new Color(0.13f, 0.07f, 0.15f, 1f));
             card.sprite = Round(); card.type = Image.Type.Sliced;
+            UISkin.Sliced(frame, "frame", 2f); UISkin.Sliced(card, "tile", 1.6f); card.color = SkinTint(card.color);
             var cardBtn = frame.gameObject.AddComponent<Button>();
             cardBtn.onClick.AddListener(() => OpenMission(slot));
             missionTitle[i] = Label(card.transform, "", 32, TextAnchor.UpperLeft, Color.Lerp(MissionPurple, Color.white, 0.35f), Vector2.zero, Vector2.one, new Vector2(28, 0), new Vector2(-250, -20));
@@ -141,13 +142,13 @@ public partial class ForgeUI
         if (passBtn == null) return;
         int n = GameState.PassReadyCount();
         passBtnText.text = "Pass ★" + (n > 0 ? "\n<color=#7CFF8A><size=22>" + n + " à prendre</size></color>" : "");
-        passBtn.GetComponent<Image>().color = n > 0 ? new Color(0.25f, 0.5f, 0.15f) : new Color(0.45f, 0.28f, 0.07f, 0.9f);
+        passBtn.GetComponent<Image>().color = UISkin.Vivid(n > 0 ? new Color(0.25f, 0.5f, 0.15f) : new Color(0.45f, 0.28f, 0.07f, 0.9f));
     }
 
     void BuildPassPanel(Transform R)
     {
         passPanel = MakeRect("Pass de progression", R, Vector2.zero, Vector2.one, new Vector2(0, 150), new Vector2(0, -130)).gameObject;
-        passPanel.AddComponent<Image>().color = new Color(0.08f, 0.05f, 0.02f, 1f);
+        SkinPanel(passPanel);
         Transform P = passPanel.transform;
         Label(P, "PASS", 48, TextAnchor.UpperCenter, new Color(1f, 0.8f, 0.3f), new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
         Text closeT;
@@ -175,6 +176,7 @@ public partial class ForgeUI
             float top = -i * rowH;
             passRowBg[i] = Box(content, "Palier " + i, new Vector2(0, 1), new Vector2(1, 1), new Vector2(6, top - rowH + 6), new Vector2(-6, top - 6), Panel);
             passRowBg[i].gameObject.AddComponent<Outline>().effectDistance = new Vector2(3, -3);
+            UISkin.Sliced(passRowBg[i], "tile", 1.6f);
             passRowText[i] = Label(passRowBg[i].transform, "", 24, TextAnchor.MiddleLeft, TextMain, Vector2.zero, Vector2.one, new Vector2(20, 6), new Vector2(-250, -6));
             passRowBtn[i] = MakeButton(passRowBg[i].transform, "Récupérer", new Vector2(1, 0), new Vector2(1, 1), new Vector2(-230, 16), new Vector2(-16, -16),
                 new Color(0.2f, 0.5f, 0.22f), "", 26, out passRowBtnText[i], () => { string e = GameState.ClaimPass(idx); if (e != null) Toast(e); RefreshPass(); RefreshPassButton(); });
@@ -201,7 +203,7 @@ public partial class ForgeUI
         {
             bool reached = GameState.PassReached(i), claimed = d.passClaimed[i];
             var ol = passRowBg[i].GetComponent<Outline>();
-            passRowBg[i].color = claimed ? new Color(0.07f, 0.07f, 0.06f) : reached ? new Color(0.12f, 0.22f, 0.08f) : new Color(0.13f, 0.08f, 0.05f);
+            passRowBg[i].color = SkinTint(claimed ? new Color(0.07f, 0.07f, 0.06f) : reached ? new Color(0.12f, 0.22f, 0.08f) : new Color(0.13f, 0.08f, 0.05f));
             ol.effectColor = claimed ? new Color(0.3f, 0.3f, 0.3f) : reached ? new Color(0.5f, 1f, 0.4f) : new Color(0.5f, 0.35f, 0.15f);
             passRowText[i].text = "<b>" + GameState.StageName(MissionData.PassStage[i]) + "</b>\n<size=21>" + GameState.ContentText(GameState.PassContent(i), "  ") + "</size>";
             passRowBtn[i].interactable = reached && !claimed;

@@ -15,12 +15,13 @@ public partial class ForgeUI
     {
         var rt = MakeRect("Pile de pièces", anvil, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-150, -150), new Vector2(-8, -8));
         queueFrame = rt.gameObject.AddComponent<Image>();
-        queueFrame.sprite = Round(); queueFrame.type = Image.Type.Sliced;
+        queueFrame.sprite = Round(); queueFrame.type = Image.Type.Sliced; UISkin.Sliced(queueFrame, "frame", 2f);
         queueBtn = rt.gameObject.AddComponent<Button>();
         queueBtn.onClick.AddListener(Sfx.Click);
         queueBtn.onClick.AddListener(ReviewNext);
         var inner = MakeRect("Fond", rt, Vector2.zero, Vector2.one, new Vector2(5, 5), new Vector2(-5, -5)).gameObject.AddComponent<Image>();
         inner.sprite = Round(); inner.type = Image.Type.Sliced; inner.color = new Color(0.08f, 0.04f, 0.04f, 0.95f); inner.raycastTarget = false;
+        if (UISkin.Get("tile") != null) { UISkin.Sliced(inner, "tile", 2f); inner.color = new Color(0.3f, 0.22f, 0.22f); }
         queueIcon = MakeRect("Icône", rt, Vector2.zero, Vector2.one, new Vector2(10, 18), new Vector2(-10, -6)).gameObject.AddComponent<RawImage>();
         queueIcon.raycastTarget = false;
         queueCount = Label(rt, "", 30, TextAnchor.LowerRight, Color.white, Vector2.zero, Vector2.one, new Vector2(6, 4), new Vector2(-10, 0));

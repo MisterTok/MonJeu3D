@@ -13,9 +13,9 @@ public partial class ForgeUI
     void BuildMountPanel(Transform R)
     {
         mountPanel = MakeRect("Montures", R, Vector2.zero, Vector2.one, new Vector2(0, 150), new Vector2(0, -130)).gameObject;
-        mountPanel.AddComponent<Image>().color = new Color(0.07f, 0.04f, 0.06f, 1f);
+        SkinPanel(mountPanel);
         Transform P = mountPanel.transform;
-        Label(P, "MONTURES", 48, TextAnchor.UpperCenter, Ember, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
+        Label(P, "MONTURES", 48, TextAnchor.UpperCenter, TitleColor, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
         Text closeT;
         MakeButton(P, "Fermer", new Vector2(1, 1), new Vector2(1, 1), new Vector2(-104, -84), new Vector2(-20, -16),
             new Color(0.45f, 0.14f, 0.1f), "X", 40, out closeT, () => mountPanel.SetActive(false));

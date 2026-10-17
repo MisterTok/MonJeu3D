@@ -20,9 +20,9 @@ public partial class ForgeUI
     void BuildShopPanel(Transform R)
     {
         shopPanel = MakeRect("Boutique", R, Vector2.zero, Vector2.one, new Vector2(0, 150), new Vector2(0, -130)).gameObject;
-        shopPanel.AddComponent<Image>().color = new Color(0.07f, 0.035f, 0.03f, 1f);
+        SkinPanel(shopPanel);
         Transform P = shopPanel.transform;
-        Label(P, "BOUTIQUE", 48, TextAnchor.UpperCenter, Ember, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
+        Label(P, "BOUTIQUE", 48, TextAnchor.UpperCenter, TitleColor, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
         Text closeT;
         MakeButton(P, "Fermer", new Vector2(1, 1), new Vector2(1, 1), new Vector2(-110, -86), new Vector2(-20, -16),
             new Color(0.45f, 0.14f, 0.1f), "X", 40, out closeT, () => shopPanel.SetActive(false));
@@ -31,6 +31,7 @@ public partial class ForgeUI
 
         // Cadeau du jour
         var gift = Box(P, "Cadeau", new Vector2(0, 1), new Vector2(1, 1), new Vector2(12, -290), new Vector2(-12, -140), new Color(0.13f, 0.08f, 0.03f, 1f));
+        UISkin.Sliced(gift, "tile", 1.6f); gift.color = SkinTint(gift.color);
         gift.gameObject.AddComponent<Outline>().effectColor = new Color(1f, 0.8f, 0.3f);
         Label(gift.transform, "Cadeau du jour", 36, TextAnchor.UpperLeft, new Color(1f, 0.82f, 0.35f), Vector2.zero, Vector2.one, new Vector2(24, 0), new Vector2(-300, -14));
         shopGiftText = Label(gift.transform, "", 26, TextAnchor.LowerLeft, TextMain, Vector2.zero, Vector2.one, new Vector2(24, 18), new Vector2(-300, 0));
@@ -44,6 +45,7 @@ public partial class ForgeUI
             int slot = i;
             dealBg[i] = Box(P, "Offre " + i, new Vector2(i / 3f, 1), new Vector2((i + 1) / 3f, 1), new Vector2(12, -800), new Vector2(-12, -350), Panel);
             dealBg[i].gameObject.AddComponent<Outline>().effectDistance = new Vector2(4, -4);
+            UISkin.Sliced(dealBg[i], "tile", 1.6f);
             dealTitle[i] = Label(dealBg[i].transform, "", 28, TextAnchor.UpperCenter, Color.white, Vector2.zero, Vector2.one, new Vector2(10, 0), new Vector2(-10, -14));
             dealBody[i] = Label(dealBg[i].transform, "", 27, TextAnchor.MiddleCenter, TextMain, Vector2.zero, Vector2.one, new Vector2(10, 110), new Vector2(-10, -60));
             dealBody[i].lineSpacing = 1.25f;
@@ -109,7 +111,7 @@ public partial class ForgeUI
             var deal = ShopData.Deals[d.shopDeals[i]];
             var c = deal.color;
             bool bought = d.shopDealBought[i];
-            dealBg[i].color = bought ? new Color(0.08f, 0.07f, 0.07f, 1f) : new Color(c.r * 0.2f, c.g * 0.2f, c.b * 0.2f, 1f);
+            dealBg[i].color = SkinTint(bought ? new Color(0.08f, 0.07f, 0.07f, 1f) : new Color(c.r * 0.2f, c.g * 0.2f, c.b * 0.2f, 1f));
             dealBg[i].GetComponent<Outline>().effectColor = bought ? new Color(0.3f, 0.3f, 0.3f) : c;
             dealTitle[i].text = "<b>" + deal.name + "</b>";
             dealTitle[i].color = Color.Lerp(c, Color.white, 0.3f);

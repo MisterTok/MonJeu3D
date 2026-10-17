@@ -80,15 +80,18 @@ public partial class ForgeUI : MonoBehaviour
         t.raycastTarget = false;
         t.horizontalOverflow = HorizontalWrapMode.Wrap;
         t.verticalOverflow = VerticalWrapMode.Overflow;
-        var sh = rt.gameObject.AddComponent<Shadow>();
-        sh.effectColor = new Color(0, 0, 0, 0.8f);
-        sh.effectDistance = new Vector2(2, -2);
+        var sh = rt.gameObject.AddComponent<Outline>();
+        sh.effectColor = new Color(0.06f, 0.02f, 0.02f, 0.95f);
+        sh.effectDistance = new Vector2(2.2f, -2.2f);
         return t;
     }
 
     Button MakeButton(Transform parent, string name, Vector2 aMin, Vector2 aMax, Vector2 offMin, Vector2 offMax, Color c, string txt, int size, out Text label, UnityEngine.Events.UnityAction onClick)
     {
-        var img = Box(parent, name, aMin, aMax, offMin, offMax, c);
+        var img = Box(parent, name, aMin, aMax, offMin, offMax, UISkin.Vivid(c));
+        bool close = name == "Fermer" && UISkin.Get("i_close") != null;
+        if (close) { img.sprite = UISkin.Get("i_close"); img.preserveAspect = true; img.color = Color.white; txt = ""; }
+        else UISkin.Sliced(img, "btn", 1.3f);
         var b = img.gameObject.AddComponent<Button>();
         var colors = b.colors;
         colors.highlightedColor = new Color(1.1f, 1.1f, 1.1f);
@@ -97,11 +100,11 @@ public partial class ForgeUI : MonoBehaviour
         b.colors = colors;
         b.onClick.AddListener(Sfx.Click);
         b.onClick.AddListener(onClick);
-        // Liseré
+        // Liseré coloré optionnel (transparent par défaut ; certains écrans le colorent pour marquer un état)
         var outline = img.gameObject.AddComponent<Outline>();
-        outline.effectColor = new Color(0, 0, 0, 0.6f);
+        outline.effectColor = new Color(0, 0, 0, 0);
         outline.effectDistance = new Vector2(3, -3);
-        label = Label(img.transform, txt, size, TextAnchor.MiddleCenter, Color.white);
+        label = Label(img.transform, txt, size, TextAnchor.MiddleCenter, Color.white, Vector2.zero, Vector2.one, new Vector2(6, 8), new Vector2(-6, -2));
         return b;
     }
 
@@ -111,7 +114,7 @@ public partial class ForgeUI : MonoBehaviour
 
     void Create()
     {
-        font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        font = UISkin.Font;
 
         if (FindAnyObjectByType<EventSystem>() == null)
         {
@@ -137,15 +140,17 @@ public partial class ForgeUI : MonoBehaviour
 
         // ----- Barre du haut : puissance à gauche, or et gemmes à droite -----
         var top = Box(R, "Haut", new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -130), Vector2.zero, new Color(0.05f, 0.02f, 0.02f, 0.92f));
+        if (UISkin.Get("topbar") != null) { UISkin.Sliced(top, "topbar"); top.color = Color.white; }
         statsRect = top.rectTransform;
-        var avatar = Box(top.transform, "Portrait", new Vector2(0, 0), new Vector2(0, 1), new Vector2(18, 14), new Vector2(120, -14), new Color(0.35f, 0.08f, 0.05f));
-        avatar.gameObject.AddComponent<Outline>().effectColor = Ember;
-        Label(avatar.transform, "☠", 60, TextAnchor.MiddleCenter, new Color(1f, 0.8f, 0.6f));
-        statsText = Label(top.transform, "", 30, TextAnchor.MiddleLeft, TextMain, new Vector2(0, 0), new Vector2(0.5f, 1), new Vector2(135, 0), Vector2.zero);
-        var goldBox = Box(top.transform, "Or", new Vector2(0.52f, 0.5f), new Vector2(0.75f, 0.5f), new Vector2(0, -30), new Vector2(-8, 30), new Color(0, 0, 0, 0.6f));
-        goldText = Label(goldBox.transform, "", 36, TextAnchor.MiddleRight, new Color(1f, 0.82f, 0.3f), Vector2.zero, Vector2.one, new Vector2(10, 0), new Vector2(-14, 0));
-        var gemBox = Box(top.transform, "Gemmes", new Vector2(0.75f, 0.5f), new Vector2(1f, 0.5f), new Vector2(8, -30), new Vector2(-18, 30), new Color(0, 0, 0, 0.6f));
-        gemText = Label(gemBox.transform, "", 36, TextAnchor.MiddleRight, new Color(0.5f, 0.9f, 1f), Vector2.zero, Vector2.one, new Vector2(10, 0), new Vector2(-14, 0));
+        var avatar = Box(top.transform, "Portrait", new Vector2(0, 0), new Vector2(0, 1), new Vector2(16, 12), new Vector2(120, -12), Ember);
+        UISkin.Sliced(avatar, "frame", 2.2f);
+        var avIn = Box(avatar.transform, "Fond", Vector2.zero, Vector2.one, new Vector2(7, 7), new Vector2(-7, -7), new Color(0.35f, 0.08f, 0.06f));
+        UISkin.Sliced(avIn, "tile", 2.4f); avIn.raycastTarget = false;
+        UISkin.Icon(avatar.transform, "i_hero", Vector2.zero, Vector2.one, new Vector2(12, 12), new Vector2(-12, -12));
+        UISkin.Icon(top.transform, "i_power", new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(126, 2), new Vector2(176, 52));
+        statsText = Label(top.transform, "", 30, TextAnchor.MiddleLeft, TextMain, new Vector2(0, 0), new Vector2(0.52f, 1), new Vector2(132, 6), new Vector2(0, -6));
+        goldText = CurrencyPill(top.transform, "i_gold", new Vector2(0.52f, 0.5f), new Vector2(0.76f, 0.5f), new Vector2(4, -32), new Vector2(-6, 32), new Color(1f, 0.86f, 0.4f));
+        gemText = CurrencyPill(top.transform, "i_gem", new Vector2(0.76f, 0.5f), new Vector2(1f, 0.5f), new Vector2(6, -32), new Vector2(-16, 32), new Color(1f, 0.7f, 0.9f));
 
         BuildNav(R);
 
@@ -159,10 +164,11 @@ public partial class ForgeUI : MonoBehaviour
         forgeBtn.transition = Selectable.Transition.None;
         forgeBtn.onClick.AddListener(OnForge);
         forgeBtnImg = anvilImg;
-        var hammerPlate = Box(anvilRect, "Marteaux", new Vector2(0.18f, 0f), new Vector2(0.82f, 0f), new Vector2(0, 8), new Vector2(0, 70), new Color(0.1f, 0.03f, 0.02f, 0.85f));
-        hammerPlate.gameObject.AddComponent<Outline>().effectColor = Ember;
+        var hammerPlate = Box(anvilRect, "Marteaux", new Vector2(0.2f, 0f), new Vector2(0.8f, 0f), new Vector2(0, 8), new Vector2(0, 72), new Color(1f, 1f, 1f, 0.95f));
+        UISkin.Sliced(hammerPlate, "pill");
         hammerPlate.raycastTarget = false;
-        hammerText = Label(hammerPlate.transform, "", 32, TextAnchor.MiddleCenter, Color.white);
+        UISkin.Icon(hammerPlate.transform, "i_hammer", new Vector2(0, 0), new Vector2(0, 1), new Vector2(-14, -6), new Vector2(66, 10));
+        hammerText = Label(hammerPlate.transform, "", 34, TextAnchor.MiddleCenter, Color.white, Vector2.zero, Vector2.one, new Vector2(52, 0), new Vector2(-8, 0));
         anvilText = Label(anvilRect, "Touche l'enclume !", 26, TextAnchor.UpperCenter, new Color(1f, 0.75f, 0.5f), Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0, -6));
         forgeBtnText = anvilText;
         BuildQueueBadge(anvilRect);
@@ -189,9 +195,8 @@ public partial class ForgeUI : MonoBehaviour
             int row = i / 4, col = i % 4;
             var aMin = new Vector2(col / 4f, row == 0 ? 0.5f : 0f);
             var aMax = new Vector2((col + 1) / 4f, row == 0 ? 1f : 0.5f);
-            slotBg[i] = Box(eq, "Emplacement " + i, aMin, aMax, new Vector2(7, 7), new Vector2(-7, -7), Panel);
-            var ol = slotBg[i].gameObject.AddComponent<Outline>();
-            ol.effectDistance = new Vector2(4, -4);
+            slotBg[i] = Box(eq, "Emplacement " + i, aMin, aMax, new Vector2(6, 6), new Vector2(-6, -6), Panel);
+            UISkin.Sliced(slotBg[i], "tile", 1.2f);
             // Icône 3D de la pièce au centre, niveau en haut, statistique en bas.
             var iconRt = MakeRect("Icône", slotBg[i].transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-62, -54), new Vector2(62, 70));
             slotIcon[i] = iconRt.gameObject.AddComponent<RawImage>();
@@ -218,6 +223,7 @@ public partial class ForgeUI : MonoBehaviour
         var tb = MakeRect("Bandeau message", R, new Vector2(0, 1), new Vector2(1, 1), new Vector2(40, -500), new Vector2(-40, -330));
         var tbImg = tb.gameObject.AddComponent<Image>();
         tbImg.sprite = Round(); tbImg.type = Image.Type.Sliced; tbImg.color = new Color(0.05f, 0.02f, 0.02f, 0.82f); tbImg.raycastTarget = false;
+        if (UISkin.Get("card") != null) { UISkin.Sliced(tbImg, "card"); tbImg.color = new Color(1f, 1f, 1f, 0.95f); }
         toastGroup = tb.gameObject.AddComponent<CanvasGroup>();
         toastGroup.alpha = 0f; toastGroup.blocksRaycasts = false;
         toast = Label(tb, "", 34, TextAnchor.MiddleCenter, new Color(1f, 0.85f, 0.4f), Vector2.zero, Vector2.one, new Vector2(20, 8), new Vector2(-20, -8));
@@ -269,14 +275,14 @@ public partial class ForgeUI : MonoBehaviour
     {
         // Panneau plein comme les autres (sous-onglet « Héros ») : statistiques détaillées.
         statsPanel = MakeRect("Fiche du héros", R, Vector2.zero, Vector2.one, new Vector2(0, 150), new Vector2(0, -130)).gameObject;
-        statsPanel.AddComponent<Image>().color = new Color(0.07f, 0.035f, 0.035f, 1f);
+        SkinPanel(statsPanel);
         Transform P = statsPanel.transform;
-        Label(P, "HÉROS", 48, TextAnchor.UpperCenter, Ember, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
+        Label(P, "HÉROS", 48, TextAnchor.UpperCenter, TitleColor, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
         Text closeT;
         MakeButton(P, "Fermer", new Vector2(1, 1), new Vector2(1, 1), new Vector2(-104, -84), new Vector2(-20, -16),
             new Color(0.45f, 0.14f, 0.1f), "X", 40, out closeT, () => statsPanel.SetActive(false));
         var card = Box(P, "Carte", new Vector2(0, 1), new Vector2(1, 1), new Vector2(24, -1060), new Vector2(-24, -110), new Color(0.13f, 0.07f, 0.06f, 1f));
-        card.gameObject.AddComponent<Outline>().effectColor = new Color(0.5f, 0.2f, 0.08f);
+        UISkin.Sliced(card, "card"); card.color = Color.white;
         statsPanelText = Label(card.transform, "", 36, TextAnchor.UpperLeft, TextMain, Vector2.zero, Vector2.one, new Vector2(44, 30), new Vector2(-44, -30));
         statsPanelText.lineSpacing = 1.15f;
         MakeButton(P, "Son", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-260, 24), new Vector2(-24, 84),
@@ -335,11 +341,13 @@ public partial class ForgeUI : MonoBehaviour
         var shade = Box(popup.transform, "Voile", new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero, new Color(0, 0, 0, 0.6f));
         shade.raycastTarget = true;
         popFrame = Box(popup.transform, "Cadre", new Vector2(0.06f, 0.08f), new Vector2(0.94f, 0.5f), Vector2.zero, Vector2.zero, Color.white);
-        var inner = Box(popFrame.transform, "Carte", Vector2.zero, Vector2.one, new Vector2(6, 6), new Vector2(-6, -6), new Color(0.07f, 0.035f, 0.035f, 0.97f));
+        UISkin.Sliced(popFrame, "frame");
+        var inner = Box(popFrame.transform, "Carte", Vector2.zero, Vector2.one, new Vector2(14, 14), new Vector2(-14, -14), new Color(0.07f, 0.035f, 0.035f, 0.97f));
+        if (UISkin.Get("panel") != null) { UISkin.Sliced(inner, "panel"); inner.color = Color.white; }
         Transform c = inner.transform;
         // Icône de la pièce posée sur le haut de la fiche, avec un halo de la couleur du cercle.
         popHalo = MakeRect("Halo", popup.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-190, 30), new Vector2(190, 410)).gameObject.AddComponent<Image>();
-        popHalo.sprite = Circle(); popHalo.raycastTarget = false;
+        popHalo.sprite = UISkin.Get("glow") ?? Circle(); popHalo.raycastTarget = false;
         popIcon = MakeRect("Icône", popup.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-150, 70), new Vector2(150, 370)).gameObject.AddComponent<RawImage>();
         popIcon.raycastTarget = false;
         popRemain = Label(c, "", 26, TextAnchor.UpperRight, TextDim, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-24, -14));
@@ -598,9 +606,9 @@ public partial class ForgeUI : MonoBehaviour
         RefreshShop();
         RefreshMissions();
         var d = GameState.Data;
-        goldText.text = "<size=26>or</size>  " + GameState.Fmt(d.gold);
-        gemText.text = "<size=26>gemmes</size>  " + GameState.Fmt(d.gems);
-        statsText.text = "<color=#FFB347><b>Puissance " + GameState.Fmt(GameState.Power()) + "</b></color>\nATQ " + GameState.Fmt(GameState.TotalAtk()) + "   PV " + GameState.Fmt(GameState.TotalHp());
+        goldText.text = GameState.Fmt(d.gold);
+        gemText.text = GameState.Fmt(d.gems);
+        statsText.text = "<size=40><color=#FFC54A>      " + GameState.Fmt(GameState.Power()) + "</color></size>\n<size=26>ATQ " + GameState.Fmt(GameState.TotalAtk()) + "   PV " + GameState.Fmt(GameState.TotalHp()) + "</size>";
 
         forgeLevelText.text = (d.forgeStars > 0 ? "<color=#FFD24A>" + GameState.StarText(d.forgeStars) + "</color> " : "") + "Forge niv. " + d.forgeLevel + (GameState.IsMaxLevel ? " (max)" : "");
         // Bouton des chances : seulement le meilleur cercle possible
@@ -612,12 +620,10 @@ public partial class ForgeUI : MonoBehaviour
         for (int i = 0; i < GameState.SlotCount; i++)
         {
             var it = d.equipped[i];
-            var ol = slotBg[i].GetComponent<Outline>();
             if (it.valid)
             {
                 Color c = GameState.CircleColors[it.circle];
-                slotBg[i].color = new Color(c.r * 0.45f, c.g * 0.45f, c.b * 0.45f, 0.95f);
-                ol.effectColor = c;
+                slotBg[i].color = Color.Lerp(c, Color.white, 0.12f);
                 slotIcon[i].texture = ItemIcons.Get(i, it.circle);
                 slotIcon[i].color = Color.white;
                 slotLevel[i].text = (it.stars > 0 ? "<color=#FFD24A>" + GameState.StarText(it.stars) + "</color> " : "") + "<b>Niv. " + it.level + "</b>" + (it.SubCount > 0 ? "\n<size=30>" + SubDots(it.subs) + "</size>" : "");
@@ -625,8 +631,7 @@ public partial class ForgeUI : MonoBehaviour
             }
             else
             {
-                slotBg[i].color = Panel;
-                ol.effectColor = new Color(0.3f, 0.15f, 0.1f);
+                slotBg[i].color = new Color(0.32f, 0.22f, 0.2f);
                 // Emplacement vide : silhouette sombre de la pièce.
                 slotIcon[i].texture = ItemIcons.Get(i, 0);
                 slotIcon[i].color = new Color(0f, 0f, 0f, 0.55f);
@@ -641,11 +646,11 @@ public partial class ForgeUI : MonoBehaviour
     {
         var d = GameState.Data;
         int next = GameState.SecondsToNextHammer();
-        hammerText.text = "⚒ " + d.hammers + (next > 0 && d.hammers < GameState.HammerCap ? "  <size=22>+1 " + next + "s</size>" : "");
+        hammerText.text = d.hammers + (next > 0 && d.hammers < GameState.HammerCap ? "  <size=22>+1 " + next + "s</size>" : "");
 
         bool autoOn = GameState.AutoForgeUnlocked && GameState.Data.autoForge;
         autoText.text = !GameState.AutoForgeUnlocked ? "Auto\n<size=18>verrouillé</size>" : autoOn ? "Auto\n<size=20>ACTIVÉ</size>" : "Auto\n<size=20>arrêté</size>";
-        autoBtn.GetComponent<Image>().color = autoOn ? new Color(0.2f, 0.55f, 0.25f) : new Color(0.25f, 0.25f, 0.3f);
+        autoBtn.GetComponent<Image>().color = UISkin.Vivid(autoOn ? new Color(0.2f, 0.55f, 0.25f) : new Color(0.25f, 0.25f, 0.3f));
         bool canForge = GameState.CanForge && !world.Busy;
         forgeBtn.interactable = canForge;
         forgeBtnText.text = d.hammers > 0 ? (d.totalForged < 3 ? "Touche l'enclume !" : "") : "Plus de marteaux";

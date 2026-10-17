@@ -209,7 +209,7 @@ public class BattleWorld : MonoBehaviour
     {
         ForgeWorld.InitMaterials();
         world = transform;
-        font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        font = UISkin.Font;
 
         var camGo = new GameObject("Caméra combat");
         cam = camGo.AddComponent<Camera>();
@@ -1319,6 +1319,14 @@ public class BattleWorld : MonoBehaviour
         canvasRect = (RectTransform)cgo.transform;
 
         overlayRoot = NewRect("Zone combat", cgo.transform);
+        if (UISkin.Get("banner") != null)
+        {
+            // Bandeau rouge et or derrière le nom de l'étape.
+            var ban = NewRect("Bandeau étape", overlayRoot);
+            Anchor(ban, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(-280, -96), new Vector2(280, -6));
+            var bi = ban.gameObject.AddComponent<Image>();
+            UISkin.Sliced(bi, "banner"); bi.raycastTarget = false;
+        }
         stageText = NewText(overlayRoot, 46, TextAnchor.UpperCenter, new Color(1f, 0.85f, 0.6f));
         Anchor(stageText.rectTransform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -18));
         waveText = NewText(overlayRoot, 30, TextAnchor.UpperCenter, new Color(0.95f, 0.9f, 0.85f));
@@ -1399,10 +1407,12 @@ public class BattleWorld : MonoBehaviour
             b.root.sizeDelta = new Vector2(130, 16);
             var bg = b.root.gameObject.AddComponent<Image>();
             bg.color = new Color(0, 0, 0, 0.75f); bg.raycastTarget = false;
+            if (UISkin.Get("bar_bg") != null) { UISkin.Sliced(bg, "bar_bg", 3f); bg.color = Color.white; }
             b.fill = NewRect("Vie", b.root);
             b.fill.offsetMin = new Vector2(2, 2); b.fill.offsetMax = new Vector2(-2, -2);
             b.fillImg = b.fill.gameObject.AddComponent<Image>();
             b.fillImg.raycastTarget = false;
+            UISkin.Sliced(b.fillImg, "bar_fill", 3.5f);
             bars.Add(b);
         }
         return bars[i];

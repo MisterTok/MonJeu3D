@@ -17,9 +17,9 @@ public partial class ForgeUI
     void BuildSkillPanel(Transform R)
     {
         skillPanel = MakeRect("Compétences", R, Vector2.zero, Vector2.one, new Vector2(0, 150), new Vector2(0, -130)).gameObject;
-        skillPanel.AddComponent<Image>().color = new Color(0.06f, 0.03f, 0.06f, 1f);
+        SkinPanel(skillPanel);
         Transform P = skillPanel.transform;
-        Label(P, "COMPÉTENCES", 48, TextAnchor.UpperCenter, Ember, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
+        Label(P, "COMPÉTENCES", 48, TextAnchor.UpperCenter, TitleColor, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
         Text closeT;
         MakeButton(P, "Fermer", new Vector2(1, 1), new Vector2(1, 1), new Vector2(-104, -84), new Vector2(-20, -16),
             new Color(0.45f, 0.14f, 0.1f), "X", 40, out closeT, () => skillPanel.SetActive(false));

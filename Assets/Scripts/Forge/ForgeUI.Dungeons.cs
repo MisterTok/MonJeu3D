@@ -17,9 +17,9 @@ public partial class ForgeUI
     void BuildDungeonPanel(Transform R)
     {
         dungPanel = MakeRect("Donjons", R, Vector2.zero, Vector2.one, new Vector2(0, 150), new Vector2(0, -130)).gameObject;
-        dungPanel.AddComponent<Image>().color = new Color(0.05f, 0.025f, 0.03f, 1f);
+        SkinPanel(dungPanel);
         Transform P = dungPanel.transform;
-        Label(P, "DONJONS", 48, TextAnchor.UpperCenter, Ember, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
+        Label(P, "DONJONS", 48, TextAnchor.UpperCenter, TitleColor, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -80), new Vector2(0, -16));
         Text closeT;
         MakeButton(P, "Fermer", new Vector2(1, 1), new Vector2(1, 1), new Vector2(-104, -84), new Vector2(-20, -16),
             new Color(0.4f, 0.12f, 0.08f), "X", 40, out closeT, () => dungPanel.SetActive(false));
@@ -33,6 +33,7 @@ public partial class ForgeUI
             frame.sprite = Round(); frame.type = Image.Type.Sliced;
             var card = Box(frame.transform, "Carte", Vector2.zero, Vector2.one, new Vector2(5, 5), new Vector2(-5, -5), new Color(c.r * 0.18f + 0.04f, c.g * 0.18f + 0.03f, c.b * 0.18f + 0.03f));
             card.sprite = Round(); card.type = Image.Type.Sliced;
+            UISkin.Sliced(frame, "frame", 2f); UISkin.Sliced(card, "tile", 1.6f); card.color = SkinTint(card.color);
             // Pastille du donjon
             var dot = Box(card.transform, "Pastille", new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(24, -80), new Vector2(184, 80), new Color(c.r * 0.6f, c.g * 0.6f, c.b * 0.6f));
             dot.sprite = Circle();

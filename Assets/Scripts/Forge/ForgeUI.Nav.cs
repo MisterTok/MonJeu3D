@@ -6,7 +6,9 @@ using UnityEngine.UI;
 // Aventure : donjons, missions).
 public partial class ForgeUI
 {
-    static readonly string[] NavNames = { "Boutique", "Héros", "FORGE", "Aventure", "Techno" };
+    static readonly string[] NavNames = { "Boutique", "Héros", "Forge", "Aventure", "Techno" };
+    static readonly string[] NavIcons = { "i_shop", "i_hero", "i_forge", "i_adventure", "i_tech" };
+    readonly Image[] navIcon = new Image[5];
     readonly Image[] navImg = new Image[5];
     readonly Text[] navText = new Text[5];
     readonly GameObject[] navDot = new GameObject[5];
@@ -19,17 +21,21 @@ public partial class ForgeUI
     void BuildNav(Transform R)
     {
         var nav = Box(R, "Navigation", new Vector2(0, 0), new Vector2(1, 0), Vector2.zero, new Vector2(0, 150), new Color(0.07f, 0.04f, 0.05f, 0.98f));
+        if (UISkin.Get("navbar") != null) { UISkin.Sliced(nav, "navbar"); nav.color = Color.white; }
         // La forge (accueil) au centre, un peu plus large.
         navRoot = nav.transform;
         float[] edges = { 0f, 0.19f, 0.38f, 0.62f, 0.81f, 1f };
         for (int i = 0; i < 5; i++)
         {
             int idx = i;
-            var b = MakeButton(nav.transform, "Onglet " + NavNames[i], new Vector2(edges[i], 0), new Vector2(edges[i + 1], 1), new Vector2(4, 12), new Vector2(-4, -12),
-                NavOff, NavNames[i], i == 2 ? 32 : 26, out navText[i], () => OnNav(idx));
+            var b = MakeButton(nav.transform, "Onglet " + NavNames[i], new Vector2(edges[i], 0), new Vector2(edges[i + 1], 1), new Vector2(4, 10), new Vector2(-4, -14),
+                NavOff, NavNames[i], i == 2 ? 28 : 24, out navText[i], () => OnNav(idx));
             navImg[i] = b.GetComponent<Image>();
+            UISkin.Sliced(navImg[i], "tab", 1.2f);
+            navIcon[i] = UISkin.Icon(b.transform, NavIcons[i], new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(-46, -88), new Vector2(46, 4));
+            navText[i].alignment = TextAnchor.LowerCenter;
+            navText[i].rectTransform.offsetMin = new Vector2(2, 6);
             navDot[i] = MakeDot(b.transform);
-            if (i == 2) navText[i].fontStyle = FontStyle.Bold;
         }
     }
 
@@ -79,13 +85,16 @@ public partial class ForgeUI
     {
         var g = new SubTabs { panels = panels, open = open, unlock = unlock, names = names, img = new Image[names.Length], txt = new Text[names.Length], dot = new GameObject[names.Length] };
         g.root = MakeRect("Sous-onglets", R, new Vector2(0, 1), new Vector2(1, 1), new Vector2(12, -216), new Vector2(-114, -140));
-        g.root.gameObject.AddComponent<Image>().color = new Color(0.05f, 0.025f, 0.03f, 1f);
+        var gimg = g.root.gameObject.AddComponent<Image>();
+        gimg.color = new Color(0.05f, 0.025f, 0.03f, 1f);
+        if (UISkin.Get("card") != null) { UISkin.Sliced(gimg, "card"); gimg.color = Color.white; }
         for (int i = 0; i < names.Length; i++)
         {
             int idx = i;
             var b = MakeButton(g.root, names[i], new Vector2(i / (float)names.Length, 0), new Vector2((i + 1) / (float)names.Length, 1), new Vector2(4, 6), new Vector2(-4, -6),
                 NavOff, names[i], 26, out g.txt[i], () => OpenTab(g, idx));
             g.img[i] = b.GetComponent<Image>();
+            UISkin.Sliced(g.img[i], "tab", 1.4f);
             g.dot[i] = MakeDot(b.transform);
         }
         g.root.gameObject.SetActive(false);
@@ -106,6 +115,25 @@ public partial class ForgeUI
         navRoot.SetAsLastSibling();
         heroTabs.root.SetAsLastSibling();
         advTabs.root.SetAsLastSibling();
+    }
+
+    // Outil de test (commande de capture « open:<écran> »).
+    void TestOpen(string w)
+    {
+        CloseAllPanels();
+        switch (w)
+        {
+            case "shop": OnNav(0); break;
+            case "hero": OpenTab(heroTabs, 0); break;
+            case "skills": OpenTab(heroTabs, 1); break;
+            case "pets": OpenTab(heroTabs, 2); break;
+            case "mounts": OpenTab(heroTabs, 3); break;
+            case "dungeons": OpenTab(advTabs, 0); break;
+            case "missions": OpenTab(advTabs, 1); break;
+            case "tech": OnNav(4); break;
+            case "pass": TogglePass(); break;
+            case "odds": ShowOdds(); break;
+        }
     }
 
     // Pastille rouge « ! » en haut à droite d'un bouton : quelque chose à faire là-bas.
@@ -147,7 +175,7 @@ public partial class ForgeUI
         {
             float e = popup.activeSelf && popBetter ? 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 6f) : 0f;
             popEquipBtn.transform.localScale = Vector3.one * (1f + 0.05f * e);
-            popEquipBtn.GetComponent<Image>().color = Color.Lerp(new Color(0.15f, 0.5f, 0.2f), new Color(0.3f, 0.85f, 0.35f), e);
+            popEquipBtn.GetComponent<Image>().color = UISkin.Vivid(Color.Lerp(new Color(0.15f, 0.5f, 0.2f), new Color(0.3f, 0.85f, 0.35f), e));
         }
 
         // Le bouton Améliorer la forge pulse quand on peut payer.
@@ -156,7 +184,7 @@ public partial class ForgeUI
             var img = upgradeBtn.GetComponent<Image>();
             bool ready = upgradeBtn.interactable && !d.upgrading && !GameState.IsMaxLevel;
             float k = ready ? 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 5f) : 0f;
-            img.color = Color.Lerp(new Color(0.62f, 0.22f, 0.06f), new Color(1f, 0.55f, 0.12f), k);
+            img.color = UISkin.Vivid(Color.Lerp(new Color(0.62f, 0.22f, 0.06f), new Color(1f, 0.55f, 0.12f), k));
             upgradeBtn.transform.localScale = Vector3.one * (1f + 0.04f * k);
         }
 
@@ -169,7 +197,7 @@ public partial class ForgeUI
             for (int i = 0; i < g.img.Length; i++)
             {
                 bool locked = !GameState.Reached(g.unlock[i]);
-                g.img[i].color = i == cur ? NavOn : locked ? new Color(0.1f, 0.07f, 0.07f) : NavOff;
+                g.img[i].color = UISkin.Vivid(i == cur ? NavOn : locked ? new Color(0.1f, 0.07f, 0.07f) : NavOff);
                 g.txt[i].color = i == cur ? Color.white : locked ? new Color(0.45f, 0.4f, 0.38f) : TextDim;
                 g.txt[i].text = locked ? g.names[i] + "\n<size=18>étape " + (g.unlock[i] / 10 + 1) + "-" + (g.unlock[i] % 10 + 1) + "</size>" : g.names[i];
                 if (locked) g.dot[i].SetActive(false);
@@ -181,7 +209,9 @@ public partial class ForgeUI
             if (navImg[i] == null) continue;
             int need = i == 0 ? GameState.UnlockShop : i == 4 ? GameState.UnlockTech : 0;
             bool locked = !GameState.Reached(need);
-            navImg[i].color = i == active ? NavOn : locked ? new Color(0.1f, 0.07f, 0.07f) : NavOff;
+            navImg[i].color = UISkin.Vivid(i == active ? NavOn : locked ? new Color(0.1f, 0.07f, 0.07f) : NavOff);
+            navIcon[i].color = locked ? new Color(0.3f, 0.3f, 0.3f, 0.7f) : Color.white;
+            navIcon[i].rectTransform.localScale = Vector3.one * (i == active ? 1.15f : 1f);
             navText[i].color = i == active ? Color.white : locked ? new Color(0.45f, 0.4f, 0.38f) : TextDim;
             navText[i].text = locked ? NavNames[i] + "\n<size=18>étape " + (need / 10 + 1) + "-" + (need % 10 + 1) + "</size>" : NavNames[i];
             if (locked) navDot[i].SetActive(false);
