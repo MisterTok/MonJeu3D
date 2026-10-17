@@ -129,6 +129,7 @@ public partial class ForgeUI
             case "pets": OpenTab(heroTabs, 2); break;
             case "mounts": OpenTab(heroTabs, 3); break;
             case "skins": OpenTab(heroTabs, 4); break;
+            case "stones": ToggleStones(); break;
             case "dungeons": OpenTab(advTabs, 0); break;
             case "missions": OpenTab(advTabs, 1); break;
             case "tech": OnNav(4); break;
@@ -160,7 +161,7 @@ public partial class ForgeUI
     {
         // Notifications façon Forge Master.
         var d = GameState.Data;
-        bool gift = !d.shopFreeTaken, dung = AnyDungeonKey(), miss = GameState.CanStartMission;
+        bool gift = !d.shopFreeTaken || SteppingStones.FreeAvailable, dung = AnyDungeonKey(), miss = GameState.CanStartMission;
         bool skills = GameState.Reached(GameState.UnlockSkills) && d.skillTickets >= GameState.SkillSummonCost * SkillData.SummonSmall;
         if (navDot[0] != null)
         {
@@ -168,7 +169,9 @@ public partial class ForgeUI
             navDot[1].SetActive(skills);
             navDot[3].SetActive(dung || miss);
         }
-        if (heroTabs != null) heroTabs.dot[1].SetActive(skills);
+        bool tokens = SteppingStones.Unlocked && SteppingStones.Active && d.ssTokens > 0;
+        if (heroTabs != null) { heroTabs.dot[1].SetActive(skills); heroTabs.dot[4].SetActive(tokens); }
+        if (navDot[1] != null && tokens) navDot[1].SetActive(true);
         if (advTabs != null) { advTabs.dot[0].SetActive(dung); advTabs.dot[1].SetActive(miss); }
 
         // Le bouton ÉQUIPER pulse quand la nouvelle pièce est meilleure.

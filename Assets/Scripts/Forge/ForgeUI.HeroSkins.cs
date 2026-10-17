@@ -9,6 +9,7 @@ public partial class ForgeUI
     Text skinEqText;
     Tile[] skinTile;
     Text[] skinPrice;
+    Text skinEventText;
 
     static Texture SkinIcon(string id) => Resources.Load<Texture2D>("ForgeSprites/SkinIcons/" + id);
 
@@ -22,7 +23,10 @@ public partial class ForgeUI
         MakeButton(P, "Fermer", new Vector2(1, 1), new Vector2(1, 1), new Vector2(-104, -84), new Vector2(-20, -16),
             new Color(0.45f, 0.14f, 0.1f), "X", 40, out closeT, () => skinsPanel.SetActive(false));
 
-        skinEqTile = MakeTile(P, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(-130, -470), new Vector2(130, -220),
+        // Bouton de l'événement qui fait gagner les skins (Stepping Stones de FM)
+        MakeButton(P, "Pas japonais", new Vector2(0.38f, 1), new Vector2(0.95f, 1), new Vector2(0, -460), new Vector2(0, -235),
+            new Color(0.6f, 0.22f, 0.08f), "", 34, out skinEventText, ToggleStones);
+        skinEqTile = MakeTile(P, new Vector2(0.06f, 1), new Vector2(0.06f, 1), new Vector2(0, -470), new Vector2(260, -220),
             () => { if (HeroSkins.Find(GameState.Data.skinEquipped) != null) OpenHeroSkin(GameState.Data.skinEquipped); }, true);
         skinEqText = Label(P, "", 28, TextAnchor.UpperCenter, TextMain, new Vector2(0, 1), new Vector2(1, 1), new Vector2(20, -545), new Vector2(-20, -478));
 
@@ -52,25 +56,27 @@ public partial class ForgeUI
         if (d == null) return;
         bool owned = HeroSkins.Owned(id), on = GameState.Data.skinEquipped == id;
         var c = ProgressionData.RarityColors[d.rarity];
+        bool season = SteppingStones.InSeason(id);
         string body = "<color=#A89C94>" + d.pack + "</color>\n\nDégâts et vie <color=#FFC07A>+" + GameState.FmtPct(HeroSkins.Bonus(d.rarity)) + "</color> quand il est porté"
-            + (owned ? "" : "\n\nPrix : <color=#FF9AD0>" + d.price + " gemmes</color>");
-        string action = owned ? (on ? "RETIRER" : "PORTER") : "ACHETER\n<size=26>" + d.price + " gemmes</size>";
+            + (owned ? "" : season ? "\n\nÀ gagner cette semaine au <color=#FFC07A>Pas japonais</color> : " + SteppingStones.SkinCost(d) + " éclats"
+                                   : "\n\n<color=#998877>Reviendra lors d'une prochaine saison du Pas japonais</color>");
+        string action = owned ? (on ? "RETIRER" : "PORTER") : season ? "PAS JAPONAIS" : null;
         ShowDetail(d.name, d.rarity, SkinIcon(id), "?", c, 1, 1, 1, body, action, () =>
         {
-            if (owned) HeroSkins.Toggle(id);
-            else
-            {
-                string e = HeroSkins.Buy(id);
-                if (e != null) Toast(e); else { Sfx.Fanfare(); Toast("Nouveau skin : " + d.name); }
-            }
-            RefreshHeroSkins();
-        }, on ? new Color(0.5f, 0.18f, 0.12f) : owned ? (Color?)null : new Color(0.6f, 0.2f, 0.55f));
+            if (owned) { HeroSkins.Toggle(id); RefreshHeroSkins(); }
+            else ToggleStones();
+        }, on ? new Color(0.5f, 0.18f, 0.12f) : owned ? (Color?)null : new Color(0.6f, 0.22f, 0.08f));
         detailBarRoot.SetActive(false);
+        if (!owned && !season) dpBtn.gameObject.SetActive(false);
     }
 
     void RefreshHeroSkins()
     {
         if (skinsPanel == null || !skinsPanel.activeSelf) return;
+        var gd = GameState.Data;
+        skinEventText.text = SteppingStones.Unlocked
+            ? "PAS JAPONAIS\n<size=24>" + SteppingStones.SeasonPack + "</size>\n<size=22>Jetons " + gd.ssTokens + "  ·  Éclats " + gd.ssEclats + "</size>"
+            : "PAS JAPONAIS\n<size=22>" + GameState.UnlockText(SteppingStones.Unlock) + "</size>";
         var eq = HeroSkins.Find(GameState.Data.skinEquipped);
         if (eq == null || !HeroSkins.Owned(eq.id))
         {
@@ -91,7 +97,7 @@ public partial class ForgeUI
             // Les skins non achetés restent visibles en couleur (vitrine), avec leur prix.
             SetTile(skinTile[i], d.rarity, SkinIcon(d.id), "?", c, 1, 1, 1, GameState.Data.skinEquipped == d.id && owned);
             skinTile[i].barBg.gameObject.SetActive(false);
-            skinPrice[i].text = owned ? "" : "<b>" + d.price + "</b> gemmes";
+            skinPrice[i].text = owned ? "" : SteppingStones.InSeason(d.id) ? "<b>Cette semaine</b>" : "";
         }
     }
 }

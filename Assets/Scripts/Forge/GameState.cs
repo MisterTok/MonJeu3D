@@ -108,6 +108,8 @@ public class SaveData
     public int heroSkin;    // apparence du héros : 0 = chevalier en pièces détachées, 1 = Valkyrie
     public List<string> skinsOwned = new List<string>();   // skins payants achetés (HeroSkins)
     public string skinEquipped = "";                        // skin porté ("" = apparence de l'équipement)
+    // Pas japonais (SteppingStones) : jetons, pierre atteinte, butin en jeu, éclats, saison du butin, cadeau de départ
+    public int ssTokens, ssPos, ssPending, ssEclats, ssSeason = -1, ssFreeEdition = -1;
     public int[] dungeonLevel;      // niveau atteint dans chaque donjon
     public int[] dungeonKeys;       // clés restantes aujourd'hui
     public long keyDay;             // jour de la dernière recharge des clés (02:00 heure locale)
@@ -272,7 +274,7 @@ public static class GameState
         Notify();
     }
 
-    static void Notify() { Save(); Changed?.Invoke(); }
+    public static void Notify() { Save(); Changed?.Invoke(); }
 
     // ---------- Temps réel : marteaux et amélioration ----------
     public static void Tick()
