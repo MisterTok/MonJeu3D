@@ -4,7 +4,7 @@ using UnityEngine;
 // Skin d'interface (Resources/ForgeUI) : textures nettes, sans mipmaps ni compression ni redimensionnement.
 public class ForgeUIPostprocessor : AssetPostprocessor
 {
-    public override uint GetVersion() => 1;
+    public override uint GetVersion() => 2;
 
     void OnPreprocessTexture()
     {
@@ -17,5 +17,11 @@ public class ForgeUIPostprocessor : AssetPostprocessor
         ti.wrapMode = TextureWrapMode.Clamp;
         ti.filterMode = FilterMode.Bilinear;
         ti.textureCompression = TextureImporterCompression.Uncompressed;
+        // Décor du combat : compressé (beaucoup de grandes images), sol avec mipmaps (vu en biais).
+        if (assetPath.Contains("/Battle/"))
+        {
+            ti.textureCompression = TextureImporterCompression.CompressedHQ;
+            ti.mipmapEnabled = assetPath.EndsWith("_ground.png");
+        }
     }
 }

@@ -48,7 +48,9 @@ public class BattleWorld : MonoBehaviour
     };
 
     // ---------- Personnages 2D (sprites Craftpix, style Forge Master) ----------
-    public const float CamPitch = 37f;
+    // Vue plongeante façon Forge Master quand le décor plat existe ; sinon l'ancienne vue de trois quarts.
+    public static float CamPitch => BattleDecor.Available ? 52f : 37f;
+    BattleDecor decor;
     const string HeroSprite = "Valkyrie_1";
     static readonly string[] SprIdle = { "idle" }, SprMove = { "move" }, SprAttack = { "attack" }, SprDeath = { "death" };
     static readonly Dictionary<string, EnemyDef> SpriteDefs = new Dictionary<string, EnemyDef>();
@@ -127,6 +129,7 @@ public class BattleWorld : MonoBehaviour
         public bool boss, dead;
         public double hp, maxHp, atk;
         public float cooldown, hitTimer, deathTimer, halfLen = 0.3f;
+        public double share = 1;   // part des PV/du butin d'une vague (ennemis en groupe)
         public string state = "";
         public float X { get => go.transform.localPosition.x; set { var p = go.transform.localPosition; p.x = value; go.transform.localPosition = p; } }
     }
@@ -170,6 +173,10 @@ public class BattleWorld : MonoBehaviour
     readonly List<AnimPlayer> petAnims = new List<AnimPlayer>();
     readonly List<ProgressionData.PetDef> petDefs = new List<ProgressionData.PetDef>();
     Light rigLight;
+    double waveShare = 1;
+    static readonly float[] Lanes = { 0f, 0.8f, -0.7f, 0.4f, -0.35f, 1f };
+    // Décor plat des donjons (Voleur de marteau, Couvoir, Chaudron, Crypte) : palette d'un cercle.
+    static readonly int[] DungeonDecor = { 3, 2, 4, 0 };
     Color circleTint;
 
     // Interface du combat
@@ -275,6 +282,15 @@ public class BattleWorld : MonoBehaviour
     void BuildArena()
     {
         if (!SpritesOn) return;
+        if (BattleDecor.Available)
+        {
+            decor = new BattleDecor(world, CamPitch);
+            foreach (var t in new[] { ground, path, river }) t.gameObject.SetActive(false);
+            riverLight.enabled = false;
+            rigLight.enabled = false;
+            cam.backgroundColor = new Color(0.1f, 0.06f, 0.06f);
+            return;
+        }
         for (int i = 0; i < ArenaNames.Length; i++)
         {
             arenaTex[i] = Resources.Load<Texture2D>("ForgeSprites/Arenas/" + ArenaNames[i]);
@@ -652,7 +668,8 @@ public class BattleWorld : MonoBehaviour
         if (f.spr != null)
         {
             f.go = f.spr.gameObject;
-            f.go.transform.localPosition = new Vector3(x, 0f, 0f);
+            // En groupe : chaque ennemi sur sa rangée de la route.
+            f.go.transform.localPosition = new Vector3(x, 0f, decor != null && !boss ? Lanes[enemies.Count % Lanes.Length] : 0f);
             f.halfLen = f.spr.HalfWidth * 0.85f;
             f.spr.SetTint(Color.Lerp(Color.white, circleTint, boss ? 0.3f : 0.12f));
         }
@@ -691,7 +708,8 @@ public class BattleWorld : MonoBehaviour
         }
         else
         {
-            f.maxHp = f.hp = GameState.EnemyHp(boss);
+            f.maxHp = f.hp = GameState.EnemyHp(boss) * waveShare;
+            f.share = waveShare;
             f.atk = GameState.EnemyAtk(boss);
         }
         f.cooldown = 0.6f;
@@ -766,6 +784,7 @@ public class BattleWorld : MonoBehaviour
             circleTint = Color.Lerp(dc, new Color(0.5f, 0.05f, 0.02f), 0.3f);
             riverMat.SetColor("_BaseColor", Color.Lerp(new Color(2.6f, 1.3f, 0.7f), dc * 2.6f, 0.45f));
         }
+        if (decor != null) decor.SetCircle(missionSlot >= 0 ? 7 : dungeon >= 0 ? DungeonDecor[dungeon % DungeonDecor.Length] : circle);
         if (missionSlot >= 0) SetArena(3, new Color(0.85f, 0.7f, 1f));
         else if (dungeon >= 0) SetArena(dungeon % 4, Color.Lerp(Color.white, GameState.DungeonColors[dungeon], 0.35f));
         else SetArena(CircleArena[circle], CircleArenaTint[circle]);
@@ -820,8 +839,12 @@ public class BattleWorld : MonoBehaviour
         else
         {
             int count = 2 + (wave == 2 ? 1 : 0);
-            for (int i = 0; i < count; i++)
-                SpawnEnemy(pool[Random.Range(0, 3)], x + i * Spacing * 1.3f, false);
+            // Vue Forge Master : des groupes deux fois plus nombreux, chacun avec la moitié des PV et du butin.
+            int k = decor != null ? 2 : 1;
+            waveShare = 1.0 / k;
+            for (int i = 0; i < count * k; i++)
+                SpawnEnemy(pool[Random.Range(0, 3)], x + i * Spacing * (decor != null ? 0.75f : 1.3f), false);
+            waveShare = 1;
         }
         waveSpawned = true;
     }
@@ -951,7 +974,13 @@ public class BattleWorld : MonoBehaviour
                 continue;
             }
             float target = queueX + e.halfLen;
-            queueX = target + e.halfLen + (e.spr != null ? 0.55f : 0.35f);
+            queueX = decor != null ? target + (e.halfLen + 0.55f) * 0.45f : target + e.halfLen + (e.spr != null ? 0.55f : 0.35f);
+            if (decor != null && idx == 0)
+            {
+                var pz = e.go.transform.localPosition;
+                pz.z = Mathf.MoveTowards(pz.z, 0f, dt * 1.5f);
+                e.go.transform.localPosition = pz;
+            }
             if (e.X > target + 0.02f)
             {
                 e.X = Mathf.Max(target, e.X - EnemySpeed * dt);
@@ -978,11 +1007,12 @@ public class BattleWorld : MonoBehaviour
         }
 
         UpdateSkills(dt);
-        if (!UseArena) { UpdateChunks(hero.X); UpdateTerrain(hero.X); }
+        if (decor != null) decor.Update(hero.X);
+        else if (!UseArena) { UpdateChunks(hero.X); UpdateTerrain(hero.X); }
         UpdatePets(dt, phase == "walk" && !heroEngaged || phase == "clear");
         UpdateMount(phase == "walk" && !heroEngaged || phase == "clear");
         // Vue de trois quarts, comme dans Forge Master : le héros à gauche, les ennemis arrivent par la droite.
-        var camPos = world.TransformPoint(new Vector3(hero.X + 2.4f, 8.2f, -9.4f));
+        var camPos = world.TransformPoint(decor != null ? new Vector3(hero.X + 2.6f, 13.5f, -10.15f) : new Vector3(hero.X + 2.4f, 8.2f, -9.4f));
         cam.transform.position = camPos;
         cam.transform.rotation = Quaternion.Euler(CamPitch, 0f, 0f);
         rigLight.transform.position = world.TransformPoint(new Vector3(hero.X + 1.5f, 3.2f, -2.4f));
@@ -1031,7 +1061,7 @@ public class BattleWorld : MonoBehaviour
                 : target.anim != null ? target.anim.Play(target.def.death, false, 0.1f) : 0f;
         if (d <= 0f) target.go.transform.localRotation = Quaternion.Euler(0, EnemyYaw, 80f);
         Sfx.Coin();
-        long gold = GameState.KillGold(target.boss);
+        long gold = (long)System.Math.Max(1, System.Math.Round(GameState.KillGold(target.boss) * target.share));
         GameState.AddGold(gold);
         ShowPopup(target.go.transform.position + Vector3.up * 0.4f, "+" + GameState.Fmt(gold) + " or", new Color(1f, 0.82f, 0.3f), 34);
         hero.cooldown = Mathf.Min(hero.cooldown, 0.35f);
@@ -1434,7 +1464,9 @@ public class BattleWorld : MonoBehaviour
         b.root.gameObject.SetActive(ok);
         if (!ok) return;
         b.root.anchoredPosition = local + new Vector2(0, 14);
-        b.root.sizeDelta = new Vector2(width, f.boss ? 20 : 16);
+        // Vue Forge Master : personnages plus petits, barres plus fines.
+        float k = decor != null ? 0.6f : 1f;
+        b.root.sizeDelta = new Vector2(width * k, (f.boss ? 20 : 16) * (decor != null ? 0.8f : 1f));
         float r = (float)System.Math.Max(0, System.Math.Min(1, f.hp / System.Math.Max(1, f.maxHp)));
         b.fill.anchorMax = new Vector2(r, 1);
         b.fillImg.color = col;
@@ -1479,7 +1511,7 @@ public class BattleWorld : MonoBehaviour
 
     void ShowPopup(Vector3 worldPos, string txt, Color col, int size)
     {
-        var t = NewText(overlayRoot, size, TextAnchor.MiddleCenter, col);
+        var t = NewText(overlayRoot, decor != null ? Mathf.RoundToInt(size * 0.75f) : size, TextAnchor.MiddleCenter, col);
         var rt = t.rectTransform;
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
         rt.sizeDelta = new Vector2(400, 60);
