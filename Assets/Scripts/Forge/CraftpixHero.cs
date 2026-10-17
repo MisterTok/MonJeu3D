@@ -43,58 +43,60 @@ public class CraftpixHero
     }
 
     // ---------- Correspondance équipement -> personnage Craftpix ----------
-    const string Base = "Valkyrie_1";
+    // L'équipement n'utilise QUE le personnage gratuit de chaque pack (le moins beau, choisi avec Pierre) ;
+    // les deux autres de chaque pack sont les skins payants (HeroSkins).
+    const string Base = "Valkyrie_3";
     // Personnages au thème de chaque cercle (corps, bras, jambes).
     static readonly string[][] Theme =
     {
-        new[] { "Zombie_Villager_1", "Zombie_Villager_2", "Zombie_Villager_3", "Skeleton_Warrior_1", "Golem_01", "Satyr_03" },
-        new[] { "Bloody_Alchemist_2", "Seer_3", "Valkyrie_3" },
-        new[] { "Goblin", "Ogre", "Orc", "Golem_2", "Golem_02", "Minotaur_01", "Satyr_02" },
-        new[] { "Seer_1", "Valkyrie_1", "Fallen_Angels_3", "Satyr_01" },
-        new[] { "Golem_3", "Minotaur_1", "Bloody_Alchemist_1", "Golem_03", "Minotaur_03" },
-        new[] { "Dark_Oracle_1", "Dark_Oracle_2", "Dark_Oracle_3", "Necromancer_of_the_Shadow_2" },
-        new[] { "Minotaur_2", "Minotaur_3", "Skeleton_Warrior_3", "Skeleton_Crusader_1", "Minotaur_02" },
-        new[] { "Necromancer_of_the_Shadow_3", "Reaper_Man_3", "Seer_2" },
-        new[] { "Golem_1", "Necromancer_of_the_Shadow_1", "Valkyrie_2" },
-        new[] { "Fallen_Angels_1", "Fallen_Angels_2", "Reaper_Man_1", "Reaper_Man_2" },
+        new[] { "Zombie_Villager_1", "Skeleton_Warrior_1", "Satyr_03" },
+        new[] { "Bloody_Alchemist_3", "Valkyrie_3" },
+        new[] { "Goblin", "Golem_2", "Golem_02" },
+        new[] { "Seer_2", "Skeleton_Crusader_2", "Valkyrie_3" },
+        new[] { "Minotaur_1", "Minotaur_03" },
+        new[] { "Dark_Oracle_2", "Necromancer_of_the_Shadow_2" },
+        new[] { "Minotaur_1", "Skeleton_Crusader_2", "Bloody_Alchemist_3" },
+        new[] { "Necromancer_of_the_Shadow_2", "Reaper_Man_3", "Seer_2" },
+        new[] { "Skeleton_Warrior_1", "Dark_Oracle_2" },
+        new[] { "Fallen_Angels_2", "Reaper_Man_3" },
     };
     static readonly Dictionary<string, string[]> Heads = new Dictionary<string, string[]>
     {
-        { "Casque", new[] { "Skeleton_Warrior_3", "Skeleton_Warrior_2", "Skeleton_Crusader_1" } },
-        { "Heaume", new[] { "Valkyrie_1", "Skeleton_Crusader_2", "Skeleton_Warrior_2" } },
-        { "Barbute", new[] { "Skeleton_Warrior_2", "Skeleton_Crusader_3" } },
-        { "Heaume cornu", new[] { "Minotaur_1", "Minotaur_2", "Minotaur_3", "Forest_Ranger_3", "Orc", "Minotaur_01", "Minotaur_02", "Minotaur_03", "Satyr_01", "Satyr_03" } },
-        { "Capuche", new[] { "Dark_Oracle_1", "Dark_Oracle_2", "Dark_Oracle_3", "Necromancer_of_the_Shadow_1", "Necromancer_of_the_Shadow_2", "Necromancer_of_the_Shadow_3", "Reaper_Man_1", "Reaper_Man_2", "Reaper_Man_3", "Seer_2", "Forest_Ranger_1", "Bloody_Alchemist_3", "Wraith_02", "Wraith_03" } },
-        { "Couronne", new[] { "Fallen_Angels_3", "Forest_Ranger_2", "Fallen_Angels_1" } },
-        { "Crâne", new[] { "Skeleton_Warrior_1", "Golem_1", "Golem_3", "Wraith_01" } },
-        { "Mitre", new[] { "Seer_1" } },
-        { "Bonnet de bouffon", new[] { "Bloody_Alchemist_2", "Zombie_Villager_2", "Satyr_02" } },
-        { "Heaume ailé", new[] { "Valkyrie_2", "Valkyrie_3", "Fallen_Angels_2" } },
-        { "Heaume à plumet", new[] { "Valkyrie_1", "Valkyrie_3" } },
-        { "Masque", new[] { "Seer_3", "Bloody_Alchemist_1", "Zombie_Villager_2", "Golem_01", "Golem_02", "Golem_03" } },
+        { "Casque", new[] { "Valkyrie_3", "Skeleton_Crusader_2" } },
+        { "Heaume", new[] { "Valkyrie_3", "Golem_02" } },
+        { "Barbute", new[] { "Golem_02", "Valkyrie_3" } },
+        { "Heaume cornu", new[] { "Minotaur_1", "Minotaur_03", "Satyr_03" } },
+        { "Capuche", new[] { "Reaper_Man_3", "Fallen_Angels_2", "Seer_2", "Dark_Oracle_2", "Necromancer_of_the_Shadow_2", "Bloody_Alchemist_3", "Wraith_02" } },
+        { "Couronne", new[] { "Forest_Ranger_2", "Fallen_Angels_2" } },
+        { "Crâne", new[] { "Skeleton_Warrior_1", "Skeleton_Crusader_2" } },
+        { "Mitre", new[] { "Seer_2" } },
+        { "Bonnet de bouffon", new[] { "Goblin", "Zombie_Villager_1" } },
+        { "Heaume ailé", new[] { "Valkyrie_3" } },
+        { "Heaume à plumet", new[] { "Valkyrie_3", "Forest_Ranger_2" } },
+        { "Masque", new[] { "Golem_2", "Golem_02", "Zombie_Villager_1" } },
     };
     static readonly Dictionary<string, string[]> Weapons = new Dictionary<string, string[]>
     {
-        { "Épée", new[] { "Valkyrie_1", "Valkyrie_2", "Fallen_Angels_1", "Fallen_Angels_3", "Skeleton_Crusader_1" } },
-        { "Espadon", new[] { "Skeleton_Warrior_1", "Golem_3", "Skeleton_Crusader_2" } },
-        { "Dague", new[] { "Bloody_Alchemist_1", "Valkyrie_3" } },
-        { "Rapière", new[] { "Fallen_Angels_3", "Skeleton_Warrior_2" } },
-        { "Lame courbe", new[] { "Minotaur_2", "Golem_1" } },
-        { "Hache", new[] { "Goblin", "Ogre", "Minotaur_3", "Golem_02" } },
-        { "Couperet", new[] { "Minotaur_2", "Bloody_Alchemist_1", "Golem_01" } },
-        { "Gourdin", new[] { "Golem_2", "Zombie_Villager_1", "Golem_03", "Minotaur_01" } },
-        { "Masse", new[] { "Orc", "Golem_2", "Minotaur_02", "Satyr_03" } },
-        { "Marteau de guerre", new[] { "Skeleton_Warrior_3", "Minotaur_1", "Minotaur_03" } },
-        { "Fléau", new[] { "Orc" } },
-        { "Lance", new[] { "Forest_Ranger_3", "Necromancer_of_the_Shadow_1", "Satyr_02" } },
-        { "Hallebarde", new[] { "Minotaur_3" } },
-        { "Faux", new[] { "Reaper_Man_1", "Reaper_Man_2", "Reaper_Man_3" } },
-        { "Trident", new[] { "Necromancer_of_the_Shadow_1", "Forest_Ranger_3" } },
-        { "Arc", new[] { "Zombie_Villager_3", "Zombie_Villager_2" } },
-        { "Bâton", new[] { "Seer_1", "Seer_2", "Seer_3", "Dark_Oracle_1", "Dark_Oracle_2", "Dark_Oracle_3", "Fallen_Angels_2", "Necromancer_of_the_Shadow_2", "Necromancer_of_the_Shadow_3", "Bloody_Alchemist_2", "Bloody_Alchemist_3", "Satyr_01" } },
-        { "Sceptre", new[] { "Seer_1", "Dark_Oracle_3", "Bloody_Alchemist_3" } },
+        { "Épée", new[] { "Skeleton_Warrior_1", "Skeleton_Crusader_2" } },
+        { "Espadon", new[] { "Skeleton_Crusader_2", "Skeleton_Warrior_1" } },
+        { "Dague", new[] { "Valkyrie_3" } },
+        { "Rapière", new[] { "Skeleton_Crusader_2", "Valkyrie_3" } },
+        { "Lame courbe", new[] { "Reaper_Man_3", "Valkyrie_3" } },
+        { "Hache", new[] { "Goblin", "Golem_02" } },
+        { "Couperet", new[] { "Goblin", "Minotaur_1" } },
+        { "Gourdin", new[] { "Golem_2", "Zombie_Villager_1" } },
+        { "Masse", new[] { "Golem_2", "Satyr_03" } },
+        { "Marteau de guerre", new[] { "Minotaur_1", "Minotaur_03" } },
+        { "Fléau", new[] { "Golem_2" } },
+        { "Lance", new[] { "Zombie_Villager_1", "Minotaur_1" } },
+        { "Hallebarde", new[] { "Minotaur_1" } },
+        { "Faux", new[] { "Reaper_Man_3" } },
+        { "Trident", new[] { "Zombie_Villager_1" } },
+        { "Arc", new[] { "Forest_Ranger_2" } },
+        { "Bâton", new[] { "Seer_2", "Dark_Oracle_2", "Fallen_Angels_2", "Necromancer_of_the_Shadow_2", "Bloody_Alchemist_3" } },
+        { "Sceptre", new[] { "Bloody_Alchemist_3", "Necromancer_of_the_Shadow_2" } },
     };
-    static readonly string[] Shields = { "Valkyrie_1", "Skeleton_Crusader_1", "Valkyrie_2", "Skeleton_Crusader_2", "Valkyrie_3", "Skeleton_Crusader_3" };
+    static readonly string[] Shields = { "Valkyrie_3", "Skeleton_Crusader_2" };
 
     static string From(string[] list, Item it) => list[Mathf.Abs(it.circle * 7 + it.model * 3) % list.Length];
     static string Family(Item it, int slot) => GameState.ModelName(slot, it.circle, it.model);
@@ -121,6 +123,8 @@ public class CraftpixHero
         Apply();
     }
 
+    static bool Has(string ch, int part) => charParts.TryGetValue(ch, out var v) && v[part * Stride] > 0.5f;
+
     Sprite Get(string ch, int part)
     {
         string k = ch + "/" + part;
@@ -144,14 +148,23 @@ public class CraftpixHero
         string arms = gloves != null && gloves.valid ? From(Theme[Mathf.Clamp(gloves.circle, 0, 9)], gloves) : Base;
         string legs = boots != null && boots.valid ? From(Theme[Mathf.Clamp(boots.circle, 0, 9)], boots) : Base;
         string shd = shield != null && shield.valid ? Shields[Mathf.Abs(shield.circle * 3 + shield.model) % Shields.Length] : null;
-        string k = head + wpn + body + arms + legs + shd;
+        // Skin payant porté : il remplace l'apparence (tête, corps, bras, jambes, arme ; bouclier s'il en a un).
+        string skin = HeroSkins.Shown;
+        bool hasLegs = true;
+        if (!string.IsNullOrEmpty(skin) && charParts.ContainsKey(skin))
+        {
+            head = wpn = body = arms = legs = skin;
+            if (Has(skin, (int)P.Shield)) shd = skin;
+            hasLegs = Has(skin, (int)P.LLeg);   // les spectres flottent
+        }
+        string k = head + wpn + body + arms + legs + shd + hasLegs;
         if (k == key) return;
         key = k;
         who[(int)P.Head] = who[(int)P.Face] = head;
         who[(int)P.Weapon] = wpn;
         who[(int)P.Body] = body;
         who[(int)P.RArm] = who[(int)P.RHand] = who[(int)P.LArm] = who[(int)P.LHand] = arms;
-        who[(int)P.LLeg] = who[(int)P.RLeg] = legs;
+        who[(int)P.LLeg] = who[(int)P.RLeg] = hasLegs ? legs : null;
         who[(int)P.Shield] = shd;
         Apply();
     }

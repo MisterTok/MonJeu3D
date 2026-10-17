@@ -213,6 +213,7 @@ public partial class ForgeUI : MonoBehaviour
         BuildTechPanel(R);
         BuildMountPanel(R);
         BuildSkillPanel(R);
+        BuildHeroSkinsPanel(R);
         BuildShopPanel(R);
         BuildMissionPanel(R);
         BuildPassPanel(R);
@@ -303,7 +304,7 @@ public partial class ForgeUI : MonoBehaviour
 
     void CloseAllPanels()
     {
-        foreach (var p in new[] { statsPanel, compPanel, dungPanel, techPanel, mountPanel, skillPanel, shopPanel, missionPanel, passPanel, detail })
+        foreach (var p in new[] { statsPanel, compPanel, dungPanel, techPanel, mountPanel, skillPanel, shopPanel, missionPanel, passPanel, skinsPanel, detail })
             if (p != null) p.SetActive(false);
     }
 
@@ -568,7 +569,7 @@ public partial class ForgeUI : MonoBehaviour
     // Vrai si un écran plein (compagnons, boutique…) est ouvert : on masque alors ce qui dépasse (bouton Pass).
     bool AnyPanelOpen()
     {
-        foreach (var p in new[] { statsPanel, compPanel, dungPanel, techPanel, mountPanel, skillPanel, shopPanel, missionPanel, passPanel })
+        foreach (var p in new[] { statsPanel, compPanel, dungPanel, techPanel, mountPanel, skillPanel, shopPanel, missionPanel, passPanel, skinsPanel })
             if (p != null && p.activeSelf) return true;
         return false;
     }
@@ -607,6 +608,7 @@ public partial class ForgeUI : MonoBehaviour
         RefreshTech();
         RefreshMounts();
         RefreshSkills();
+        RefreshHeroSkins();
         RefreshShop();
         RefreshMissions();
         var d = GameState.Data;

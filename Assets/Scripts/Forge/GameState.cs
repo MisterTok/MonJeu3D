@@ -106,6 +106,8 @@ public class SaveData
     public bool autoForge;
     public bool muted;      // son coupé
     public int heroSkin;    // apparence du héros : 0 = chevalier en pièces détachées, 1 = Valkyrie
+    public List<string> skinsOwned = new List<string>();   // skins payants achetés (HeroSkins)
+    public string skinEquipped = "";                        // skin porté ("" = apparence de l'équipement)
     public int[] dungeonLevel;      // niveau atteint dans chaque donjon
     public int[] dungeonKeys;       // clés restantes aujourd'hui
     public long keyDay;             // jour de la dernière recharge des clés (02:00 heure locale)
@@ -202,6 +204,8 @@ public static class GameState
         }
         if (Data.incubatorSlots < ProgressionData.IncubatorStart) Data.incubatorSlots = ProgressionData.IncubatorStart;
         if (Data.pets == null) Data.pets = new System.Collections.Generic.List<OwnedPet>();
+        if (Data.skinsOwned == null) Data.skinsOwned = new System.Collections.Generic.List<string>();
+        if (Data.skinEquipped == null) Data.skinEquipped = "";
         if (Data.equippedPets == null || Data.equippedPets.Length != 3) Data.equippedPets = new[] { -1, -1, -1 };
         if (!Data.petGift)
         {
@@ -369,14 +373,14 @@ public static class GameState
     {
         double t = BaseAtk + PetsDamage() * (1 + TV("PetBonusDamage")) + SkillPassiveDamage();
         foreach (var it in Data.equipped) if (it.valid) t += it.atk * (1 + TV(SlotTech[it.slot] + "Bonus"));
-        return (long)Math.Round(t * (1.0 + SubTotal(SubDamage) + SubTotal(SubMelee)) * (1.0 + MountDamageBonus()));
+        return (long)Math.Round(t * (1.0 + SubTotal(SubDamage) + SubTotal(SubMelee)) * (1.0 + MountDamageBonus()) * (1.0 + HeroSkins.EquippedBonus));
     }
 
     public static long TotalHp()
     {
         double t = BaseHp + PetsHealth() * (1 + TV("PetBonusHealth")) + SkillPassiveHealth();
         foreach (var it in Data.equipped) if (it.valid) t += it.hp * (1 + TV(SlotTech[it.slot] + "Bonus"));
-        return (long)Math.Round(t * (1.0 + SubTotal(SubHealth)) * (1.0 + MountHealthBonus()));
+        return (long)Math.Round(t * (1.0 + SubTotal(SubHealth)) * (1.0 + MountHealthBonus()) * (1.0 + HeroSkins.EquippedBonus));
     }
 
     // Puissance : dégâts par seconde estimés (critiques, double frappe, vitesse) et vie.

@@ -77,6 +77,7 @@ public class ForgeGame : MonoBehaviour
         if (name.StartsWith("best")) { int b = -1; int.TryParse(name.Substring(4), out b); GameState.TestBestOverride = name.Length > 4 ? b : -1; GameState.AddEggshells(0); return; } // outil de test : « best5 », « best » pour annuler
         if (name.StartsWith("ascui")) { int k = 0; int.TryParse(name.Substring(5), out k); FindAnyObjectByType<ForgeUI>()?.SendMessage("ShowAscend", k); return; } // outil de test : fenêtre d'ascension
         if (name == "toast") { FindAnyObjectByType<ForgeUI>()?.SendMessage("Toast", "Test : +7,32k or  +188 tickets  +93 coquilles  +94 potions rouges  +70 remontoirs"); return; } // outil de test
+        if (name.StartsWith("skinview")) { HeroSkins.TestView = name.Length > 9 ? name.Substring(9) : null; return; } // outil de test : aperçu d'un skin (« skinview:Golem_3 », « skinview » pour arrêter)
         if (name.StartsWith("open:")) { FindAnyObjectByType<ForgeUI>()?.SendMessage("TestOpen", name.Substring(5)); return; } // outil de test : ouvre un écran (shop, hero, skills, pets, mounts, dungeons, missions, tech, pass, odds, home)
         if (name == "tickets") { GameState.Data.skillTickets += 5000; GameState.AddEggshells(0); return; } // outil de test : tickets de compétences
         if (name.StartsWith("forge")) { GameState.Data.hammers = Mathf.Max(GameState.Data.hammers, 1); FindAnyObjectByType<ForgeUI>()?.SendMessage("OnForge"); return; }

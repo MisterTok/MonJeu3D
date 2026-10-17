@@ -103,10 +103,10 @@ public partial class ForgeUI
 
     void BuildSubTabs(Transform R)
     {
-        heroTabs = MakeSubTabs(R, new[] { "Héros", "Compétences", "Compagnons", "Montures" },
-            new[] { statsPanel, skillPanel, compPanel, mountPanel },
-            new System.Action[] { ToggleStats, ToggleSkills, ToggleCompanions, ToggleMounts },
-            new[] { 0, GameState.UnlockSkills, GameState.UnlockPets, GameState.UnlockMounts });
+        heroTabs = MakeSubTabs(R, new[] { "Héros", "Compét.", "Compagnons", "Montures", "Skins" },
+            new[] { statsPanel, skillPanel, compPanel, mountPanel, skinsPanel },
+            new System.Action[] { ToggleStats, ToggleSkills, ToggleCompanions, ToggleMounts, ToggleHeroSkins },
+            new[] { 0, GameState.UnlockSkills, GameState.UnlockPets, GameState.UnlockMounts, 0 });
         advTabs = MakeSubTabs(R, new[] { "Donjons", "Missions" },
             new[] { dungPanel, missionPanel },
             new System.Action[] { ToggleDungeons, ToggleMissions },
@@ -128,6 +128,7 @@ public partial class ForgeUI
             case "skills": OpenTab(heroTabs, 1); break;
             case "pets": OpenTab(heroTabs, 2); break;
             case "mounts": OpenTab(heroTabs, 3); break;
+            case "skins": OpenTab(heroTabs, 4); break;
             case "dungeons": OpenTab(advTabs, 0); break;
             case "missions": OpenTab(advTabs, 1); break;
             case "tech": OnNav(4); break;

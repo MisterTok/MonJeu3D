@@ -102,6 +102,12 @@ def main():
         for m in range(len(SETS[5][c])):
             ch = pick(THEME[c], c, m)
             fit(render({"Body": ch}, ["Body"])).save(os.path.join(OUT, "s5_c%d_v%d.png" % (c, m))); n += 1
+    # Portraits en pied des skins payants (HeroSkins.cs)
+    skins = re.findall(r'new Def\("([^"]+)"', open(os.path.join(ROOT, "Assets", "Scripts", "Forge", "HeroSkins.cs"), encoding="utf-8").read())
+    os.makedirs(os.path.join(FS, "SkinIcons"), exist_ok=True)
+    allp = ["Weapon", "LHand", "LArm", "LLeg", "RLeg", "Body", "Head", "Face", "RHand", "RArm", "Shield"]
+    for sk in skins:
+        fit(render({p: sk for p in allp}, allp), margin=8).save(os.path.join(FS, "SkinIcons", sk + ".png")); n += 1
     print("icônes", n)
 
 if __name__ == "__main__":
