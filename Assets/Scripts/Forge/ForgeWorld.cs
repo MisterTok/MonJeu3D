@@ -16,6 +16,8 @@ public class ForgeWorld : MonoBehaviour
     float shake;
     Rect normalRect = new Rect(0, 0, 1, 1), expandedRect = new Rect(0, 0, 1, 1);
     float expandT, expandTarget;
+    float restA = -55f;   // angle du marteau au repos
+    bool flatForge;
     public float ExpandAmount => expandT;
 
     public static readonly string[] WeaponPaths =
@@ -425,7 +427,7 @@ public class ForgeWorld : MonoBehaviour
         expandT = Mathf.MoveTowards(expandT, expandTarget, Time.deltaTime / 0.3f);
         float ex = Mathf.SmoothStep(0f, 1f, expandT);
         cam.rect = LerpRect(normalRect, expandedRect, ex);
-        cam.fieldOfView = Mathf.Lerp(30f, 36f, ex);
+        cam.fieldOfView = Mathf.Lerp(flatForge ? 37f : 30f, 36f, ex);
         camBasePos = Vector3.Lerp(new Vector3(0.15f, 2.0f, -4.6f), new Vector3(0f, 2.2f, -6.4f), ex);
         cam.transform.rotation = Quaternion.Euler(Mathf.Lerp(14f, 3f, ex), 0f, 0f);
 
@@ -456,6 +458,7 @@ public class ForgeWorld : MonoBehaviour
 
     void SetupPainted(Transform r, int decorStart, int decorEnd, Transform anvil)
     {
+        if (SetupFlat(r, decorStart)) return;
         var tex = Resources.Load<Texture2D>("ForgeSprites/Arenas/trone");
         if (tex == null) return;
         // Le décor 3D (sol, fournaise, piliers, accessoires) laisse place au fond peint.
@@ -478,7 +481,8 @@ public class ForgeWorld : MonoBehaviour
         const float dist = 30f;
         float h = 2f * dist * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
         float w = h * Mathf.Max(0.3f, cam.aspect);
-        float texAspect = 2048f / 1152f;
+        var bt = backdropMat.mainTexture;
+        float texAspect = bt != null ? bt.width / (float)bt.height : 2048f / 1152f;
         backdrop.localPosition = new Vector3(0f, 0f, dist);
         backdrop.localRotation = Quaternion.identity;
         backdrop.localScale = new Vector3(w, h, 1f);
@@ -486,6 +490,49 @@ public class ForgeWorld : MonoBehaviour
         float span = Mathf.Min(1f, w / (h * texAspect));
         backdropMat.mainTextureScale = new Vector2(span, 1f);
         backdropMat.mainTextureOffset = new Vector2((1f - span) * 0.5f, 0f);
+    }
+
+    // ---------- Version plate façon Forge Master (Tools/make_forge_flat.py) : fond, enclume et marteau dessinés ----------
+    bool SetupFlat(Transform r, int decorStart)
+    {
+        var bg = Resources.Load<Texture2D>("ForgeUI/Forge/forge_bg");
+        var anvilTex = Resources.Load<Texture2D>("ForgeUI/Forge/anvil");
+        var hammerTex = Resources.Load<Texture2D>("ForgeUI/Forge/hammer");
+        if (bg == null || anvilTex == null || hammerTex == null) return false;
+        // Toute la scène 3D (décor, enclume, seau) disparaît ; le pivot du marteau reste pour son animation.
+        for (int i = decorStart; i < r.childCount; i++)
+        {
+            var c = r.GetChild(i);
+            if (c != hammerPivot) c.gameObject.SetActive(false);
+        }
+        foreach (Transform c in hammerPivot) c.gameObject.SetActive(false);
+        RenderSettings.fog = false;
+        var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        Destroy(q.GetComponent<Collider>());
+        q.name = "Fond plat de la forge";
+        backdrop = q.transform;
+        backdrop.SetParent(cam.transform, false);
+        backdropMat = Unlit(Color.white);
+        backdropMat.mainTexture = bg;
+        q.GetComponent<Renderer>().sharedMaterial = backdropMat;
+        // Enclume : le dessus de la table (70 px du haut, base à 10 px du bas) à la hauteur de l'enclume 3D.
+        var a = new GameObject("Enclume plate").AddComponent<SpriteRenderer>();
+        a.transform.SetParent(r, false);
+        a.sprite = Sprite.Create(anvilTex, new Rect(0, 0, anvilTex.width, anvilTex.height), new Vector2(0.5f, 10f / anvilTex.height),
+            (anvilTex.height - 80f) / AnvilTop.y, 0, SpriteMeshType.FullRect);
+        // Marteau : pivot au bout du manche, la tête à 0,9 unité comme le marteau 3D.
+        var h = new GameObject("Marteau plat").AddComponent<SpriteRenderer>();
+        h.transform.SetParent(hammerPivot, false);
+        h.transform.localPosition = new Vector3(0f, 0f, -0.3f);
+        h.sprite = Sprite.Create(hammerTex, new Rect(0, 0, hammerTex.width, hammerTex.height), new Vector2(350f / hammerTex.width, 0.5f),
+            (350f - 57f) / 0.9f, 0, SpriteMeshType.FullRect);
+        h.sortingOrder = 2;
+        // Au repos le marteau reste dans le cadre, au-dessus de l'enclume.
+        restA = -22f;
+        hammerPivot.localEulerAngles = new Vector3(0f, 0f, restA);
+        flatForge = true;
+        flatItem = true;
+        return true;
     }
 
     // Coque inversée noire, légèrement plus grande, qui ne montre que ses faces arrière : un contour.
@@ -565,15 +612,15 @@ public class ForgeWorld : MonoBehaviour
     IEnumerator QuickRoutine(Color c)
     {
         Busy = true;
-        yield return Rotate(hammerPivot, -55f, -75f, 0.1f);
-        yield return Rotate(hammerPivot, -75f, 10f, 0.06f);
+        yield return Rotate(hammerPivot, restA, restA - 20f, 0.1f);
+        yield return Rotate(hammerPivot, restA - 20f, 10f, 0.06f);
         var sm = sparks.main;
         sm.startColor = new Color(c.r * 2f, c.g * 2f, c.b * 2f, 1f);
         sparks.Emit(30);
         Sfx.Anvil(0.6f);
         flashLight.intensity = 12f;
         shake = 0.3f;
-        yield return Rotate(hammerPivot, 10f, -55f, 0.15f);
+        yield return Rotate(hammerPivot, 10f, restA, 0.15f);
         sm.startColor = new Color(1f, 0.7f, 0.25f, 1f);
         Busy = false;
     }
@@ -590,13 +637,13 @@ public class ForgeWorld : MonoBehaviour
         int strikes = rare ? 2 : 1;
         for (int i = 0; i < strikes; i++)
         {
-            yield return Rotate(hammerPivot, -55f, -80f, 0.18f);
-            yield return Rotate(hammerPivot, -80f, 10f, 0.08f);
+            yield return Rotate(hammerPivot, restA, restA - 25f, 0.18f);
+            yield return Rotate(hammerPivot, restA - 25f, 10f, 0.08f);
             sparks.Emit(rare ? 60 : 35);
             Sfx.Anvil(rare ? 1f : 0.8f);
             flashLight.intensity = 18f;
             shake = rare ? 0.9f : 0.5f;
-            yield return Rotate(hammerPivot, 10f, -55f, 0.2f);
+            yield return Rotate(hammerPivot, 10f, restA, 0.2f);
         }
 
         currentItem = BuildItemDisplay(item);
