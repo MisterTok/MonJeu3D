@@ -9,7 +9,9 @@ public class PaperHero
     public static bool Available => Resources.Load<Texture2D>("ForgeUI/Hero/head") != null;
 
     readonly Transform rig, hips, neck, shoulderB, shoulderF, legB, legF, torso;
-    readonly SpriteRenderer hair, helmet, weapon, shield;
+    readonly SpriteRenderer hair, helmet, weapon, shield, belt;
+    readonly SpriteRenderer[] gloves = new SpriteRenderer[2], boots = new SpriteRenderer[2];
+    int keyG = -99, keyB = -99, keyBe = -99;
     readonly SpriteRenderer[] all;
     int keyW = -99, keyH = -99, keyS = -99;
     static int Key(Item it) => it != null && it.valid ? it.circle * 10 + it.model : -1;
@@ -32,8 +34,18 @@ public class PaperHero
     {
         var sr = Node(name, parent, x, y).gameObject.AddComponent<SpriteRenderer>();
         sr.sprite = s;
-        sr.sortingOrder = order;
+        sr.sortingOrder = order * 10 + (s == null ? 5 : 0);   // équipement porté (sans image au départ) juste devant sa pièce
         return sr;
+    }
+
+    static readonly System.Collections.Generic.Dictionary<string, Sprite> worn = new System.Collections.Generic.Dictionary<string, Sprite>();
+    // Équipement porté dessiné pour le héros (Tools/make_paper_hero.py) : même articulation que la pièce de base.
+    static Sprite Worn(string kind, Item it)
+    {
+        if (it == null || !it.valid) return null;
+        string key = kind + "_c" + Mathf.Clamp(it.circle, 0, 9) + "_v" + it.model;
+        if (!worn.TryGetValue(key, out var s)) worn[key] = s = Part(key);
+        return s;
     }
 
     public PaperHero(Transform body)
@@ -45,20 +57,25 @@ public class PaperHero
         hips = Node("Hanches", rig, 0f, 0.24f);
         shoulderB = Node("Épaule arrière", rig, -0.05f, 0.5f);
         Sr("Bras arrière", shoulderB, arm, 1).color = new Color(0.82f, 0.78f, 0.78f);
+        gloves[0] = Sr("Gant arrière", shoulderB, null, 1);
         legB = Node("Jambe arrière", hips, -0.03f, 0f);
         Sr("Jambe", legB, Part("leg"), 2).color = new Color(0.85f, 0.82f, 0.82f);
+        boots[0] = Sr("Botte", legB, null, 2);
         torso = Node("Torse", hips, 0f, 0f);
         Sr("Torse", torso, Part("torso"), 3);
+        belt = Sr("Ceinture", torso, null, 3);
         legF = Node("Jambe avant", hips, 0.04f, 0f);
         Sr("Jambe", legF, Part("leg"), 4);
-        shield = Sr("Bouclier", shoulderB, null, 5, 0.13f, -0.17f);
+        boots[1] = Sr("Botte", legF, null, 4);
+        shield = Sr("Bouclier", shoulderB, null, 5, 0.13f, -0.15f);
         neck = Node("Cou", rig, 0.01f, 0.53f);
         Sr("Tête", neck, Part("head"), 6);
         hair = Sr("Cheveux", neck, Part("hair"), 7);
-        helmet = Sr("Heaume", neck, null, 8, 0.02f, 0.4f);
+        helmet = Sr("Heaume", neck, null, 8);   // heaume porté : même articulation que la tête
         shoulderF = Node("Épaule avant", rig, 0.06f, 0.5f);
-        weapon = Sr("Arme", shoulderF, null, 9, 0f, -0.27f);
+        weapon = Sr("Arme", shoulderF, null, 9, 0f, -0.18f);
         Sr("Bras avant", shoulderF, arm, 10);
+        gloves[1] = Sr("Gant avant", shoulderF, null, 10);
         all = rig.GetComponentsInChildren<SpriteRenderer>(true);
     }
 
@@ -69,9 +86,12 @@ public class PaperHero
     }
 
     // Pièces portées (arme, heaume, bouclier) : leur modèle et leur cercle donnent l'image.
-    public void SetGear(Item w, Item h, Item s)
+    public void SetGear(Item w, Item h, Item s, Item g = null, Item b = null, Item be = null)
     {
-        int kw = Key(w), kh = Key(h), ks = Key(s);
+        int kw = Key(w), kh = Key(h), ks = Key(s), kg = Key(g), kb = Key(b), kbe = Key(be);
+        if (kg != keyG) { keyG = kg; foreach (var sr in gloves) sr.sprite = Worn("glove", g); }
+        if (kb != keyB) { keyB = kb; foreach (var sr in boots) sr.sprite = Worn("boot", b); }
+        if (kbe != keyBe) { keyBe = kbe; belt.sprite = Worn("belt", be); }
         if (kw != keyW)
         {
             keyW = kw;
@@ -81,7 +101,7 @@ public class PaperHero
         if (kh != keyH)
         {
             keyH = kh;
-            helmet.sprite = kh >= 0 ? Icon(1, h.circle, h.model, new Vector2(0.5f, 0.5f), 0.6f) : null;
+            helmet.sprite = Worn("helm", h);
             hair.enabled = kh < 0;
         }
         if (ks != keyS)
@@ -138,7 +158,7 @@ public class PaperHero
         foreach (var sr in all)
         {
             // Les pièces arrière gardent leur ombrage.
-            float k = sr.name == "Bras arrière" ? 0.82f : sr.transform.parent == legB ? 0.85f : 1f;
+            float k = sr.transform.parent == shoulderB && sr != shield ? 0.82f : sr.transform.parent == legB ? 0.85f : 1f;
             sr.color = new Color(c.r * k, c.g * k, c.b * k, c.a);
         }
     }
