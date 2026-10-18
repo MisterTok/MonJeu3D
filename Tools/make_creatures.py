@@ -9,7 +9,7 @@ from PIL import Image, ImageFilter
 COMFY = "http://127.0.0.1:8188"
 COMFY_OUT = r"C:\Users\pierr\Downloads\ComfyUI_windows_portable_nvidia\ComfyUI_windows_portable\ComfyUI\output"
 OUT = os.path.join(os.path.dirname(__file__), "..", "Assets", "Resources", "ForgeUI", "Creatures")
-RAW = os.path.join(os.path.dirname(__file__), "..", "..", "_dl", "creatures_raw")
+RAW = os.path.join(os.path.dirname(__file__), "..", "..", "_dl", "creatures_raw2")
 
 # modèle (nom du fichier, comme ProgressionData) -> description (thème des Enfers)
 CREATURES = {
@@ -45,10 +45,27 @@ CREATURES = {
     "Zebra": "infernal zebra, black and red stripes, fiery mane",
 }
 
-STYLE = ("cute chibi {d}, full body, side view facing right, mobile game character, thick black outline, "
-         "flat cel shading, vibrant colors, clean 2d vector cartoon art, centered, isolated on plain white background")
-NEG = ("realistic, photo, 3d render, blurry, text, watermark, signature, multiple characters, cropped, cut off, "
-       "background scenery, ground, ground shadow, drop shadow, extra objects, frame, border, grayscale")
+# Style calé sur les persos Craftpix du jeu : grosse tête ronde, petit corps trapu, couleurs sourdes et mates, contour sombre épais.
+STYLE = ("tiny super deformed chibi {d}, oversized round head, very small stubby body, short legs, side view facing right, "
+         "2d mobile game sprite like craftpix chibi monsters, thick dark outline, matte soft shading, muted earthy colors, "
+         "simple shapes, low detail, centered, isolated on plain white background")
+NEG = ("realistic, photo, 3d render, anime, manga, highly detailed, intricate, shiny, glossy, sparkles, thin lines, "
+       "realistic proportions, long legs, oversaturated, neon, blurry, text, watermark, signature, multiple characters, "
+       "cropped, cut off, background scenery, ground, ground shadow, drop shadow, extra objects, frame, border, grayscale")
+
+def craftpix_look(im):
+    """Rapproche le rendu des persos Craftpix : moins de détails, couleurs moins vives, contour sombre épais et doux."""
+    from PIL import ImageEnhance
+    a = im.getchannel("A")
+    rgb = im.convert("RGB").filter(ImageFilter.MedianFilter(5))
+    rgb = ImageEnhance.Color(rgb).enhance(0.78)
+    rgb = ImageEnhance.Brightness(rgb).enhance(0.93)
+    body = rgb.convert("RGBA"); body.putalpha(a)
+    ring = a.point(lambda v: 255 if v > 40 else 0).filter(ImageFilter.MaxFilter(9)).filter(ImageFilter.GaussianBlur(1.2))
+    out = Image.new("RGBA", im.size, (38, 24, 22, 0))
+    edge = Image.new("RGBA", im.size, (38, 24, 22, 255)); edge.putalpha(ring)
+    out.alpha_composite(edge); out.alpha_composite(body)
+    return out
 
 def workflow(prompt, seed, prefix):
     return {
@@ -129,9 +146,9 @@ def remove_shadow(im):
     return out
 
 # Variante gardée pour chaque créature (planche de contrôle : _dl/creatures_raw).
-PICK = {"Rat": 0, "Frog": 1, "Slime": 0, "bird": 1, "Cat": 0, "Chick": 2, "Snake": 1, "Dog": 0, "Spider": 1, "Wasp": 2, "Bat": 2,
-        "Triceratops": 1, "Velociraptor": 0, "RedFox": 2, "Eagle": 2, "Skeleton": 1, "Wolf": 1, "Robot": 1, "Trex": 1, "Dragon": 1,
-        "Stegosaurus": 1, "Alien": 1, "Apatosaurus": 1, "Mantaray": 1, "Whale": 1, "Pig": 2, "Sheep": 1, "Llama": 1, "Horse": 1, "Zebra": 2}
+PICK = {"Rat": 0, "Frog": 0, "Slime": 0, "bird": 0, "Cat": 1, "Chick": 1, "Snake": 1, "Dog": 0, "Spider": 0, "Wasp": 0, "Bat": 1,
+        "Triceratops": 1, "Velociraptor": 1, "RedFox": 2, "Eagle": 2, "Skeleton": 1, "Wolf": 1, "Robot": 1, "Trex": 2, "Dragon": 1,
+        "Stegosaurus": 0, "Alien": 0, "Apatosaurus": 0, "Mantaray": 2, "Whale": 1, "Pig": 2, "Sheep": 1, "Llama": 1, "Horse": 0, "Zebra": 2}
 
 if __name__ == "__main__":
     args = sys.argv[1:]
@@ -145,8 +162,8 @@ if __name__ == "__main__":
         for v in range(seeds):
             raw = os.path.join(RAW, "%s_%d.png" % (n, v))
             if not os.path.exists(raw):
-                src = generate(n, 1000 + v * 7919 + sum(map(ord, n)))
-                cutout(src).save(raw)
+                src = generate(n, 2000 + v * 7919 + sum(map(ord, n)))
+                craftpix_look(cutout(src, 480)).save(raw)
                 print("ok", n, v, flush=True)
         keep = pick.get(n, 0)
         remove_shadow(Image.open(os.path.join(RAW, "%s_%d.png" % (n, keep))).convert("RGBA")).resize((256, 256), Image.LANCZOS).save(os.path.join(OUT, n + ".png"))
