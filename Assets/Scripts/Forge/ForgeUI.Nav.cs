@@ -1,35 +1,36 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-// Navigation façon Forge Master : 5 onglets en bas (Boutique, Héros, Forge, Aventure, Techno)
-// et des sous-onglets en haut des panneaux regroupés (Héros : stats, compétences, compagnons, montures ;
-// Aventure : donjons, missions).
+// Navigation calquée sur Forge Master : 5 onglets en bas (Ligue, Donjons, Compétences/Animaux/Techno, Clan, Boutique),
+// pas d'onglet Forge : l'accueil est l'écran sans panneau ; l'onglet ouvert devient une croix rouge qui le referme.
+// Sous-onglets : centre = Compétences, Animaux, Arbre techno ; Clan = Membres, Missions, (verrou), Guerre.
+// Hors barre (comme FM) : le portrait en haut à gauche ouvre le Héros (Héros, Skins) ; la monture est la 9e tuile.
 public partial class ForgeUI
 {
-    static readonly string[] NavNames = { "Boutique", "Héros", "Forge", "Aventure", "Techno" };
-    static readonly string[] NavIcons = { "i_shop", "i_hero", "i_forge", "i_adventure", "i_tech" };
+    static readonly string[] NavNames = { "Ligue", "Donjons", "Collection", "Clan", "Boutique" };
+    static readonly string[] NavIcons = { "i_skull", "i_door", "i_paw", "i_banner", "i_shop" };
     readonly Image[] navIcon = new Image[5];
     readonly Image[] navImg = new Image[5];
     readonly Text[] navText = new Text[5];
     readonly GameObject[] navDot = new GameObject[5];
     static readonly Color NavOff = new Color(0.2f, 0.09f, 0.08f), NavOn = new Color(0.78f, 0.3f, 0.08f);
+    const int Soon = 99999;   // fonction en ligne pas encore faite (ligue, clan) : « bientôt »
 
     class SubTabs { public RectTransform root; public Image[] img; public Text[] txt; public GameObject[] dot; public int[] unlock; public string[] names; public GameObject[] panels; public System.Action[] open; public int last; }
-    SubTabs heroTabs, advTabs;
+    SubTabs heroTabs, collTabs, clanTabs;
     Transform navRoot;
+    GameObject heroDot;
 
     void BuildNav(Transform R)
     {
         var nav = Box(R, "Navigation", new Vector2(0, 0), new Vector2(1, 0), Vector2.zero, new Vector2(0, 150), new Color(0.07f, 0.04f, 0.05f, 0.98f));
         if (UISkin.Get("navbar") != null) { UISkin.Sliced(nav, "navbar"); nav.color = Color.white; }
-        // La forge (accueil) au centre, un peu plus large.
         navRoot = nav.transform;
-        float[] edges = { 0f, 0.19f, 0.38f, 0.62f, 0.81f, 1f };
         for (int i = 0; i < 5; i++)
         {
             int idx = i;
-            var b = MakeButton(nav.transform, "Onglet " + NavNames[i], new Vector2(edges[i], 0), new Vector2(edges[i + 1], 1), new Vector2(4, 10), new Vector2(-4, -14),
-                NavOff, NavNames[i], i == 2 ? 28 : 24, out navText[i], () => OnNav(idx));
+            var b = MakeButton(nav.transform, "Onglet " + NavNames[i], new Vector2(i / 5f, 0), new Vector2((i + 1) / 5f, 1), new Vector2(4, 10), new Vector2(-4, -14),
+                NavOff, NavNames[i], 24, out navText[i], () => OnNav(idx));
             navImg[i] = b.GetComponent<Image>();
             UISkin.Sliced(navImg[i], "tab", 1.2f);
             navIcon[i] = UISkin.Icon(b.transform, NavIcons[i], new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(-46, -88), new Vector2(46, 4));
@@ -39,22 +40,41 @@ public partial class ForgeUI
         }
     }
 
+    // Le portrait de la barre du haut ouvre la fiche du héros (comme le profil de FM).
+    void MakePortraitButton(Image avatar)
+    {
+        var b = avatar.gameObject.AddComponent<Button>();
+        b.onClick.AddListener(Sfx.Click);
+        b.onClick.AddListener(() => OpenGroup(heroTabs));
+        heroDot = MakeDot(avatar.transform);
+    }
+
+    int NavActive()
+    {
+        if (shopPanel != null && shopPanel.activeSelf) return 4;
+        if (dungPanel != null && dungPanel.activeSelf) return 1;
+        if (GroupOpen(collTabs) >= 0) return 2;
+        if (GroupOpen(clanTabs) >= 0) return 3;
+        return -1;
+    }
+
+    static int NavUnlock(int i) => i == 0 ? Soon : i == 1 ? GameState.UnlockDungeons : i == 2 ? GameState.UnlockSkills : i == 4 ? GameState.UnlockShop : 0;
+
     void OnNav(int idx)
     {
         if (passPanel != null) passPanel.SetActive(false);
+        if (idx == NavActive()) { CloseAllPanels(); return; }   // l'onglet ouvert (croix) referme
+        if (!GameState.Reached(NavUnlock(idx))) { Toast(LockText(NavUnlock(idx))); return; }
         switch (idx)
         {
-            case 0:
-                if (!GameState.Reached(GameState.UnlockShop)) { Toast(GameState.UnlockText(GameState.UnlockShop)); break; }
-                if (shopPanel.activeSelf) CloseAllPanels(); else ToggleShop(); break;
-            case 1: OpenGroup(heroTabs); break;
-            case 2: CloseAllPanels(); break;
-            case 3: OpenGroup(advTabs); break;
-            case 4:
-                if (!GameState.Reached(GameState.UnlockTech)) { Toast(GameState.UnlockText(GameState.UnlockTech)); break; }
-                if (techPanel.activeSelf) CloseAllPanels(); else ToggleTech(); break;
+            case 1: ToggleDungeons(); break;
+            case 2: OpenGroup(collTabs); break;
+            case 3: OpenGroup(clanTabs); break;
+            case 4: ToggleShop(); break;
         }
     }
+
+    static string LockText(int unlock) => unlock >= Soon ? "Bientôt : demande le serveur en ligne" : GameState.UnlockText(unlock);
 
     // Toucher l'onglet d'un groupe déjà ouvert le referme ; sinon rouvre le dernier sous-onglet utilisé.
     void OpenGroup(SubTabs g)
@@ -62,13 +82,13 @@ public partial class ForgeUI
         if (GroupOpen(g) >= 0) { CloseAllPanels(); return; }
         int t = g.last;
         if (!GameState.Reached(g.unlock[t])) t = System.Array.FindIndex(g.unlock, u => GameState.Reached(u));
-        if (t < 0) { Toast(GameState.UnlockText(g.unlock[0])); return; }
+        if (t < 0) { Toast(LockText(g.unlock[0])); return; }
         OpenTab(g, t);
     }
 
     void OpenTab(SubTabs g, int i)
     {
-        if (!GameState.Reached(g.unlock[i])) { Toast(GameState.UnlockText(g.unlock[i])); return; }
+        if (!GameState.Reached(g.unlock[i]) || g.panels[i] == null) { Toast(LockText(g.unlock[i])); return; }
         g.last = i;
         if (!g.panels[i].activeSelf) g.open[i]();
     }
@@ -95,6 +115,7 @@ public partial class ForgeUI
                 NavOff, names[i], 26, out g.txt[i], () => OpenTab(g, idx));
             g.img[i] = b.GetComponent<Image>();
             UISkin.Sliced(g.img[i], "tab", 1.4f);
+            if (names[i] == "") UISkin.Icon(b.transform, "i_lock", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-22, -22), new Vector2(22, 22));
             g.dot[i] = MakeDot(b.transform);
         }
         g.root.gameObject.SetActive(false);
@@ -103,21 +124,25 @@ public partial class ForgeUI
 
     void BuildSubTabs(Transform R)
     {
-        heroTabs = MakeSubTabs(R, new[] { "Héros", "Compét.", "Compagnons", "Montures", "Skins" },
-            new[] { statsPanel, skillPanel, compPanel, mountPanel, skinsPanel },
-            new System.Action[] { ToggleStats, ToggleSkills, ToggleCompanions, ToggleMounts, ToggleHeroSkins },
-            new[] { 0, GameState.UnlockSkills, GameState.UnlockPets, GameState.UnlockMounts, 0 });
-        advTabs = MakeSubTabs(R, new[] { "Donjons", "Missions" },
-            new[] { dungPanel, missionPanel },
-            new System.Action[] { ToggleDungeons, ToggleMissions },
-            new[] { GameState.UnlockDungeons, 0 });
+        heroTabs = MakeSubTabs(R, new[] { "Héros", "Skins" },
+            new[] { statsPanel, skinsPanel },
+            new System.Action[] { ToggleStats, ToggleHeroSkins },
+            new[] { 0, 0 });
+        collTabs = MakeSubTabs(R, new[] { "Compétences", "Animaux", "Arbre techno" },
+            new[] { skillPanel, compPanel, techPanel },
+            new System.Action[] { ToggleSkills, ToggleCompanions, ToggleTech },
+            new[] { GameState.UnlockSkills, GameState.UnlockPets, GameState.UnlockTech });
+        clanTabs = MakeSubTabs(R, new[] { "Membres", "Missions", "", "Guerre" },
+            new GameObject[] { null, missionPanel, null, null },
+            new System.Action[] { null, ToggleMissions, null, null },
+            new[] { Soon, 0, Soon, Soon });
         // Barre du bas et sous-onglets au-dessus des panneaux (la fiche de détail reste par-dessus).
         navRoot.SetAsLastSibling();
         heroTabs.root.SetAsLastSibling();
-        advTabs.root.SetAsLastSibling();
+        collTabs.root.SetAsLastSibling();
+        clanTabs.root.SetAsLastSibling();
     }
 
-    // Outil de test (commande de capture « open:<écran> »).
     // Outil de test : liste les éléments affichés sous un point de l'écran (x,y en pixels, origine en bas à gauche).
     void TestUiAt(string xy)
     {
@@ -131,21 +156,22 @@ public partial class ForgeUI
     }
     static string GetPath(Transform t) => t.parent == null ? t.name : GetPath(t.parent) + "/" + t.name;
 
+    // Outil de test (commande de capture « open:<écran> »).
     void TestOpen(string w)
     {
         CloseAllPanels();
         switch (w)
         {
-            case "shop": OnNav(0); break;
+            case "shop": OnNav(4); break;
             case "hero": OpenTab(heroTabs, 0); break;
-            case "skills": OpenTab(heroTabs, 1); break;
-            case "pets": OpenTab(heroTabs, 2); break;
-            case "mounts": OpenTab(heroTabs, 3); break;
-            case "skins": OpenTab(heroTabs, 4); break;
+            case "skins": OpenTab(heroTabs, 1); break;
+            case "skills": OpenTab(collTabs, 0); break;
+            case "pets": OpenTab(collTabs, 1); break;
+            case "tech": OpenTab(collTabs, 2); break;
+            case "mounts": ToggleMounts(); break;
             case "stones": ToggleStones(); break;
-            case "dungeons": OpenTab(advTabs, 0); break;
-            case "missions": OpenTab(advTabs, 1); break;
-            case "tech": OnNav(4); break;
+            case "dungeons": OnNav(1); break;
+            case "missions": OpenTab(clanTabs, 1); break;
             case "pass": TogglePass(); break;
             case "odds": ShowOdds(); break;
         }
@@ -176,16 +202,18 @@ public partial class ForgeUI
         var d = GameState.Data;
         bool gift = !d.shopFreeTaken || SteppingStones.FreeAvailable, dung = AnyDungeonKey(), miss = GameState.CanStartMission;
         bool skills = GameState.Reached(GameState.UnlockSkills) && d.skillTickets >= GameState.SkillSummonCost * SkillData.SummonSmall;
+        bool tokens = SteppingStones.Unlocked && SteppingStones.Active && d.ssTokens > 0;
         if (navDot[0] != null)
         {
-            navDot[0].SetActive(gift);
-            navDot[1].SetActive(skills);
-            navDot[3].SetActive(dung || miss);
+            navDot[1].SetActive(dung);
+            navDot[2].SetActive(skills);
+            navDot[3].SetActive(miss);
+            navDot[4].SetActive(gift);
         }
-        bool tokens = SteppingStones.Unlocked && SteppingStones.Active && d.ssTokens > 0;
-        if (heroTabs != null) { heroTabs.dot[1].SetActive(skills); heroTabs.dot[4].SetActive(tokens); }
-        if (navDot[1] != null && tokens) navDot[1].SetActive(true);
-        if (advTabs != null) { advTabs.dot[0].SetActive(dung); advTabs.dot[1].SetActive(miss); }
+        if (heroDot != null) heroDot.SetActive(tokens);
+        if (heroTabs != null) heroTabs.dot[1].SetActive(tokens);
+        if (collTabs != null) collTabs.dot[0].SetActive(skills);
+        if (clanTabs != null) clanTabs.dot[1].SetActive(miss);
 
         // Le bouton ÉQUIPER pulse quand la nouvelle pièce est meilleure.
         if (popEquipBtn != null)
@@ -205,32 +233,33 @@ public partial class ForgeUI
             upgradeBtn.transform.localScale = Vector3.one * (1f + 0.04f * k);
         }
 
-        int hero = GroupOpen(heroTabs), adv = GroupOpen(advTabs);
-        bool detailOpen = detail != null && detail.activeSelf;
-        foreach (var (g, cur) in new[] { (heroTabs, hero), (advTabs, adv) })
+        foreach (var g in new[] { heroTabs, collTabs, clanTabs })
         {
             if (g == null) continue;
+            int cur = GroupOpen(g);
             g.root.gameObject.SetActive(cur >= 0);
             for (int i = 0; i < g.img.Length; i++)
             {
                 bool locked = !GameState.Reached(g.unlock[i]);
                 g.img[i].color = UISkin.Vivid(i == cur ? NavOn : locked ? new Color(0.1f, 0.07f, 0.07f) : NavOff);
                 g.txt[i].color = i == cur ? Color.white : locked ? new Color(0.45f, 0.4f, 0.38f) : TextDim;
-                g.txt[i].text = locked ? g.names[i] + "\n<size=18>étape " + (g.unlock[i] / 10 + 1) + "-" + (g.unlock[i] % 10 + 1) + "</size>" : g.names[i];
+                g.txt[i].text = locked && g.unlock[i] < Soon && g.names[i] != "" ? g.names[i] + "\n<size=18>étape " + (g.unlock[i] / 10 + 1) + "-" + (g.unlock[i] % 10 + 1) + "</size>" : g.names[i];
                 if (locked) g.dot[i].SetActive(false);
             }
         }
-        int active = shopPanel != null && shopPanel.activeSelf ? 0 : hero >= 0 ? 1 : adv >= 0 ? 3 : techPanel != null && techPanel.activeSelf ? 4 : 2;
+        int active = NavActive();
         for (int i = 0; i < 5; i++)
         {
             if (navImg[i] == null) continue;
-            int need = i == 0 ? GameState.UnlockShop : i == 4 ? GameState.UnlockTech : 0;
-            bool locked = !GameState.Reached(need);
-            navImg[i].color = UISkin.Vivid(i == active ? NavOn : locked ? new Color(0.1f, 0.07f, 0.07f) : NavOff);
+            int need = NavUnlock(i);
+            bool locked = !GameState.Reached(need), on = i == active;
+            navImg[i].color = UISkin.Vivid(on ? NavOn : locked ? new Color(0.1f, 0.07f, 0.07f) : NavOff);
+            // L'onglet ouvert devient une croix rouge (comme FM) : le retoucher ramène à l'accueil.
+            navIcon[i].sprite = UISkin.Get(on ? "i_close" : NavIcons[i]);
             navIcon[i].color = locked ? new Color(0.3f, 0.3f, 0.3f, 0.7f) : Color.white;
-            navIcon[i].rectTransform.localScale = Vector3.one * (i == active ? 1.15f : 1f);
-            navText[i].color = i == active ? Color.white : locked ? new Color(0.45f, 0.4f, 0.38f) : TextDim;
-            navText[i].text = locked ? NavNames[i] + "\n<size=18>étape " + (need / 10 + 1) + "-" + (need % 10 + 1) + "</size>" : NavNames[i];
+            navIcon[i].rectTransform.localScale = Vector3.one * (on ? 1.15f : 1f);
+            navText[i].color = on ? Color.white : locked ? new Color(0.45f, 0.4f, 0.38f) : TextDim;
+            navText[i].text = locked && need < Soon ? NavNames[i] + "\n<size=18>étape " + (need / 10 + 1) + "-" + (need % 10 + 1) + "</size>" : NavNames[i];
             if (locked) navDot[i].SetActive(false);
         }
     }

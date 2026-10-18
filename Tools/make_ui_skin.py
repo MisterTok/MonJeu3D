@@ -435,6 +435,35 @@ def ic_clock():
     d.line([(0.5 * N, 0.5 * N), (0.5 * N, 0.27 * N)], fill=255, width=int(0.07 * N)); d.line([(0.5 * N, 0.5 * N), (0.66 * N, 0.58 * N)], fill=255, width=int(0.07 * N))
     icon([(o, g((255, 226, 120, 255), (170, 96, 24, 255))), (f, g((255, 252, 240, 255), (210, 200, 180, 255))), (hands, new(N, N, (60, 30, 20, 255)))], name="i_clock")
 
+def ic_door():
+    # Porte de donjon en arche, bois et ferrures.
+    arch = ImageChops.lighter(ell(0.2, 0.06, 0.8, 0.6), rr(0.2, 0.32, 0.8, 0.94, 0.02))
+    inner = ImageChops.lighter(ell(0.28, 0.14, 0.72, 0.56), rr(0.28, 0.34, 0.72, 0.94, 0.0))
+    planks = ImageChops.lighter(rr(0.39, 0.14, 0.41, 0.94, 0), rr(0.59, 0.14, 0.61, 0.94, 0))
+    bands = ImageChops.lighter(rr(0.28, 0.42, 0.72, 0.47, 0), rr(0.28, 0.74, 0.72, 0.79, 0))
+    knob = ell(0.6, 0.58, 0.68, 0.66)
+    icon([(arch, g((150, 150, 165, 255), (80, 80, 95, 255))), (inner, g((176, 104, 56, 255), (100, 52, 24, 255))),
+          (planks, new(N, N, (80, 40, 18, 255))), (bands, g((120, 120, 135, 255), (70, 70, 82, 255))),
+          (knob, g((255, 226, 110, 255), (180, 100, 24, 255)))], name="i_door")
+
+def ic_banner():
+    # Bannière de clan : étendard rouge à pointes avec un œil, barre dorée.
+    bar = rr(0.12, 0.08, 0.88, 0.18, 0.04)
+    cloth = poly([(0.2, 0.16), (0.8, 0.16), (0.8, 0.86), (0.65, 0.76), (0.5, 0.9), (0.35, 0.76), (0.2, 0.86)])
+    eye = ell(0.33, 0.36, 0.67, 0.6); pupil = ell(0.44, 0.4, 0.56, 0.56)
+    icon([(cloth, g((230, 70, 50, 255), (140, 20, 14, 255))), (bar, g((255, 226, 110, 255), (170, 96, 24, 255))),
+          (eye, new(N, N, (255, 245, 225, 255))), (pupil, new(N, N, (40, 20, 20, 255)))], name="i_banner")
+
+def ic_paw():
+    # Empreinte + fiole : compétences, animaux et techno.
+    pad = ell(0.14, 0.42, 0.56, 0.84)
+    toes = ImageChops.lighter(ImageChops.lighter(ell(0.08, 0.26, 0.22, 0.44), ell(0.22, 0.12, 0.36, 0.32)),
+                              ImageChops.lighter(ell(0.38, 0.14, 0.52, 0.34), ell(0.52, 0.28, 0.64, 0.46)))
+    bulb = ell(0.5, 0.48, 0.92, 0.9); neck = rr(0.64, 0.34, 0.78, 0.54, 0.02)
+    liquid = sub(bulb, rr(0, 0, 1, 0.66, 0))
+    icon([(ImageChops.lighter(pad, toes), g((120, 170, 255, 255), (40, 80, 190, 255))), (neck, g((220, 240, 255, 230), (130, 160, 200, 230))),
+          (bulb, g((220, 240, 255, 230), (130, 160, 200, 230))), (liquid, g((255, 110, 80, 255), (160, 10, 24, 255)))], name="i_paw")
+
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     button(); tab(); panel(); card(); frame(); tile(); slot(); pill(); bar(); banner(); glow(); rays()
@@ -442,7 +471,7 @@ if __name__ == "__main__":
     strip("navbar", (36, 14, 12, 255), (10, 4, 4, 255), line_top=True)
     ic_coin(); ic_gem(); ic_hammer(); ic_power(); ic_shop(); ic_hero(); ic_forge(); ic_adventure(); ic_tech()
     ic_close(); ic_lock(); ic_star(); ic_check(); ic_key(); ic_skull()
-    ic_shell(); ic_winder(); ic_ticket(); ic_potion(); ic_token(); ic_sword(); ic_heart(); ic_clock()
+    ic_shell(); ic_winder(); ic_ticket(); ic_potion(); ic_token(); ic_sword(); ic_heart(); ic_clock(); ic_door(); ic_banner(); ic_paw()
     ic_key_variant("i_key_hammer", (255, 236, 140, 255), (190, 110, 30, 255), (255, 170, 40, 255))
     ic_key_variant("i_key_egg", (250, 244, 226, 255), (170, 150, 120, 255), (170, 110, 200, 255))
     ic_key_variant("i_key_potion", (255, 150, 130, 255), (150, 20, 20, 255), (255, 60, 60, 255))

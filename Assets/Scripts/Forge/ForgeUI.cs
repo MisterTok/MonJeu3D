@@ -109,6 +109,10 @@ public partial class ForgeUI : MonoBehaviour
 
     // ---------- Construction de l'écran (disposition inspirée de Forge Master) ----------
     RectTransform anvilRect;
+    Image mountTileBg;
+    RawImage mountTileIcon;
+    Text mountTileText;
+    GameObject mountTileLock;
     GameObject autoLock, upgradeCoin;
     Text anvilText;
 
@@ -147,6 +151,7 @@ public partial class ForgeUI : MonoBehaviour
         var avIn = Box(avatar.transform, "Fond", Vector2.zero, Vector2.one, new Vector2(7, 7), new Vector2(-7, -7), new Color(0.35f, 0.08f, 0.06f));
         UISkin.Sliced(avIn, "tile", 2.4f); avIn.raycastTarget = false;
         UISkin.Icon(avatar.transform, "i_hero", Vector2.zero, Vector2.one, new Vector2(12, 12), new Vector2(-12, -12));
+        MakePortraitButton(avatar);
         UISkin.Icon(top.transform, "i_power", new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(126, 2), new Vector2(176, 52));
         statsText = Label(top.transform, "", 30, TextAnchor.MiddleLeft, TextMain, new Vector2(0, 0), new Vector2(0.52f, 1), new Vector2(132, 6), new Vector2(0, -6));
         goldText = CurrencyPill(top.transform, "i_gold", new Vector2(0.52f, 0.5f), new Vector2(0.76f, 0.5f), new Vector2(4, -32), new Vector2(-6, 32), new Color(1f, 0.86f, 0.4f));
@@ -196,11 +201,12 @@ public partial class ForgeUI : MonoBehaviour
         var eq = MakeRect("Equipement", R, new Vector2(0, 0), new Vector2(1, 0), new Vector2(18, 530), new Vector2(-18, 850));
         equipRect = eq;
         equipGroup = eq.gameObject.AddComponent<CanvasGroup>();
+        // Comme FM : 5 pièces en haut, 3 en bas + la monture en tuile large.
         for (int i = 0; i < GameState.SlotCount; i++)
         {
-            int row = i / 4, col = i % 4;
-            var aMin = new Vector2(col / 4f, row == 0 ? 0.5f : 0f);
-            var aMax = new Vector2((col + 1) / 4f, row == 0 ? 1f : 0.5f);
+            int row = i < 5 ? 0 : 1, col = i < 5 ? i : i - 5;
+            var aMin = new Vector2(col / 5f, row == 0 ? 0.5f : 0f);
+            var aMax = new Vector2((col + 1) / 5f, row == 0 ? 1f : 0.5f);
             slotBg[i] = Box(eq, "Emplacement " + i, aMin, aMax, new Vector2(6, 6), new Vector2(-6, -6), Panel);
             UISkin.Sliced(slotBg[i], "tile", 1.2f);
             // Icône 3D de la pièce au centre, niveau en haut, statistique en bas.
@@ -211,6 +217,17 @@ public partial class ForgeUI : MonoBehaviour
             slotText[i] = Label(slotBg[i].transform, "", 25, TextAnchor.LowerCenter, TextMain, Vector2.zero, Vector2.one, new Vector2(6, 6), new Vector2(-6, -6));
             iconRt.offsetMin = new Vector2(-70, -66); iconRt.offsetMax = new Vector2(70, 66);
         }
+
+        // 9e tuile : la monture équipée (ouvre l'écran des montures)
+        mountTileBg = Box(eq, "Monture", new Vector2(3 / 5f, 0f), new Vector2(1f, 0.5f), new Vector2(6, 6), new Vector2(-6, -6), Panel);
+        UISkin.Sliced(mountTileBg, "tile", 1.2f);
+        var mtb = mountTileBg.gameObject.AddComponent<Button>();
+        mtb.onClick.AddListener(Sfx.Click);
+        mtb.onClick.AddListener(() => { if (!GameState.Reached(GameState.UnlockMounts)) Toast(GameState.UnlockText(GameState.UnlockMounts)); else { CloseAllPanels(); ToggleMounts(); } });
+        var mIcon = MakeRect("Icône", mountTileBg.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-72, -66), new Vector2(72, 66));
+        mountTileIcon = mIcon.gameObject.AddComponent<RawImage>(); mountTileIcon.raycastTarget = false;
+        mountTileText = Label(mountTileBg.transform, "", 25, TextAnchor.LowerCenter, TextMain, Vector2.zero, Vector2.one, new Vector2(6, 6), new Vector2(-6, -6));
+        mountTileLock = UISkin.Icon(mountTileBg.transform, "i_lock", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-34, -34), new Vector2(34, 34)).gameObject;
 
         BuildPassButton(R);
         BuildPopup(R);
@@ -659,7 +676,32 @@ public partial class ForgeUI : MonoBehaviour
                 slotText[i].text = "";
             }
         }
+        RefreshMountTile();
         RefreshTimers();
+    }
+
+    void RefreshMountTile()
+    {
+        if (mountTileBg == null) return;
+        var d = GameState.Data;
+        bool unlocked = GameState.Reached(GameState.UnlockMounts);
+        var m = unlocked ? GameState.FindMount(d.equippedMount) : null;
+        mountTileLock.SetActive(!unlocked);
+        if (m != null)
+        {
+            var def = ProgressionData.Mounts[m.id];
+            var c = ProgressionData.RarityColors[def.rarity];
+            mountTileBg.color = Color.Lerp(c, Color.white, 0.12f);
+            mountTileIcon.texture = ItemIcons.GetCreature(def.model, c, 0.15f, ItemIcons.Tier(GameState.AscMounts));
+            mountTileIcon.color = Color.white;
+            mountTileText.text = "Niv. " + m.level;
+        }
+        else
+        {
+            mountTileBg.color = new Color(0.32f, 0.22f, 0.2f);
+            mountTileIcon.color = new Color(0, 0, 0, 0);
+            mountTileText.text = "";
+        }
     }
 
     void RefreshTimers()

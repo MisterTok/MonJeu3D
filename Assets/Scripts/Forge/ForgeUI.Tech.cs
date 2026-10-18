@@ -10,7 +10,8 @@ public partial class ForgeUI
     Button techFinishBtn;
     ScrollRect techScroll;
     readonly RectTransform[] techContent = new RectTransform[3];
-    readonly Image[] techTabImg = new Image[3];
+    GameObject techCards, techBack, techView;
+    readonly Text[] techCardPct = new Text[4];
     readonly List<Button>[] nodeBtn = { new List<Button>(), new List<Button>(), new List<Button>() };
     readonly List<Text>[] nodeText = { new List<Text>(), new List<Text>(), new List<Text>() };
     readonly List<Image>[] nodeFill = { new List<Image>(), new List<Image>(), new List<Image>() };
@@ -42,18 +43,36 @@ public partial class ForgeUI
         techFinishBtn = MakeButton(P, "Finir recherche", new Vector2(0.72f, 1), new Vector2(1, 1), new Vector2(0, -156), new Vector2(-20, -92),
             new Color(0.15f, 0.45f, 0.65f), "", 24, out techFinishText, () => { if (!GameState.SpeedUpResearch()) Toast("Pas assez de gemmes"); });
 
-        string[] tabs = { "Forge", "Puissance", "Compagnons" };
-        for (int i = 0; i < 3; i++)
+        // Comme FM : 4 cartes (Forge, Puissance, Compétences/Animaux/Tech, Clan) ; toucher une carte ouvre son arbre.
+        string[] names = { "Forge", "Puissance", "Compétences, Animaux & Tech", "Clan" };
+        string[] icons = { "i_forge", "i_adventure", "i_paw", "i_banner" };
+        techCards = MakeRect("Cartes", P, Vector2.zero, Vector2.one, new Vector2(10, 10), new Vector2(-10, -180)).gameObject;
+        for (int i = 0; i < 4; i++)
         {
-            int t = i;
-            Text tt;
-            var b = MakeButton(P, "Onglet " + i, new Vector2(i / 3f, 1), new Vector2((i + 1) / 3f, 1), new Vector2(8, -240), new Vector2(-8, -172),
-                new Color(0.3f, 0.12f, 0.08f), tabs[i], 28, out tt, () => SelectTechTree(t));
-            techTabImg[i] = b.GetComponent<Image>();
+            int t = i, row = i / 2, col = i % 2;
+            float top = -20 - row * 430;
+            var card = Box(techCards.transform, "Carte " + i, new Vector2(col * 0.5f, 1), new Vector2(col * 0.5f + 0.5f, 1), new Vector2(18, top - 400), new Vector2(-18, top), Color.white);
+            UISkin.Sliced(card, "frame", 2.4f);
+            card.color = i == 3 ? new Color(0.45f, 0.4f, 0.4f) : Ember;
+            var inner = Box(card.transform, "Fond", Vector2.zero, Vector2.one, new Vector2(7, 7), new Vector2(-7, -7), SkinTint(new Color(0.16f, 0.08f, 0.06f)));
+            UISkin.Sliced(inner, "tile", 1.8f); inner.raycastTarget = false;
+            var head = Box(card.transform, "Titre", new Vector2(0, 1), new Vector2(1, 1), new Vector2(10, -82), new Vector2(-10, -10), new Color(0.3f, 0.14f, 0.1f));
+            UISkin.Sliced(head, "tab", 1.4f); head.raycastTarget = false;
+            var ht = Label(head.transform, names[i], 30, TextAnchor.MiddleCenter, Color.white, Vector2.zero, Vector2.one, new Vector2(8, 2), new Vector2(-8, -2));
+            ht.resizeTextForBestFit = true; ht.resizeTextMaxSize = 30; ht.resizeTextMinSize = 16;
+            UISkin.Icon(card.transform, i == 3 ? "i_lock" : icons[i], new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-90, -90), new Vector2(90, 90));
+            techCardPct[i] = Label(card.transform, "", 36, TextAnchor.LowerCenter, new Color(1f, 0.85f, 0.5f), Vector2.zero, Vector2.one, new Vector2(8, 22), new Vector2(-8, 0));
+            var b = card.gameObject.AddComponent<Button>();
+            b.onClick.AddListener(Sfx.Click);
+            b.onClick.AddListener(() => { if (t == 3) Toast(LockText(Soon)); else SelectTechTree(t); });
         }
 
-        // Zone défilante (toute la hauteur : la fiche d'une recherche s'ouvre au toucher)
-        var view = MakeRect("Vue", P, Vector2.zero, Vector2.one, new Vector2(10, 10), new Vector2(-10, -250));
+        // Zone défilante d'un arbre (la fiche d'une recherche s'ouvre au toucher) + retour aux cartes
+        Text backT;
+        techBack = MakeButton(P, "Retour", new Vector2(0, 1), new Vector2(0, 1), new Vector2(16, -246), new Vector2(206, -176),
+            new Color(0.3f, 0.14f, 0.1f), "◀  Retour", 28, out backT, ShowTechCards).gameObject;
+        var view = MakeRect("Vue", P, Vector2.zero, Vector2.one, new Vector2(10, 10), new Vector2(-10, -256));
+        techView = view.gameObject;
         view.gameObject.AddComponent<Image>().color = new Color(0.06f, 0.03f, 0.03f, 0.9f);
         view.gameObject.AddComponent<RectMask2D>();
         techScroll = view.gameObject.AddComponent<ScrollRect>();
@@ -132,11 +151,27 @@ public partial class ForgeUI
         bool open = !techPanel.activeSelf;
         CloseAllPanels();
         techPanel.SetActive(open);
-        if (open) SelectTechTree(techTree);
+        if (open) ShowTechCards();
+    }
+
+    void ShowTechCards()
+    {
+        techCards.SetActive(true); techBack.SetActive(false); techView.SetActive(false);
+        selNode = -1;
+        RefreshTech();
+    }
+
+    // Avancement d'un arbre : niveaux recherchés / niveaux possibles.
+    static float TreeProgress(int tr)
+    {
+        int lv = 0, mx = 0;
+        for (int id = 0; id < TechData.Trees[tr].Length; id++) { lv += GameState.TechLevel(tr, id); mx += GameState.NodeMax(tr, id); }
+        return mx > 0 ? lv / (float)mx : 0f;
     }
 
     void SelectTechTree(int t)
     {
+        techCards.SetActive(false); techBack.SetActive(true); techView.SetActive(true);
         techTree = t;
         selNode = -1;
         for (int i = 0; i < 3; i++) techContent[i].gameObject.SetActive(i == t);
@@ -186,7 +221,12 @@ public partial class ForgeUI
         if (techPanel == null || !techPanel.activeSelf) return;
         var d = GameState.Data;
         for (int i = 0; i < 3; i++)
-            techTabImg[i].color = i == techTree ? new Color(0.75f, 0.32f, 0.1f) : new Color(0.3f, 0.12f, 0.08f);
+        {
+            string pct = (TreeProgress(i) * 100f).ToString("0.#") + "%";
+            if (d.researchTree == i) pct += "  <color=#7FE07F>(" + GameState.FmtTime(GameState.ResearchSecondsLeft()) + ")</color>";
+            techCardPct[i].text = pct;
+        }
+        techCardPct[3].text = "";
 
         string res;
         if (d.researchTree >= 0)
