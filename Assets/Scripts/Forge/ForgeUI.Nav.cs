@@ -100,11 +100,13 @@ public partial class ForgeUI
         return -1;
     }
 
-    // Barre de sous-onglets posée sur le titre des panneaux (le bouton X reste visible à droite).
+    // Barre de sous-onglets en bas, au-dessus de la barre d'onglets (comme FM).
     SubTabs MakeSubTabs(Transform R, string[] names, GameObject[] panels, System.Action[] open, int[] unlock)
     {
         var g = new SubTabs { panels = panels, open = open, unlock = unlock, names = names, img = new Image[names.Length], txt = new Text[names.Length], dot = new GameObject[names.Length] };
-        g.root = MakeRect("Sous-onglets", R, new Vector2(0, 1), new Vector2(1, 1), new Vector2(12, -216), new Vector2(-114, -140));
+        // Comme FM : en bas de l'écran, juste au-dessus de la barre d'onglets ; le panneau s'arrête au-dessus.
+        g.root = MakeRect("Sous-onglets", R, new Vector2(0, 0), new Vector2(1, 0), new Vector2(12, 156), new Vector2(-12, 236));
+        foreach (var p in panels) if (p != null) ((RectTransform)p.transform).offsetMin = new Vector2(0, 240);
         var gimg = g.root.gameObject.AddComponent<Image>();
         gimg.color = new Color(0.05f, 0.025f, 0.03f, 1f);
         if (UISkin.Get("card") != null) { UISkin.Sliced(gimg, "card"); gimg.color = Color.white; }

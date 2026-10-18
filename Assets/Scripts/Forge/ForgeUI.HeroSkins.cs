@@ -35,9 +35,9 @@ public partial class ForgeUI
         for (int i = 0; i < n; i++)
         {
             int idx = i, row = i / 6, col = i % 6;
-            float top = -555 - row * 175;
+            float top = -548 - row * 165;
             skinTile[i] = MakeTile(P, new Vector2(col / 6f, 1), new Vector2((col + 1) / 6f, 1),
-                new Vector2(col == 0 ? 14 : 4, top - 168), new Vector2(col == 5 ? -14 : -4, top), () => OpenHeroSkin(HeroSkins.All[idx].id));
+                new Vector2(col == 0 ? 14 : 4, top - 158), new Vector2(col == 5 ? -14 : -4, top), () => OpenHeroSkin(HeroSkins.All[idx].id));
             skinPrice[i] = Label(skinTile[i].bg.transform, "", 20, TextAnchor.LowerCenter, new Color(1f, 0.75f, 0.9f), Vector2.zero, Vector2.one, new Vector2(2, 6), new Vector2(-2, 0));
         }
         skinsPanel.SetActive(false);
