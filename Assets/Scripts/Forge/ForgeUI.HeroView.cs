@@ -26,19 +26,19 @@ public partial class ForgeUI
     void BuildHeroView(Transform P)
     {
         // Vitrine : cadre, rayons et halo derrière le héros
-        var frame = Box(P, "Vitrine", new Vector2(0, 1), new Vector2(1, 1), new Vector2(16, -890), new Vector2(-16, -100), Ember);
+        var frame = Box(P, "Vitrine", new Vector2(0, 1), new Vector2(1, 1), new Vector2(16, -1110), new Vector2(-16, -100), Ember);
         UISkin.Sliced(frame, "frame", 2.4f);
         var inner = Box(frame.transform, "Fond", Vector2.zero, Vector2.one, new Vector2(7, 7), new Vector2(-7, -7), SkinTint(new Color(0.16f, 0.07f, 0.06f)));
         UISkin.Sliced(inner, "tile", 1.8f); inner.raycastTarget = false;
-        var rays = Box(inner.transform, "Rayons", new Vector2(0.5f, 0.55f), new Vector2(0.5f, 0.55f), new Vector2(-330, -330), new Vector2(330, 330), new Color(1f, 0.7f, 0.3f, 0.22f));
+        var rays = Box(inner.transform, "Rayons", new Vector2(0.5f, 0.55f), new Vector2(0.5f, 0.55f), new Vector2(-420, -420), new Vector2(420, 420), new Color(1f, 0.7f, 0.3f, 0.22f));
         rays.sprite = UISkin.Get("rays"); rays.raycastTarget = false; hvRays = rays.rectTransform;
-        var glow = Box(inner.transform, "Halo", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-260, -240), new Vector2(260, 280), new Color(1f, 0.45f, 0.15f, 0.55f));
+        var glow = Box(inner.transform, "Halo", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-330, -300), new Vector2(330, 360), new Color(1f, 0.45f, 0.15f, 0.55f));
         glow.sprite = UISkin.Get("glow"); glow.raycastTarget = false;
         // Socle
-        var plinth = Box(inner.transform, "Socle", new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(-170, 104), new Vector2(170, 150), new Color(0, 0, 0, 0.45f));
+        var plinth = Box(inner.transform, "Socle", new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(-210, 100), new Vector2(210, 156), new Color(0, 0, 0, 0.45f));
         plinth.sprite = Circle(); plinth.raycastTarget = false;
 
-        var hv = MakeRect("Héros", inner.transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(-230, 112), new Vector2(230, 842));
+        var hv = MakeRect("Héros", inner.transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(-300, 112), new Vector2(300, 1062));
         heroView = hv.gameObject.AddComponent<RawImage>();
         heroView.raycastTarget = false;
 
@@ -54,7 +54,7 @@ public partial class ForgeUI
         {
             bool left = i < 4;
             int row = i % 4;
-            float top = -22 - row * 184;
+            float top = -30 - row * 240;
             var aMin = new Vector2(left ? 0 : 1, 1);
             var bg = Box(inner.transform, "Pièce " + i, aMin, aMin, new Vector2(left ? 18 : -186, top - 168), new Vector2(left ? 186 : -18, top), Panel);
             UISkin.Sliced(bg, "tile", 1.4f);
@@ -64,21 +64,23 @@ public partial class ForgeUI
             hvSlotLevel[i] = Label(bg.transform, "", 22, TextAnchor.UpperLeft, TextMain, Vector2.zero, Vector2.one, new Vector2(10, 4), new Vector2(-4, -6));
         }
 
-        // Statistiques en 2 colonnes
-        int n = HvStatNames.Length;
+        // Attaque et vie en grand ; le détail s'ouvre avec « Statistiques »
+        int n = 2;
         hvStatValue = new Text[n];
         for (int i = 0; i < n; i++)
         {
             int col = i % 2, row = i / 2;
-            float top = -906 - row * 84;
-            var cell = Box(P, "Stat " + i, new Vector2(col * 0.5f, 1), new Vector2(col * 0.5f + 0.5f, 1), new Vector2(col == 0 ? 16 : 6, top - 76), new Vector2(col == 0 ? -6 : -16, top), Color.white);
+            float top = -1130 - row * 84;
+            var cell = Box(P, "Stat " + i, new Vector2(col * 0.5f, 1), new Vector2(col * 0.5f + 0.5f, 1), new Vector2(col == 0 ? 16 : 6, top - 100), new Vector2(col == 0 ? -6 : -16, top), Color.white);
             UISkin.Sliced(cell, "slot", 1.2f); cell.raycastTarget = false;
             int sub = HvStatSub[i];
             if (sub < 0) UISkin.Icon(cell.transform, sub == -1 ? "i_sword" : sub == -2 ? "i_heart" : "i_clock", new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(10, -28), new Vector2(66, 28));
             else Label(cell.transform, "<color=" + Hex(SubColors[sub]) + ">" + SubGlyphs[sub] + "</color>", 34, TextAnchor.MiddleCenter, Color.white, new Vector2(0, 0), new Vector2(0, 1), new Vector2(10, 0), new Vector2(66, 0));
-            Label(cell.transform, HvStatNames[i], 25, TextAnchor.MiddleLeft, TextDim, Vector2.zero, Vector2.one, new Vector2(74, 0), new Vector2(-130, 0));
-            hvStatValue[i] = Label(cell.transform, "", 30, TextAnchor.MiddleRight, new Color(1f, 0.78f, 0.45f), Vector2.zero, Vector2.one, new Vector2(0, 0), new Vector2(-18, 0));
+            hvStatValue[i] = Label(cell.transform, "", 40, TextAnchor.MiddleCenter, new Color(1f, 0.85f, 0.5f), Vector2.zero, Vector2.one, new Vector2(66, 0), new Vector2(-10, 0));
         }
+        Text st;
+        MakeButton(P, "Statistiques", new Vector2(0.25f, 1), new Vector2(0.75f, 1), new Vector2(0, -1350), new Vector2(0, -1256),
+            new Color(0.3f, 0.18f, 0.12f), "Statistiques", 30, out st, ShowAllStats);
     }
 
     // Studio caché : le héros Craftpix (ou en pièces détachées) filmé par une caméra orthographique dans une texture.
@@ -141,7 +143,13 @@ public partial class ForgeUI
                 hvSlotLevel[i].text = "";
             }
         }
-        string[] v =
+        var v = HvValues();
+        for (int i = 0; i < hvStatValue.Length; i++) hvStatValue[i].text = v[i];
+    }
+
+    static string[] HvValues()
+    {
+        return new[]
         {
             GameState.Fmt(GameState.TotalAtk()), GameState.Fmt(GameState.TotalHp()), (1f / GameState.AttackInterval).ToString("0.00"),
             GameState.FmtPct(GameState.CritChance), "x" + GameState.CritMult.ToString("0.##"), GameState.FmtPct(GameState.DoubleChance),
@@ -149,6 +157,18 @@ public partial class ForgeUI
             "+" + GameState.FmtPct(GameState.SubTotal(GameState.SubMelee)), "+" + GameState.FmtPct(GameState.SubTotal(GameState.SubHealth)),
             GameState.FmtPct(GameState.LifeSteal), GameState.FmtPct(GameState.BlockChance), GameState.FmtPct(GameState.RegenPerSecond) + "/s",
         };
-        for (int i = 0; i < v.Length; i++) hvStatValue[i].text = v[i];
+    }
+
+    void ShowAllStats()
+    {
+        var sb = new System.Text.StringBuilder();
+        var v = HvValues();
+        for (int i = 2; i < HvStatNames.Length; i++)
+        {
+            int sub = HvStatSub[i];
+            string g = sub >= 0 ? "<color=" + Hex(SubColors[sub]) + ">" + SubGlyphs[sub] + "</color> " : "";
+            sb.Append(g + HvStatNames[i] + "   <color=#FFC07A>" + v[i] + "</color>\n");
+        }
+        ShowInfo("Statistiques", sb.ToString());
     }
 }

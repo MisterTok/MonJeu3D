@@ -109,6 +109,7 @@ public partial class ForgeUI : MonoBehaviour
 
     // ---------- Construction de l'écran (disposition inspirée de Forge Master) ----------
     RectTransform anvilRect;
+    GameObject autoLock, upgradeCoin;
     Text anvilText;
 
     void Create()
@@ -175,6 +176,7 @@ public partial class ForgeUI : MonoBehaviour
         // Niveau de forge (droite)
         upgradeBtn = MakeButton(forgeRow, "Forge niveau", new Vector2(0.74f, 0.42f), new Vector2(1f, 0.82f), new Vector2(6, 0), new Vector2(-18, 0),
             new Color(0.62f, 0.22f, 0.06f), "", 30, out upgradeText, OnUpgrade);
+        upgradeCoin = UISkin.Icon(upgradeBtn.transform, "i_gold", new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(-74, 10), new Vector2(-30, 54)).gameObject;
         speedUpBtn = MakeButton(forgeRow, "Accélérer", new Vector2(0.74f, 0.12f), new Vector2(1f, 0.38f), new Vector2(6, 0), new Vector2(-18, 0),
             new Color(0.12f, 0.4f, 0.55f), "", 26, out speedUpText, OnSpeedUp);
         forgeLevelText = Label(forgeRow, "", 34, TextAnchor.LowerCenter, Ember, new Vector2(0.74f, 0.82f), new Vector2(1f, 1f), new Vector2(6, 0), new Vector2(-18, 0));
@@ -183,7 +185,8 @@ public partial class ForgeUI : MonoBehaviour
         MakeButton(forgeRow, "Chances", new Vector2(0f, 0.5f), new Vector2(0.26f, 0.82f), new Vector2(18, 0), new Vector2(-6, 0),
             new Color(0.2f, 0.1f, 0.08f), "", 24, out oddsText, ShowOdds);
         autoBtn = MakeButton(forgeRow, "Auto", new Vector2(0f, 0.12f), new Vector2(0.26f, 0.44f), new Vector2(18, 0), new Vector2(-6, 0),
-            new Color(0.25f, 0.25f, 0.3f), "Auto", 28, out autoText, OnAutoToggle);
+            new Color(0.25f, 0.25f, 0.3f), "Auto", 30, out autoText, OnAutoToggle);
+        autoLock = UISkin.Icon(autoBtn.transform, "i_lock", new Vector2(1, 1), new Vector2(1, 1), new Vector2(-40, -36), new Vector2(8, 12)).gameObject;
 
         // ----- Équipement : 2 rangées de 4, tuiles compactes -----
         // Bandeau de pierre derrière les tuiles (entre le chemin et la forge)
@@ -206,6 +209,7 @@ public partial class ForgeUI : MonoBehaviour
             slotIcon[i].raycastTarget = false;
             slotLevel[i] = Label(slotBg[i].transform, "", 24, TextAnchor.UpperLeft, TextMain, Vector2.zero, Vector2.one, new Vector2(10, 6), new Vector2(-6, -6));
             slotText[i] = Label(slotBg[i].transform, "", 25, TextAnchor.LowerCenter, TextMain, Vector2.zero, Vector2.one, new Vector2(6, 6), new Vector2(-6, -6));
+            iconRt.offsetMin = new Vector2(-70, -66); iconRt.offsetMax = new Vector2(70, 66);
         }
 
         BuildPassButton(R);
@@ -293,9 +297,11 @@ public partial class ForgeUI : MonoBehaviour
         MakeButton(P, "Apparence", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-150, 24), new Vector2(150, 84),
             new Color(0.3f, 0.18f, 0.4f), "", 26, out skinText, () => { GameState.Data.heroSkin = 1 - GameState.Data.heroSkin; GameState.Save(); RefreshSkinButton(); battle.RespawnHero(); });
         RefreshSkinButton();
+        skinText.transform.parent.gameObject.SetActive(false);   // ancienne bascule chevalier / Valkyrie : remplacée par les skins
         Text resetT;
-        MakeButton(P, "Reset", new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(24, 24), new Vector2(200, 84),
+        var resetBtn = MakeButton(P, "Reset", new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(24, 24), new Vector2(200, 84),
             new Color(0.2f, 0.08f, 0.08f, 0.9f), "Reset (test)", 20, out resetT, () => { GameState.ResetAll(); world.DismissItem(false); HidePopup(); statsPanel.SetActive(false); });
+        resetBtn.gameObject.SetActive(Application.isEditor);   // outil de test : seulement dans l'éditeur
         statsPanel.SetActive(false);
     }
 
@@ -463,7 +469,7 @@ public partial class ForgeUI : MonoBehaviour
         popName.color = Color.Lerp(c, Color.white, 0.25f);
         int left = GameState.Data.forged.Count;
         popRemain.text = left > 0 ? "encore " + left : "";
-        popInfo.text = "Cercle " + (it.circle + 1) + " : " + GameState.CircleNames[it.circle];
+        popInfo.text = "";
         var cur = GameState.Data.equipped[it.slot];
         int cmp = !cur.valid ? 1 : it.MainStat.CompareTo(cur.MainStat);
         SetPopTile(popCur, cur, TextDim);
@@ -477,7 +483,7 @@ public partial class ForgeUI : MonoBehaviour
         SetPills(popPills, it.subs, it.subVals);
         int rows = (it.SubCount + 1) / 2;
         popSubs.rectTransform.offsetMax = new Vector2(-20, rows == 0 ? -560 : -566 - rows * 72);
-        popSubs.text = cur.valid && cur.SubCount > 0 ? "Équipé : " + SubsRich(cur, "   ") : "";
+        popSubs.text = "";
         popSellText.text = "VENDRE\n+" + GameState.Fmt(it.SellValue) + " or";
         popup.SetActive(true);
         Refresh();
@@ -622,14 +628,14 @@ public partial class ForgeUI : MonoBehaviour
         var d = GameState.Data;
         goldText.text = GameState.Fmt(d.gold);
         gemText.text = GameState.Fmt(d.gems);
-        statsText.text = "<size=40><color=#FFC54A>      " + GameState.Fmt(GameState.Power()) + "</color></size>\n<size=26>ATQ " + GameState.Fmt(GameState.TotalAtk()) + "   PV " + GameState.Fmt(GameState.TotalHp()) + "</size>";
+        statsText.text = "<size=46><color=#FFC54A>      " + GameState.Fmt(GameState.Power()) + "</color></size>";
 
         forgeLevelText.text = (d.forgeStars > 0 ? "<color=#FFD24A>" + GameState.StarText(d.forgeStars) + "</color> " : "") + "Forge niv. " + d.forgeLevel + (GameState.IsMaxLevel ? " (max)" : "");
         // Bouton des chances : seulement le meilleur cercle possible
         var odds = GameState.CurrentOdds();
         int best = 0;
         for (int i = 0; i < odds.Length; i++) if (odds[i] > 0f) best = i;
-        oddsText.text = "Chances <color=#9FC8FF>(?)</color>\n<color=" + Hex(GameState.CircleColors[best]) + ">" + GameState.CircleNames[best] + " " + odds[best].ToString("0.##") + "%</color>";
+        oddsText.text = "Chances\n<size=20><color=" + Hex(GameState.CircleColors[best]) + ">" + GameState.CircleNames[best] + "</color></size>";
 
         for (int i = 0; i < GameState.SlotCount; i++)
         {
@@ -640,8 +646,8 @@ public partial class ForgeUI : MonoBehaviour
                 slotBg[i].color = Color.Lerp(c, Color.white, 0.12f);
                 slotIcon[i].texture = ItemIcons.Get(it);
                 slotIcon[i].color = Color.white;
-                slotLevel[i].text = (it.stars > 0 ? "<color=#FFD24A>" + GameState.StarText(it.stars) + "</color> " : "") + "<b>Niv. " + it.level + "</b>" + (it.SubCount > 0 ? "\n<size=30>" + SubDots(it.subs) + "</size>" : "");
-                slotText[i].text = "<size=23>" + it.StatLabel + " " + GameState.Fmt(it.MainStat) + "</size>";
+                slotLevel[i].text = it.stars > 0 ? "<color=#FFD24A>" + GameState.StarText(it.stars) + "</color>" : "";
+                slotText[i].text = "Niv. " + it.level;
             }
             else
             {
@@ -650,7 +656,7 @@ public partial class ForgeUI : MonoBehaviour
                 slotIcon[i].texture = ItemIcons.Get(i, 0);
                 slotIcon[i].color = new Color(0f, 0f, 0f, 0.55f);
                 slotLevel[i].text = "";
-                slotText[i].text = "<b>" + GameState.SlotNames[i] + "</b>  <color=#776655>vide</color>";
+                slotText[i].text = "";
             }
         }
         RefreshTimers();
@@ -663,12 +669,14 @@ public partial class ForgeUI : MonoBehaviour
         hammerText.text = d.hammers + (next > 0 && d.hammers < GameState.HammerCap ? "  <size=22>+1 " + next + "s</size>" : "");
 
         bool autoOn = GameState.AutoForgeUnlocked && GameState.Data.autoForge;
-        autoText.text = !GameState.AutoForgeUnlocked ? "Auto\n<size=18>verrouillé</size>" : autoOn ? "Auto\n<size=20>ACTIVÉ</size>" : "Auto\n<size=20>arrêté</size>";
+        autoText.text = "Auto";
+        autoLock.SetActive(!GameState.AutoForgeUnlocked);
         autoBtn.GetComponent<Image>().color = UISkin.Vivid(autoOn ? new Color(0.2f, 0.55f, 0.25f) : new Color(0.25f, 0.25f, 0.3f));
         bool canForge = GameState.CanForge && !world.Busy;
         forgeBtn.interactable = canForge;
         forgeBtnText.text = d.hammers > 0 ? (d.totalForged < 3 ? "Touche l'enclume !" : "") : "Plus de marteaux";
 
+        upgradeCoin.SetActive(!GameState.IsMaxLevel && !d.upgrading);
         if (GameState.IsMaxLevel)
         {
             bool canAsc = GameState.Stars(GameState.AscForge) < GameState.MaxStars;
@@ -688,7 +696,7 @@ public partial class ForgeUI : MonoBehaviour
         {
             upgradeBtn.interactable = d.gold >= GameState.NodeCost;
             string nodes = GameState.NodesNeeded > 1 ? " (" + (d.nodesPaid + 1) + "/" + GameState.NodesNeeded + ")" : "";
-            upgradeText.text = "Améliorer" + nodes + "\n<size=26>" + GameState.Fmt(GameState.NodeCost) + " or</size>";
+            upgradeText.text = "Améliorer" + nodes + "\n<size=28>      " + GameState.Fmt(GameState.NodeCost) + "</size>";
             speedUpBtn.gameObject.SetActive(false);
         }
     }

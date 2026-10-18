@@ -209,7 +209,7 @@ public partial class ForgeUI
             int left = b.perDay - d.shopBundleBuys[i];
             bundleBtn[i].interactable = left > 0 && d.gems >= b.price;
             bundleText[i].text = RewardAmount(b.currency, b.amount);
-            bundleLeft[i].text = left + "/" + b.perDay;
+            bundleLeft[i].text = left < b.perDay ? left + "/" + b.perDay : "";
             bundlePrice[i].text = b.price.ToString();
         }
     }

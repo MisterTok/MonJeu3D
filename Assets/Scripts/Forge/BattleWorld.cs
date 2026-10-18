@@ -1059,7 +1059,7 @@ public class BattleWorld : MonoBehaviour
         if (target.spr != null) target.spr.Flash();
         if (crit) Sfx.Crit(); else Sfx.Hit();
         float h = target.def.height * (target.boss ? 1.7f : 1f) + target.def.fly * 0.2f + (isDouble ? 0.35f : 0f);
-        string label = (isDouble ? "DOUBLE " : "") + (crit ? "CRITIQUE " : "") + GameState.Fmt(dmg);
+        string label = GameState.Fmt(dmg) + (crit ? "!" : "");
         ShowPopup(target.go.transform.position + Vector3.up * h, label,
             crit ? new Color(1f, 0.55f, 0.1f) : isDouble ? new Color(0.6f, 0.85f, 1f) : Color.white, crit ? 46 : 36);
 
@@ -1068,7 +1068,7 @@ public class BattleWorld : MonoBehaviour
         if (ls > 0f && !hero.dead)
         {
             double heal = System.Math.Min(hero.maxHp - hero.hp, dmg * ls);
-            if (heal >= 1) { hero.hp += heal; ShowPopup(hero.go.transform.position + Vector3.up * 2.2f, "+" + GameState.Fmt(heal), new Color(0.4f, 1f, 0.45f), 28); }
+            if (heal >= 1) hero.hp += heal;
         }
 
         if (target.hp <= 0) KillEnemy(target);
@@ -1085,7 +1085,6 @@ public class BattleWorld : MonoBehaviour
         Sfx.Coin();
         long gold = (long)System.Math.Max(1, System.Math.Round(GameState.KillGold(target.boss) * target.share));
         GameState.AddGold(gold);
-        ShowPopup(target.go.transform.position + Vector3.up * 0.4f, "+" + GameState.Fmt(gold) + " or", new Color(1f, 0.82f, 0.3f), 34);
         hero.cooldown = Mathf.Min(hero.cooldown, 0.35f);
     }
 
@@ -1266,7 +1265,6 @@ public class BattleWorld : MonoBehaviour
         sl.cd = def.cooldown;
         Sfx.Cast();
         Vector3 heroPos = hero.go.transform.position;
-        ShowPopup(heroPos + Vector3.up * 2.7f, def.name, Color.Lerp(def.color, Color.white, 0.3f), 30);
         double dmg = GameState.SkillDamage(own);
         switch (def.kind)
         {
