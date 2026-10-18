@@ -36,6 +36,7 @@ public partial class ForgeUI
         missionEnergy = Label(P, "", 32, TextAnchor.MiddleLeft, new Color(1f, 0.85f, 0.4f), new Vector2(0, 1), new Vector2(0.6f, 1), new Vector2(30, -170), new Vector2(0, -96));
         refreshBtn = MakeButton(P, "Nouvelle liste", new Vector2(0.6f, 1), new Vector2(1, 1), new Vector2(0, -168), new Vector2(-20, -98),
             new Color(0.35f, 0.2f, 0.5f), "", 24, out refreshText, () => { string e = GameState.RefreshMissionList(); if (e != null) Toast(e); RefreshMissions(); });
+        PriceIcon(refreshBtn, refreshText, "i_gem", 40);
 
         for (int i = 0; i < MissionData.OfferCount; i++)
         {
@@ -112,8 +113,8 @@ public partial class ForgeUI
         if (passPanel != null && passPanel.activeSelf) RefreshPass();
         if (missionPanel == null || !missionPanel.activeSelf) return;
         var d = GameState.Data;
-        missionEnergy.text = "Énergie  <b>" + d.missionEnergy + "/" + MissionData.DailyEnergy + "</b>";
-        refreshText.text = "Nouvelle liste\n<size=20>" + MissionData.RefreshGemCost + " gemmes</size>";
+        missionEnergy.text = "<color=#FFE070>⚡</color> <b>" + d.missionEnergy + "/" + MissionData.DailyEnergy + "</b>";
+        refreshText.text = "Changer  " + MissionData.RefreshGemCost;
         refreshBtn.interactable = d.gems >= MissionData.RefreshGemCost;
         bool can = GameState.CanStartMission && !battle.InDungeon;
         for (int i = 0; i < MissionData.OfferCount; i++)
@@ -121,12 +122,12 @@ public partial class ForgeUI
             int squad = d.missionSquad[i], lvl = d.missionLevel[i];
             int units = GameState.MissionUnits(i);
             missionTitle[i].text = MissionData.SquadNames[squad] + "  <size=26><color=#FFD27A>niv. " + lvl + "</color></size>";
-            missionInfo[i].text = units + " ennemi" + (units > 1 ? "s" : "") + "  ·  " + MissionDifficulty(i);
+            missionInfo[i].text = MissionDifficulty(i);
             missionBtn[i].interactable = can;
             missionBtnText[i].text = d.missionEnergy > 0 ? "LANCER" : "DEMAIN";
         }
         var t = GameState.TimeToKeyRefresh();
-        missionFooter.text = "Énergie et nouvelle liste dans " + GameState.FmtTime((long)t.TotalSeconds);
+        missionFooter.text = GameState.FmtTime((long)t.TotalSeconds);
     }
 
     // ---------- Pass de progression ----------
@@ -213,7 +214,7 @@ public partial class ForgeUI
             ol.effectColor = claimed ? new Color(0.3f, 0.3f, 0.3f) : reached ? new Color(0.5f, 1f, 0.4f) : new Color(0.5f, 0.35f, 0.15f);
             passRowText[i].text = "<b>" + GameState.StageName(MissionData.PassStage[i]).Replace(" ", "\n") + "</b>";
             passRowBtn[i].interactable = reached && !claimed;
-            passRowBtnText[i].text = claimed ? "Pris ✔" : reached ? "RÉCUPÉRER" : "Verrouillé";
+            passRowBtnText[i].text = claimed ? "✔" : reached ? "RÉCUPÉRER" : "";
         }
     }
 }

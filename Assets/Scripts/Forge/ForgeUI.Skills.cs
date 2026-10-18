@@ -81,7 +81,7 @@ public partial class ForgeUI
         var d = GameState.Data;
         SetSummonBar(skillSummon, "Tickets", d.skillTickets, GameState.SkillSummonCost, SkillData.SummonSmall, SkillData.SummonBig,
             d.skillSummonLevel, d.skillSummonProgress, GameState.SkillSummonRequired, GameState.AscSkills);
-        skillPassive.text = "Bonus de collection  <color=#FFC07A>+" + GameState.Fmt(GameState.SkillPassiveDamage()) + " ATQ   +" + GameState.Fmt(GameState.SkillPassiveHealth()) + " PV</color>";
+        skillPassive.text = "";
 
         for (int i = 0; i < 3; i++)
         {

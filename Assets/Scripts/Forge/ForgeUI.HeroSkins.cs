@@ -75,19 +75,19 @@ public partial class ForgeUI
         if (skinsPanel == null || !skinsPanel.activeSelf) return;
         var gd = GameState.Data;
         skinEventText.text = SteppingStones.Unlocked
-            ? "PAS JAPONAIS\n<size=24>" + SteppingStones.SeasonPack + "</size>\n<size=22>Jetons " + gd.ssTokens + "</size>"
+            ? "PAS JAPONAIS\n<size=24>" + SteppingStones.SeasonPack + "</size>"
             : "PAS JAPONAIS\n<size=22>" + GameState.UnlockText(SteppingStones.Unlock) + "</size>";
         var eq = HeroSkins.Find(GameState.Data.skinEquipped);
         if (eq == null || !HeroSkins.Owned(eq.id))
         {
             SetEmptySlot(skinEqTile);
-            skinEqText.text = "<color=#776655>Aucun skin : le héros montre son équipement</color>";
+            skinEqText.text = "";
         }
         else
         {
             SetTile(skinEqTile, eq.rarity, SkinIcon(eq.id), "?", ProgressionData.RarityColors[eq.rarity], 1, 1, 1, false);
             skinEqTile.barBg.gameObject.SetActive(false);
-            skinEqText.text = "<b>" + eq.name + "</b>\n<size=24><color=#FFC07A>+" + GameState.FmtPct(HeroSkins.Bonus(eq.rarity)) + "</color> dégâts et vie</size>";
+            skinEqText.text = "<b>" + eq.name + "</b>";
         }
         for (int i = 0; i < HeroSkins.All.Length; i++)
         {

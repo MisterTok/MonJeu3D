@@ -77,14 +77,14 @@ public partial class ForgeUI
         if (eq == null)
         {
             SetEmptySlot(mountEqTile);
-            mountEqText.text = "<color=#776655>Aucune monture</color>";
+            mountEqText.text = "";
         }
         else
         {
             var def = ProgressionData.Mounts[eq.id];
             var c = ProgressionData.RarityColors[def.rarity];
             SetTile(mountEqTile, def.rarity, ItemIcons.GetCreature(def.model, c, 0.15f), null, c, eq.level, eq.copies, eq.level, false);
-            mountEqText.text = "<b>" + def.name + "</b>\n<size=26><color=#FFC07A>+" + GameState.FmtPct((float)GameState.MountDamageBonus()) + "</color> dégâts et vie</size>";
+            mountEqText.text = "<b>" + def.name + "</b>";
         }
 
         for (int i = 0; i < 15; i++)

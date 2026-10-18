@@ -37,7 +37,8 @@ public partial class ForgeUI
         MakeButton(P, "Fermer", new Vector2(1, 1), new Vector2(1, 1), new Vector2(-110, -86), new Vector2(-20, -16),
             new Color(0.45f, 0.14f, 0.1f), "X", 40, out closeT, () => techPanel.SetActive(false));
 
-        techHeader = Label(P, "", 28, TextAnchor.MiddleLeft, TextMain, new Vector2(0, 1), new Vector2(0.72f, 1), new Vector2(24, -160), new Vector2(0, -88));
+        UISkin.Icon(P, "i_potion", new Vector2(0, 1), new Vector2(0, 1), new Vector2(18, -156), new Vector2(78, -96));
+        techHeader = Label(P, "", 28, TextAnchor.MiddleLeft, TextMain, new Vector2(0, 1), new Vector2(0.72f, 1), new Vector2(84, -160), new Vector2(0, -88));
         techFinishBtn = MakeButton(P, "Finir recherche", new Vector2(0.72f, 1), new Vector2(1, 1), new Vector2(0, -156), new Vector2(-20, -92),
             new Color(0.15f, 0.45f, 0.65f), "", 24, out techFinishText, () => { if (!GameState.SpeedUpResearch()) Toast("Pas assez de gemmes"); });
 
@@ -197,10 +198,10 @@ public partial class ForgeUI
         }
         else
         {
-            res = "<color=#998877>Aucune recherche</color>";
+            res = "";
             techFinishBtn.gameObject.SetActive(false);
         }
-        techHeader.text = "<color=#FF8A7A>Potions  <b>" + GameState.Fmt(d.potions) + "</b></color>\n<size=24>" + res + "</size>";
+        techHeader.text = "<color=#FF8A7A><b>" + GameState.Fmt(d.potions) + "</b></color>\n<size=24>" + res + "</size>";
 
         int tr = techTree;
         for (int id = 0; id < nodeBtn[tr].Count; id++)

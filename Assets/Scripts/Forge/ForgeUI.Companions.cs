@@ -148,15 +148,15 @@ public partial class ForgeUI
         var d = GameState.Data;
         SetSummonBar(compSummon, "Coquilles", d.eggshells, ProgressionData.EggSummonCost, 1, 15, d.eggSummonLevel, d.eggSummonProgress, GameState.EggSummonRequired, GameState.AscPets);
 
-        var sb = new System.Text.StringBuilder("Œufs ");
+        var sb = new System.Text.StringBuilder();
         bool any = false;
         for (int r = 0; r < 6; r++)
         {
             if (d.eggs[r] <= 0) continue;
             any = true;
-            sb.Append("  <color=" + Hex(ProgressionData.RarityColors[r]) + ">● " + d.eggs[r] + "</color>");
+            sb.Append("<color=" + Hex(ProgressionData.RarityColors[r]) + ">● " + d.eggs[r] + "</color>   ");
         }
-        compEggs.text = any ? sb.ToString() : "Œufs  <color=#776655>aucun</color>";
+        compEggs.text = any ? sb.ToString() : "";
 
         for (int i = 0; i < ProgressionData.IncubatorMax; i++)
         {

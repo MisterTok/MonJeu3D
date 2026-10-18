@@ -243,9 +243,8 @@ public partial class ForgeUI
             bool owned = HeroSkins.Owned(s.id);
             SetTile(ssSkinTile[i], s.rarity, SkinIcon(s.id), "?", ProgressionData.RarityColors[s.rarity], 1, 1, 1, owned && d.skinEquipped == s.id);
             ssSkinTile[i].barBg.gameObject.SetActive(false);
-            string how = i == 0 && l.Count > 1 ? "1 % à la pierre " + SteppingStones.RareRow + "\n(ou au bout du chemin)" : "Bout du chemin";
-            ssSkinText[i].text = "<b>" + s.name + "</b>\n<size=21>+" + GameState.FmtPct(HeroSkins.Bonus(s.rarity)) + " dégâts et vie</size>\n<size=21>"
-                + (owned ? "<color=#8FE08F>Obtenu</color>" : "<color=#FFC07A>" + how + "</color>") + "</size>";
+            string how = i == 0 && l.Count > 1 ? "1 % · pierre " + SteppingStones.RareRow : "Bout du chemin";
+            ssSkinText[i].text = "<b>" + s.name + "</b>\n<size=22>" + (owned ? "<color=#8FE08F>✔</color>" : "<color=#FFC07A>" + how + "</color>") + "</size>";
         }
 
         // Pierres : rangées franchies (côté choisi en clair), rangée à jouer, rangées à venir.
@@ -264,11 +263,9 @@ public partial class ForgeUI
         var icon = !string.IsNullOrEmpty(shown) ? SkinIcon(shown) as Texture2D : null;
         if (icon != null) ssMarkerImg.sprite = Sprite.Create(icon, new Rect(0, 0, icon.width, icon.height), new Vector2(0.5f, 0f), 100f);
         else ssMarkerImg.sprite = UISkin.Get("i_hero");
-        if (clearInfo)
-            ssInfo.text = !SteppingStones.Active ? "" : pos > 0 ? "Pierre " + pos + "/" + SteppingStones.Rows + " : touche une pierre de la rangée suivante"
-                : d.ssTokens > 0 ? "Touche une pierre pour partir (1 jeton)" : "Plus de jetons";
+        if (clearInfo) ssInfo.text = "";
         ssAutoBtn.interactable = SteppingStones.Active && pos == 0 && d.ssTokens >= SteppingStones.AutoMin;
-        ssAutoText.text = "AUTO x" + SteppingStones.AutoRuns + "\n<size=20>dès " + SteppingStones.AutoMin + " jetons</size>";
-        ssBuyText.text = SteppingStones.FreeAvailable ? "<b>" + SteppingStones.FreeTokens + " jetons offerts</b>\n<size=20>dans la boutique</size>" : "Jetons\n<size=20>boutique</size>";
+        ssAutoText.text = "AUTO x" + SteppingStones.AutoRuns;
+        ssBuyText.text = SteppingStones.FreeAvailable ? "+" + SteppingStones.FreeTokens + " GRATUIT" : "+ Jetons";
     }
 }

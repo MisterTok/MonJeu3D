@@ -156,7 +156,7 @@ public partial class ForgeUI
         if (shopTimerTick > 0f) return;
         shopTimerTick = 1f;
         var t = GameState.TimeToShopRefresh();
-        shopTimer.text = "Renouvellement dans " + GameState.FmtTime((long)t.TotalSeconds);
+        shopTimer.text = GameState.FmtTime((long)t.TotalSeconds);
     }
 
     void RefreshShop()

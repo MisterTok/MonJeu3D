@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-// Le chemin des Enfers : le héros avance, affronte des vagues de démons et des boss, en automatique.
+// Le chemin des Enfers : le héros avance et affronte des vagues de démons, en automatique (pas de boss, comme FM).
 public class BattleWorld : MonoBehaviour
 {
     // ---------- Réglages visuels (orientation des modèles) ----------
@@ -63,19 +63,19 @@ public class BattleWorld : MonoBehaviour
         { "SkelMage", "Necromancer_of_the_Shadow_2" }, { "Dragon", "Reaper_Man_3" },
     };
     // Ennemis : peu de variété (comme FM) et UNIQUEMENT les personnages gratuits de chaque pack Craftpix ;
-    // les 2 plus beaux de chaque pack sont réservés aux skins du Pas japonais (HeroSkins). { ennemi, ennemi, boss }
+    // les 2 plus beaux de chaque pack sont réservés aux skins du Pas japonais (HeroSkins). Pas de boss (comme FM).
     static readonly string[][] SpriteCircleEnemies =
     {
-        new[]{ "Skeleton_Crusader_2", "Forest_Ranger_2", "Skeleton_Crusader_2" },
-        new[]{ "Skeleton_Crusader_2", "Seer_2", "Seer_2" },
-        new[]{ "Bloody_Alchemist_3", "Skeleton_Crusader_2", "Bloody_Alchemist_3" },
-        new[]{ "Forest_Ranger_2", "Dark_Oracle_2", "Dark_Oracle_2" },
-        new[]{ "Skeleton_Crusader_2", "Bloody_Alchemist_3", "Bloody_Alchemist_3" },
-        new[]{ "Necromancer_of_the_Shadow_2", "Dark_Oracle_2", "Necromancer_of_the_Shadow_2" },
-        new[]{ "Reaper_Man_3", "Skeleton_Crusader_2", "Reaper_Man_3" },
-        new[]{ "Seer_2", "Reaper_Man_3", "Reaper_Man_3" },
-        new[]{ "Necromancer_of_the_Shadow_2", "Reaper_Man_3", "Necromancer_of_the_Shadow_2" },
-        new[]{ "Reaper_Man_3", "Necromancer_of_the_Shadow_2", "Reaper_Man_3" },
+        new[]{ "Skeleton_Crusader_2", "Forest_Ranger_2" },
+        new[]{ "Skeleton_Crusader_2", "Seer_2" },
+        new[]{ "Bloody_Alchemist_3", "Skeleton_Crusader_2" },
+        new[]{ "Forest_Ranger_2", "Dark_Oracle_2" },
+        new[]{ "Skeleton_Crusader_2", "Bloody_Alchemist_3" },
+        new[]{ "Necromancer_of_the_Shadow_2", "Dark_Oracle_2" },
+        new[]{ "Reaper_Man_3", "Skeleton_Crusader_2" },
+        new[]{ "Seer_2", "Reaper_Man_3" },
+        new[]{ "Necromancer_of_the_Shadow_2", "Reaper_Man_3" },
+        new[]{ "Reaper_Man_3", "Necromancer_of_the_Shadow_2" },
     };
     static bool? spritesOn;
     static bool SpritesOn => spritesOn ?? (spritesOn = SpriteChar.Has(HeroSprite)).Value;
@@ -789,7 +789,7 @@ public class BattleWorld : MonoBehaviour
         var lavaCol = Color.Lerp(new Color(1f, 0.3f, 0.05f), GameState.CircleColors[circle], 0.35f) * 1.8f;
         riverMat.SetColor("_BaseColor", Color.Lerp(new Color(2.6f, 1.3f, 0.7f), GameState.CircleColors[circle] * 2.6f, 0.3f));
         wave = 0;
-        waveCount = missionSlot >= 0 ? 1 : dungeon == GameState.DungeonHammer ? 1 : dungeon >= 0 ? 3 : GameState.IsBossStage ? 2 : 3;
+        waveCount = missionSlot >= 0 ? 1 : dungeon == GameState.DungeonHammer ? 1 : 3;
         waveSpawned = false;
         if (missionSlot >= 0)
         {
@@ -824,7 +824,6 @@ public class BattleWorld : MonoBehaviour
         else
         {
             stageText.text = GameState.StageLabel;
-            if (GameState.IsBossStage) ShowBanner("BOSS !", new Color(1f, 0.3f, 0.2f));
         }
     }
 
@@ -852,16 +851,17 @@ public class BattleWorld : MonoBehaviour
             return;
         }
         var pool = (SpritesOn ? SpriteCircleEnemies : CircleEnemies)[GameState.StageCircle];
-        bool bossWave = GameState.IsBossStage && wave == waveCount - 1;
-        if (bossWave) { SpawnEnemy(pool[pool.Length - 1], x, true); }   // le dernier de la liste est le boss
-        else
+        // Comme dans FM : pas de boss. La dernière vague de l'étape 10 d'un cercle est simplement plus nombreuse
+        // (sa difficulté remplace celle de l'ancien boss : 8 ennemis aux 3/4 des PV).
+        bool bigWave = GameState.IsBossStage && wave == waveCount - 1;
+        int minions = SpritesOn ? pool.Length : pool.Length - 1;
         {
-            int count = 2 + (wave == 2 ? 1 : 0);
+            int count = bigWave ? 4 : 2 + (wave == 2 ? 1 : 0);
             // Vue Forge Master : des groupes deux fois plus nombreux, chacun avec la moitié des PV et du butin.
             int k = decor != null ? 2 : 1;
-            waveShare = 1.0 / k;
+            waveShare = (bigWave ? 1.5 : 1.0) / k;
             for (int i = 0; i < count * k; i++)
-                SpawnEnemy(pool[Random.Range(0, pool.Length - 1)], x + i * Spacing * (decor != null ? 0.75f : 1.3f), false);
+                SpawnEnemy(pool[Random.Range(0, minions)], x + i * Spacing * (decor != null ? 0.75f : 1.3f), false);
             waveShare = 1;
         }
         waveSpawned = true;
@@ -1501,9 +1501,8 @@ public class BattleWorld : MonoBehaviour
         var sbw = new System.Text.StringBuilder();
         for (int i = 0; i < waveCount; i++)
         {
-            bool bossDot = GameState.IsBossStage && i == waveCount - 1;
             string col = i < wave ? "#5FB8FF" : i == wave ? "#FFFFFF" : "#665555";
-            sbw.Append("<color=" + col + ">" + (bossDot ? "☠" : "●") + "</color>");
+            sbw.Append("<color=" + col + ">●</color>");
             if (i < waveCount - 1) sbw.Append(i < wave ? "<color=#5FB8FF> ━━ </color>" : "<color=#665555> ━━ </color>");
         }
         waveText.text = sbw.ToString();
