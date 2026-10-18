@@ -262,7 +262,6 @@ public partial class ForgeUI
         ssMarkerImg.sprite = null;
         var shown = HeroSkins.Shown;
         var icon = !string.IsNullOrEmpty(shown) ? SkinIcon(shown) as Texture2D : null;
-        if (icon == null) icon = Resources.Load<Texture2D>("ForgeSprites/SkinIcons/Valkyrie_1");
         if (icon != null) ssMarkerImg.sprite = Sprite.Create(icon, new Rect(0, 0, icon.width, icon.height), new Vector2(0.5f, 0f), 100f);
         else ssMarkerImg.sprite = UISkin.Get("i_hero");
         if (clearInfo)

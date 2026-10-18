@@ -176,7 +176,7 @@ public partial class ForgeUI : MonoBehaviour
         // Niveau de forge (droite)
         upgradeBtn = MakeButton(forgeRow, "Forge niveau", new Vector2(0.74f, 0.42f), new Vector2(1f, 0.82f), new Vector2(6, 0), new Vector2(-18, 0),
             new Color(0.62f, 0.22f, 0.06f), "", 30, out upgradeText, OnUpgrade);
-        upgradeCoin = UISkin.Icon(upgradeBtn.transform, "i_gold", new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(-74, 10), new Vector2(-30, 54)).gameObject;
+        upgradeCoin = UISkin.Icon(upgradeBtn.transform, "i_gold", new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(-66, 26), new Vector2(-28, 64)).gameObject;
         speedUpBtn = MakeButton(forgeRow, "Accélérer", new Vector2(0.74f, 0.12f), new Vector2(1f, 0.38f), new Vector2(6, 0), new Vector2(-18, 0),
             new Color(0.12f, 0.4f, 0.55f), "", 26, out speedUpText, OnSpeedUp);
         forgeLevelText = Label(forgeRow, "", 34, TextAnchor.LowerCenter, Ember, new Vector2(0.74f, 0.82f), new Vector2(1f, 1f), new Vector2(6, 0), new Vector2(-18, 0));

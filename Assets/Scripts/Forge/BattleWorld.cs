@@ -57,23 +57,25 @@ public class BattleWorld : MonoBehaviour
     // Anciens noms (missions, donjons) -> personnage 2D.
     static readonly Dictionary<string, string> SpriteAlias = new Dictionary<string, string>
     {
-        { "Rat", "Forest_Ranger_1" }, { "Spider", "Seer_1" }, { "Snake", "Bloody_Alchemist_1" }, { "SnakeAngry", "Bloody_Alchemist_3" },
-        { "Wasp", "Dark_Oracle_1" }, { "Bat", "Dark_Oracle_2" }, { "Frog", "Forest_Ranger_2" }, { "Slime", "Seer_2" },
-        { "Skeleton", "Skeleton_Crusader_1" }, { "Zombie", "Skeleton_Crusader_2" }, { "SkelRogue", "Reaper_Man_1" },
-        { "SkelMage", "Necromancer_of_the_Shadow_1" }, { "Dragon", "Reaper_Man_3" },
+        { "Rat", "Forest_Ranger_2" }, { "Spider", "Seer_2" }, { "Snake", "Bloody_Alchemist_3" }, { "SnakeAngry", "Bloody_Alchemist_3" },
+        { "Wasp", "Dark_Oracle_2" }, { "Bat", "Dark_Oracle_2" }, { "Frog", "Forest_Ranger_2" }, { "Slime", "Seer_2" },
+        { "Skeleton", "Skeleton_Crusader_2" }, { "Zombie", "Skeleton_Crusader_2" }, { "SkelRogue", "Reaper_Man_3" },
+        { "SkelMage", "Necromancer_of_the_Shadow_2" }, { "Dragon", "Reaper_Man_3" },
     };
+    // Ennemis : peu de variété (comme FM) et UNIQUEMENT les personnages gratuits de chaque pack Craftpix ;
+    // les 2 plus beaux de chaque pack sont réservés aux skins du Pas japonais (HeroSkins). { ennemi, ennemi, boss }
     static readonly string[][] SpriteCircleEnemies =
     {
-        new[]{ "Skeleton_Crusader_1", "Forest_Ranger_1", "Bloody_Alchemist_1", "Valkyrie_2" },
-        new[]{ "Skeleton_Crusader_1", "Seer_1", "Forest_Ranger_2", "Dark_Oracle_1" },
-        new[]{ "Skeleton_Crusader_2", "Bloody_Alchemist_2", "Seer_2", "Necromancer_of_the_Shadow_1" },
-        new[]{ "Skeleton_Crusader_2", "Forest_Ranger_3", "Dark_Oracle_2", "Reaper_Man_1" },
-        new[]{ "Skeleton_Crusader_3", "Seer_3", "Bloody_Alchemist_3", "Valkyrie_3" },
-        new[]{ "Skeleton_Crusader_3", "Necromancer_of_the_Shadow_2", "Dark_Oracle_3", "Reaper_Man_2" },
-        new[]{ "Skeleton_Crusader_1", "Reaper_Man_1", "Necromancer_of_the_Shadow_1", "Necromancer_of_the_Shadow_3" },
-        new[]{ "Skeleton_Crusader_2", "Reaper_Man_2", "Dark_Oracle_3", "Seer_3" },
-        new[]{ "Skeleton_Crusader_3", "Necromancer_of_the_Shadow_3", "Reaper_Man_2", "Reaper_Man_3" },
-        new[]{ "Skeleton_Crusader_3", "Reaper_Man_3", "Necromancer_of_the_Shadow_2", "Dark_Oracle_3" },
+        new[]{ "Skeleton_Crusader_2", "Forest_Ranger_2", "Skeleton_Crusader_2" },
+        new[]{ "Skeleton_Crusader_2", "Seer_2", "Seer_2" },
+        new[]{ "Bloody_Alchemist_3", "Skeleton_Crusader_2", "Bloody_Alchemist_3" },
+        new[]{ "Forest_Ranger_2", "Dark_Oracle_2", "Dark_Oracle_2" },
+        new[]{ "Skeleton_Crusader_2", "Bloody_Alchemist_3", "Bloody_Alchemist_3" },
+        new[]{ "Necromancer_of_the_Shadow_2", "Dark_Oracle_2", "Necromancer_of_the_Shadow_2" },
+        new[]{ "Reaper_Man_3", "Skeleton_Crusader_2", "Reaper_Man_3" },
+        new[]{ "Seer_2", "Reaper_Man_3", "Reaper_Man_3" },
+        new[]{ "Necromancer_of_the_Shadow_2", "Reaper_Man_3", "Necromancer_of_the_Shadow_2" },
+        new[]{ "Reaper_Man_3", "Necromancer_of_the_Shadow_2", "Reaper_Man_3" },
     };
     static bool? spritesOn;
     static bool SpritesOn => spritesOn ?? (spritesOn = SpriteChar.Has(HeroSprite)).Value;
@@ -851,7 +853,7 @@ public class BattleWorld : MonoBehaviour
         }
         var pool = (SpritesOn ? SpriteCircleEnemies : CircleEnemies)[GameState.StageCircle];
         bool bossWave = GameState.IsBossStage && wave == waveCount - 1;
-        if (bossWave) { SpawnEnemy(pool[3], x, true); }
+        if (bossWave) { SpawnEnemy(pool[pool.Length - 1], x, true); }   // le dernier de la liste est le boss
         else
         {
             int count = 2 + (wave == 2 ? 1 : 0);
@@ -859,7 +861,7 @@ public class BattleWorld : MonoBehaviour
             int k = decor != null ? 2 : 1;
             waveShare = 1.0 / k;
             for (int i = 0; i < count * k; i++)
-                SpawnEnemy(pool[Random.Range(0, 3)], x + i * Spacing * (decor != null ? 0.75f : 1.3f), false);
+                SpawnEnemy(pool[Random.Range(0, pool.Length - 1)], x + i * Spacing * (decor != null ? 0.75f : 1.3f), false);
             waveShare = 1;
         }
         waveSpawned = true;
