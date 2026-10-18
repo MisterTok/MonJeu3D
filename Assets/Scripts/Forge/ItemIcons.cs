@@ -93,22 +93,30 @@ public static class ItemIcons
     static readonly string[] IdleKeys = { "Idle", "Flying", "Swim", "ArmatureAction", "Action", "*" };
 
     // Icône d'un modèle animé : posé dans son animation de repos, de trois quarts face à l'objectif.
-    public static Texture GetCreature(string modelPath, Color tint, float tintAmount) => GetCreature(modelPath, tint, tintAmount, CreatureEuler);
+    public static Texture GetCreature(string modelPath, Color tint, float tintAmount, int tier = 0) => GetCreature(modelPath, tint, tintAmount, CreatureEuler, tier);
 
     // Version dessinée (Tools/make_creatures.py -> Resources/ForgeUI/Creatures/<modèle>.png), prioritaire sur le modèle 3D.
     static readonly Dictionary<string, Texture2D> drawn = new Dictionary<string, Texture2D>();
-    public static Texture2D Drawn(string modelPath)
+    // tier = palier d'ascension (comme FM : 1 = armure, 2 = + pièce de tête, 3 = + aura) -> <modèle>_a<tier>.png
+    public static Texture2D Drawn(string modelPath, int tier = 0)
     {
-        if (drawn.TryGetValue(modelPath, out var t)) return t;
+        tier = Mathf.Clamp(tier, 0, 3);
+        string key = modelPath + "#" + tier;
+        if (drawn.TryGetValue(key, out var t)) return t;
         string n = modelPath.Substring(modelPath.LastIndexOf('/') + 1);
-        t = Resources.Load<Texture2D>("ForgeUI/Creatures/" + n);
-        drawn[modelPath] = t;
+        for (int k = tier; k > 0 && t == null; k--) t = Resources.Load<Texture2D>("ForgeUI/Creatures/" + n + "_a" + k);
+        if (t == null) t = Resources.Load<Texture2D>("ForgeUI/Creatures/" + n);
+        drawn[key] = t;
         return t;
     }
 
-    public static Texture GetCreature(string modelPath, Color tint, float tintAmount, Vector3 euler)
+    // Palier visuel d'une collection (compagnons ou montures) selon ses étoiles d'ascension.
+    public static int Tier(int ascKind) => TestTier >= 0 ? TestTier : Mathf.Min(3, GameState.Stars(ascKind));
+    public static int TestTier = -1;   // outil de test « tier<N> » (« tier » pour annuler)
+
+    public static Texture GetCreature(string modelPath, Color tint, float tintAmount, Vector3 euler, int tier = 0)
     {
-        var d = Drawn(modelPath);
+        var d = Drawn(modelPath, tier);
         if (d != null) return d;
         int key = ("créature:" + modelPath + ":" + tint + ":" + tintAmount + ":" + euler).GetHashCode();
         if (cache.TryGetValue(key, out var rt) && rt != null && rt.IsCreated()) return rt;
@@ -135,11 +143,11 @@ public static class ItemIcons
 
     // Version lisible (Texture2D) d'une icône de créature, recadrée sur la partie visible : pour en faire un sprite.
     static readonly Dictionary<int, Sprite> spriteCache = new Dictionary<int, Sprite>();
-    public static Sprite CreatureSprite(string modelPath, Color tint, float tintAmount, Vector3 euler)
+    public static Sprite CreatureSprite(string modelPath, Color tint, float tintAmount, Vector3 euler, int tier = 0)
     {
-        int key = ("sprite:" + modelPath + ":" + tint + ":" + tintAmount + ":" + euler).GetHashCode();
+        int key = ("sprite:" + modelPath + ":" + tint + ":" + tintAmount + ":" + euler + ":" + tier).GetHashCode();
         if (spriteCache.TryGetValue(key, out var sp) && sp != null) return sp;
-        var dr = Drawn(modelPath);
+        var dr = Drawn(modelPath, tier);
         if (dr != null && dr.isReadable)
         {
             // Recadré sur la partie visible ; pivot en bas au centre, 1 unité = hauteur visible.

@@ -9,40 +9,81 @@ from PIL import Image, ImageFilter
 COMFY = "http://127.0.0.1:8188"
 COMFY_OUT = r"C:\Users\pierr\Downloads\ComfyUI_windows_portable_nvidia\ComfyUI_windows_portable\ComfyUI\output"
 OUT = os.path.join(os.path.dirname(__file__), "..", "Assets", "Resources", "ForgeUI", "Creatures")
-RAW = os.path.join(os.path.dirname(__file__), "..", "..", "_dl", "creatures_raw2")
+RAW = os.path.join(os.path.dirname(__file__), "..", "..", "_dl", "creatures_raw3")
+COMFY_IN = os.path.join(os.path.dirname(COMFY_OUT), "input")
+
+# Paliers d'ascension (comme FM : l'animal gagne une armure, puis une pièce de tête, puis une aura) : img2img depuis le palier précédent.
+TIERS = ["wearing heavy black spiked iron armor plates on its body and back",
+         "wearing heavy black spiked iron armor plates and a big horned iron helmet on its head",
+         "wearing ornate golden spiked armor plates and a golden horned crown, engulfed in a burning hellfire aura"]
+
+def workflow_i2i(image_name, prompt, seed, prefix, denoise):
+    return {
+        "4": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "sd_xl_base_1.0.safetensors"}},
+        "10": {"class_type": "LoadImage", "inputs": {"image": image_name}},
+        "11": {"class_type": "VAEEncode", "inputs": {"pixels": ["10", 0], "vae": ["4", 2]}},
+        "6": {"class_type": "CLIPTextEncode", "inputs": {"text": prompt, "clip": ["4", 1]}},
+        "7": {"class_type": "CLIPTextEncode", "inputs": {"text": NEG, "clip": ["4", 1]}},
+        "3": {"class_type": "KSampler", "inputs": {"seed": seed, "steps": 30, "cfg": 7.0, "sampler_name": "dpmpp_2m", "scheduler": "karras",
+                                                    "denoise": denoise, "model": ["4", 0], "positive": ["6", 0], "negative": ["7", 0], "latent_image": ["11", 0]}},
+        "8": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["4", 2]}},
+        "9": {"class_type": "SaveImage", "inputs": {"filename_prefix": prefix, "images": ["8", 0]}},
+    }
+
+def generate_tier(name, src_img, tier, seed, denoise=0.68):
+    """src_img : image BRUTE (fond blanc) du palier précédent ; retravaillée en img2img avec l'équipement en plus."""
+    fn = "forge_tier_src_%s_%d.png" % (name, tier)
+    Image.open(src_img).convert("RGB").resize((1024, 1024)).save(os.path.join(COMFY_IN, fn))
+    prompt = STYLE.format(d=TIERS[tier] + ", " + CREATURES[name])
+    prefix = "forge_creature_%s_t%d_%d" % (name, tier, seed)
+    pid = post("/prompt", {"prompt": workflow_i2i(fn, prompt, seed, prefix, denoise)})["prompt_id"]
+    while True:
+        h = get("/history/" + pid)
+        if pid in h and h[pid].get("outputs"):
+            img = h[pid]["outputs"]["9"]["images"][0]
+            return os.path.join(COMFY_OUT, img.get("subfolder", ""), img["filename"])
+        time.sleep(1)
+
+def base_output(name, v):
+    """Image brute ComfyUI de la variante v (graine 3000 + v*7919 + somme des lettres)."""
+    import glob
+    seed = 3000 + v * 7919 + sum(map(ord, name))
+    f = sorted(glob.glob(os.path.join(COMFY_OUT, "forge_creature_%s_%d_*.png" % (name, seed))))
+    return f[-1] if f else None
+
 
 # modèle (nom du fichier, comme ProgressionData) -> description (thème des Enfers)
 CREATURES = {
-    "Rat": "small rat with glowing ember fur and red eyes",
-    "Frog": "yellow sulfur toad with warts",
-    "Slime": "orange lava slime blob with big eyes",
-    "bird": "black crow with red eyes",
-    "Cat": "black cat with glowing yellow eyes and small devil horns",
-    "Chick": "baby chick made of fire, orange and yellow",
-    "Snake": "grey ash snake with red belly",
-    "Dog": "shadow dog, dark purple fur, glowing eyes",
-    "Spider": "abyss spider, dark purple with red markings",
-    "Wasp": "infernal wasp, red and black stripes",
-    "Bat": "vampire bat, dark red wings, fangs",
-    "Triceratops": "lava triceratops, dark rock skin with glowing orange cracks",
-    "Velociraptor": "shadow velociraptor, dark blue scales",
-    "RedFox": "flame fox, fur made of fire, fiery tail",
-    "Eagle": "ember eagle with burning wings",
-    "Skeleton": "small skeleton servant with a rusty sword",
-    "Wolf": "cerberus, three headed hellhound, black fur, fiery eyes",
-    "Robot": "iron golem, riveted metal body, glowing chest",
-    "Trex": "ash tyrannosaurus, grey scales with ember spots",
-    "Dragon": "red dragon with wings and horns",
-    "Stegosaurus": "magma stegosaurus, glowing lava plates",
-    "Alien": "astral demon, purple cosmic skin with stars, horns",
-    "Apatosaurus": "bone titan brontosaurus, skeletal, bone armor",
-    "Mantaray": "spectral manta ray, translucent ghostly blue",
-    "Whale": "leviathan sea monster whale, dark teal, spikes",
-    "Pig": "pit pig, pink with soot spots and small tusks",
-    "Sheep": "black sheep with curly dark wool and red eyes",
-    "Llama": "ash goat with curved horns, grey fur",
-    "Horse": "skeleton horse with burning mane",
-    "Zebra": "infernal zebra, black and red stripes, fiery mane",
+    "Rat": "demonic hell rat with small horns, glowing red eyes, ember fur",
+    "Frog": "demonic sulfur toad with horns and glowing yellow eyes, lava warts",
+    "Slime": "demonic lava slime blob with little horns and an evil grin",
+    "bird": "demonic black crow with horns and glowing red eyes",
+    "Cat": "demonic black cat with devil horns, glowing yellow eyes, flaming tail tip",
+    "Chick": "demonic fire chick with tiny horns, made of flames, evil eyes",
+    "Snake": "demonic ash serpent with horns and glowing red eyes",
+    "Dog": "demonic shadow hound with horns, purple flames, glowing eyes",
+    "Spider": "demonic abyss spider with horns and many glowing red eyes",
+    "Wasp": "demonic infernal wasp with horns, red and black, glowing stinger",
+    "Bat": "demonic vampire bat with horns, red wings, fangs",
+    "Triceratops": "demonic lava triceratops, black rock skin, glowing magma cracks",
+    "Velociraptor": "demonic shadow raptor with horns and glowing eyes",
+    "RedFox": "demonic flame fox with horns, fur made of fire",
+    "Eagle": "demonic ember eagle with horns and burning wings",
+    "Skeleton": "demonic small skeleton warrior with horns and a rusty sword",
+    "Wolf": "demonic hellhound cerberus with horns, black fur, fiery eyes",
+    "Robot": "demonic iron golem with horns, glowing red core",
+    "Trex": "demonic ash tyrannosaurus with horns and ember spots",
+    "Dragon": "demonic red dragon with big horns and wings",
+    "Stegosaurus": "demonic magma stegosaurus with glowing lava plates",
+    "Alien": "astral demon imp with big horns, purple skin",
+    "Apatosaurus": "demonic bone titan brontosaurus, skeletal, glowing eyes",
+    "Mantaray": "demonic spectral manta ray with horns, ghostly glow",
+    "Whale": "demonic leviathan sea monster with horns and spikes",
+    "Pig": "demonic hell boar with horns, tusks and glowing red eyes",
+    "Sheep": "demonic black ram with curled horns and glowing red eyes",
+    "Llama": "demonic ash goat with big curved horns and glowing eyes",
+    "Horse": "demonic skeleton horse with horns and burning mane",
+    "Zebra": "demonic nightmare horse with horns, black and red stripes, fiery mane",
 }
 
 # Style calé sur les persos Craftpix du jeu : grosse tête ronde, petit corps trapu, couleurs sourdes et mates, contour sombre épais.
@@ -146,9 +187,9 @@ def remove_shadow(im):
     return out
 
 # Variante gardée pour chaque créature (planche de contrôle : _dl/creatures_raw).
-PICK = {"Rat": 0, "Frog": 0, "Slime": 0, "bird": 0, "Cat": 1, "Chick": 1, "Snake": 1, "Dog": 0, "Spider": 0, "Wasp": 0, "Bat": 1,
-        "Triceratops": 1, "Velociraptor": 1, "RedFox": 2, "Eagle": 2, "Skeleton": 1, "Wolf": 1, "Robot": 1, "Trex": 2, "Dragon": 1,
-        "Stegosaurus": 0, "Alien": 0, "Apatosaurus": 0, "Mantaray": 2, "Whale": 1, "Pig": 2, "Sheep": 1, "Llama": 1, "Horse": 0, "Zebra": 2}
+PICK = {"Rat": 2, "Frog": 0, "Slime": 0, "bird": 2, "Cat": 2, "Chick": 1, "Snake": 1, "Dog": 2, "Spider": 1, "Wasp": 1, "Bat": 2,
+        "Triceratops": 0, "Velociraptor": 2, "RedFox": 2, "Eagle": 0, "Skeleton": 1, "Wolf": 2, "Robot": 0, "Trex": 2, "Dragon": 1,
+        "Stegosaurus": 1, "Alien": 2, "Apatosaurus": 2, "Mantaray": 2, "Whale": 1, "Pig": 1, "Sheep": 1, "Llama": 0, "Horse": 1, "Zebra": 1}
 
 if __name__ == "__main__":
     args = sys.argv[1:]
@@ -166,4 +207,14 @@ if __name__ == "__main__":
                 craftpix_look(cutout(src, 480)).save(raw)
                 print("ok", n, v, flush=True)
         keep = pick.get(n, 0)
-        remove_shadow(Image.open(os.path.join(RAW, "%s_%d.png" % (n, keep))).convert("RGBA")).resize((256, 256), Image.LANCZOS).save(os.path.join(OUT, n + ".png"))
+        base = os.path.join(RAW, "%s_%d.png" % (n, keep))
+        remove_shadow(Image.open(base).convert("RGBA")).resize((256, 256), Image.LANCZOS).save(os.path.join(OUT, n + ".png"))
+        # Paliers d'ascension : chacun repart de l'image brute du précédent (même créature, équipement en plus)
+        src = base_output(n, keep)
+        for t in range(len(TIERS)):
+            raw = os.path.join(RAW, "%s_t%d.png" % (n, t + 1))
+            if src is None: break
+            src = generate_tier(n, src, t, 5000 + t * 101 + sum(map(ord, n)))
+            craftpix_look(cutout(src, 480)).save(raw)
+            print("ok", n, "palier", t + 1, flush=True)
+            remove_shadow(Image.open(raw).convert("RGBA")).resize((256, 256), Image.LANCZOS).save(os.path.join(OUT, "%s_a%d.png" % (n, t + 1)))

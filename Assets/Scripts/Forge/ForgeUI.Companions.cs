@@ -122,7 +122,7 @@ public partial class ForgeUI
         var def = ProgressionData.Pets[id];
         var p = GameState.FindPet(id);
         var c = ProgressionData.RarityColors[def.rarity];
-        var icon = ItemIcons.GetCreature(def.model, c, 0.12f);
+        var icon = ItemIcons.GetCreature(def.model, c, 0.12f, ItemIcons.Tier(GameState.AscPets));
         if (p == null) { ShowDetail(def.name, def.rarity, icon, null, c, -1, 0, 0, null, null, null); return; }
         string body = "ATQ <color=#FFC07A>+" + GameState.Fmt(GameState.PetDamage(p)) + "</color>     PV <color=#FFC07A>+" + GameState.Fmt(GameState.PetHealth(p)) + "</color>";
         if (p.subs != null)
@@ -190,7 +190,7 @@ public partial class ForgeUI
             if (p == null) { SetEmptySlot(eqPetTile[i]); LockSlot(eqPetTile[i], GameState.UnlockPetSlot[i]); continue; }
             var def = ProgressionData.Pets[p.id];
             var c = ProgressionData.RarityColors[def.rarity];
-            SetTile(eqPetTile[i], def.rarity, ItemIcons.GetCreature(def.model, c, 0.12f), null, c, p.level, p.copies, GameState.CopiesForNext(p.level), false);
+            SetTile(eqPetTile[i], def.rarity, ItemIcons.GetCreature(def.model, c, 0.12f, ItemIcons.Tier(GameState.AscPets)), null, c, p.level, p.copies, GameState.CopiesForNext(p.level), false);
         }
 
         for (int i = 0; i < 25; i++)
@@ -198,7 +198,7 @@ public partial class ForgeUI
             var def = ProgressionData.Pets[i];
             var p = GameState.FindPet(i);
             var c = ProgressionData.RarityColors[def.rarity];
-            SetTile(petTile[i], def.rarity, ItemIcons.GetCreature(def.model, c, 0.12f), null, c,
+            SetTile(petTile[i], def.rarity, ItemIcons.GetCreature(def.model, c, 0.12f, ItemIcons.Tier(GameState.AscPets)), null, c,
                 p == null ? -1 : p.level, p == null ? 0 : p.copies, p == null ? 0 : GameState.CopiesForNext(p.level), p != null && GameState.IsPetEquipped(i));
         }
     }

@@ -274,6 +274,8 @@ public partial class ForgeUI
             body = "La forge revient au <b>niveau 1</b>, mais toutes les pièces forgées ensuite seront <color=#FFD24A>" + GameState.StarText(s + 1) + "</color> : attaque et vie " + mult + ".\nTon équipement actuel est conservé.\n\nCoût : <color=#FFD24A>" + GameState.Fmt(GameState.ForgeAscendCost) + " or</color>";
         else
             body = "Le niveau d'invocation revient au <b>niveau 1</b>, mais toute ta collection de " + GameState.AscNames[k].Replace("les ", "") + " passe à <color=#FFD24A>" + GameState.StarText(s + 1) + "</color> : " + mult + " sur leurs effets.";
+        if ((k == GameState.AscPets || k == GameState.AscMounts) && s < 3)
+            body += "\n\nNouvelle apparence : <color=#FFD24A>" + new[] { "armure", "casque", "armure d'or et aura de feu" }[s] + "</color>";
         body += "\n\nÉtoiles actuelles : " + (s > 0 ? GameState.StarText(s) : "aucune") + "  (max " + GameState.MaxStars + ")";
         bool ready = GameState.AscendReady(k);
         if (!ready) body += "\n\n<color=#FF8A7A>" + (k == GameState.AscForge ? "Disponible quand la forge est au niveau maximum." : "Disponible quand le niveau d'invocation est au maximum.") + "</color>";

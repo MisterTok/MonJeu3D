@@ -566,7 +566,7 @@ public class BattleWorld : MonoBehaviour
 
     void RefreshPets()
     {
-        string key = string.Join(",", GameState.Data.equippedPets);
+        string key = string.Join(",", GameState.Data.equippedPets) + "|" + ItemIcons.Tier(GameState.AscPets);   // palier d'ascension : nouvelle apparence
         if (key == petKey) return;
         petKey = key;
         foreach (var g in petObjs) if (g != null) Destroy(g);
@@ -601,7 +601,7 @@ public class BattleWorld : MonoBehaviour
 
     GameObject FlatPet(ProgressionData.PetDef def)
     {
-        var sp = ItemIcons.CreatureSprite(def.model, ProgressionData.RarityColors[def.rarity], 0.12f, new Vector3(6f, 125f, 0f));
+        var sp = ItemIcons.CreatureSprite(def.model, ProgressionData.RarityColors[def.rarity], 0.12f, new Vector3(6f, 125f, 0f), ItemIcons.Tier(GameState.AscPets));
         if (sp == null) return null;
         var go = new GameObject("Compagnon " + def.name);
         go.transform.SetParent(world, false);

@@ -58,7 +58,7 @@ public partial class ForgeUI
         var def = ProgressionData.Mounts[id];
         var m = GameState.FindMount(id);
         var c = ProgressionData.RarityColors[def.rarity];
-        var icon = ItemIcons.GetCreature(def.model, c, 0.15f);
+        var icon = ItemIcons.GetCreature(def.model, c, 0.15f, ItemIcons.Tier(GameState.AscMounts));
         if (m == null) { ShowDetail(def.name, def.rarity, icon, null, c, -1, 0, 0, null, null, null); return; }
         bool on = GameState.Data.equippedMount == id;
         string body = "Dégâts et vie <color=#FFC07A>+" + GameState.FmtPct((float)GameState.MountBonus(m)) + "</color>";
@@ -83,7 +83,7 @@ public partial class ForgeUI
         {
             var def = ProgressionData.Mounts[eq.id];
             var c = ProgressionData.RarityColors[def.rarity];
-            SetTile(mountEqTile, def.rarity, ItemIcons.GetCreature(def.model, c, 0.15f), null, c, eq.level, eq.copies, eq.level, false);
+            SetTile(mountEqTile, def.rarity, ItemIcons.GetCreature(def.model, c, 0.15f, ItemIcons.Tier(GameState.AscMounts)), null, c, eq.level, eq.copies, eq.level, false);
             mountEqText.text = "<b>" + def.name + "</b>";
         }
 
@@ -92,7 +92,7 @@ public partial class ForgeUI
             var def = ProgressionData.Mounts[i];
             var m = GameState.FindMount(i);
             var c = ProgressionData.RarityColors[def.rarity];
-            SetTile(mountTile[i], def.rarity, ItemIcons.GetCreature(def.model, c, 0.15f), null, c,
+            SetTile(mountTile[i], def.rarity, ItemIcons.GetCreature(def.model, c, 0.15f, ItemIcons.Tier(GameState.AscMounts)), null, c,
                 m == null ? -1 : m.level, m == null ? 0 : m.copies, m == null ? 0 : m.level, d.equippedMount == i && m != null);
         }
     }
