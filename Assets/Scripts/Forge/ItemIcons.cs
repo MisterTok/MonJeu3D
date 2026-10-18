@@ -95,8 +95,21 @@ public static class ItemIcons
     // Icône d'un modèle animé : posé dans son animation de repos, de trois quarts face à l'objectif.
     public static Texture GetCreature(string modelPath, Color tint, float tintAmount) => GetCreature(modelPath, tint, tintAmount, CreatureEuler);
 
+    // Version dessinée (Tools/make_creatures.py -> Resources/ForgeUI/Creatures/<modèle>.png), prioritaire sur le modèle 3D.
+    static readonly Dictionary<string, Texture2D> drawn = new Dictionary<string, Texture2D>();
+    public static Texture2D Drawn(string modelPath)
+    {
+        if (drawn.TryGetValue(modelPath, out var t)) return t;
+        string n = modelPath.Substring(modelPath.LastIndexOf('/') + 1);
+        t = Resources.Load<Texture2D>("ForgeUI/Creatures/" + n);
+        drawn[modelPath] = t;
+        return t;
+    }
+
     public static Texture GetCreature(string modelPath, Color tint, float tintAmount, Vector3 euler)
     {
+        var d = Drawn(modelPath);
+        if (d != null) return d;
         int key = ("créature:" + modelPath + ":" + tint + ":" + tintAmount + ":" + euler).GetHashCode();
         if (cache.TryGetValue(key, out var rt) && rt != null && rt.IsCreated()) return rt;
         EnsureStudio();
@@ -126,6 +139,21 @@ public static class ItemIcons
     {
         int key = ("sprite:" + modelPath + ":" + tint + ":" + tintAmount + ":" + euler).GetHashCode();
         if (spriteCache.TryGetValue(key, out var sp) && sp != null) return sp;
+        var dr = Drawn(modelPath);
+        if (dr != null && dr.isReadable)
+        {
+            // Recadré sur la partie visible ; pivot en bas au centre, 1 unité = hauteur visible.
+            var dp = dr.GetPixels32();
+            int ax0 = dr.width, ay0 = dr.height, ax1 = -1, ay1 = -1;
+            for (int y = 0; y < dr.height; y++)
+                for (int x = 0; x < dr.width; x++)
+                    if (dp[y * dr.width + x].a > 20) { if (x < ax0) ax0 = x; if (x > ax1) ax1 = x; if (y < ay0) ay0 = y; if (y > ay1) ay1 = y; }
+            if (ax1 < 0) { ax0 = ay0 = 0; ax1 = dr.width - 1; ay1 = dr.height - 1; }
+            var dRect = new Rect(ax0, ay0, ax1 - ax0 + 1, ay1 - ay0 + 1);
+            sp = Sprite.Create(dr, dRect, new Vector2(0.5f, 0f), dRect.height);
+            spriteCache[key] = sp;
+            return sp;
+        }
         var rt = GetCreature(modelPath, tint, tintAmount, euler) as RenderTexture;
         if (rt == null) return null;
         var prev = RenderTexture.active;

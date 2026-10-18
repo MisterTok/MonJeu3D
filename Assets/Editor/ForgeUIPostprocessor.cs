@@ -4,7 +4,7 @@ using UnityEngine;
 // Skin d'interface (Resources/ForgeUI) : textures nettes, sans mipmaps ni compression ni redimensionnement.
 public class ForgeUIPostprocessor : AssetPostprocessor
 {
-    public override uint GetVersion() => 2;
+    public override uint GetVersion() => 3;
 
     void OnPreprocessTexture()
     {
@@ -22,6 +22,13 @@ public class ForgeUIPostprocessor : AssetPostprocessor
         {
             ti.textureCompression = TextureImporterCompression.CompressedHQ;
             ti.mipmapEnabled = assetPath.EndsWith("_ground.png");
+        }
+        // Compagnons et montures dessinés : compressés, lisibles (recadrage du sprite de combat), mipmaps (réduits à l'écran).
+        if (assetPath.Contains("/Creatures/"))
+        {
+            ti.textureCompression = TextureImporterCompression.CompressedHQ;
+            ti.mipmapEnabled = true;
+            ti.isReadable = true;
         }
     }
 }

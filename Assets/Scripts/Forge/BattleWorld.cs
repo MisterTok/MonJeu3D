@@ -608,7 +608,7 @@ public class BattleWorld : MonoBehaviour
         var body = new GameObject("Sprite").transform;
         body.SetParent(go.transform, false);
         body.localRotation = Quaternion.Euler(CamPitch, 0f, 0f);
-        body.localScale = Vector3.one * Mathf.Clamp(def.size * 1.2f, 0.45f, 1.3f);
+        body.localScale = Vector3.one * Mathf.Clamp(def.size * 1.5f, 0.75f, 1.5f);   // créatures dessinées : lisibles à côté du héros
         var sr = body.gameObject.AddComponent<SpriteRenderer>();
         sr.sprite = sp;
         sr.sortingOrder = 1;
