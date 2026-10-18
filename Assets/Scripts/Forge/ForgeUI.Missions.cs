@@ -163,7 +163,7 @@ public partial class ForgeUI
         var view = MakeRect("Vue", P, Vector2.zero, Vector2.one, new Vector2(12, 12), new Vector2(-12, -185));
         view.gameObject.AddComponent<Image>().color = new Color(0, 0, 0, 0.25f);
         view.gameObject.AddComponent<RectMask2D>();
-        const float rowH = 130f;
+        const float rowH = 150f;
         int n = MissionData.PassStage.Length;
         var content = MakeRect("Paliers", view, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -n * rowH), Vector2.zero);
         content.pivot = new Vector2(0.5f, 1f);
@@ -177,7 +177,13 @@ public partial class ForgeUI
             passRowBg[i] = Box(content, "Palier " + i, new Vector2(0, 1), new Vector2(1, 1), new Vector2(6, top - rowH + 6), new Vector2(-6, top - 6), Panel);
             passRowBg[i].gameObject.AddComponent<Outline>().effectDistance = new Vector2(3, -3);
             UISkin.Sliced(passRowBg[i], "tile", 1.6f);
-            passRowText[i] = Label(passRowBg[i].transform, "", 24, TextAnchor.MiddleLeft, TextMain, Vector2.zero, Vector2.one, new Vector2(20, 6), new Vector2(-250, -6));
+            passRowText[i] = Label(passRowBg[i].transform, "", 26, TextAnchor.MiddleLeft, TextMain, new Vector2(0, 0), new Vector2(0, 1), new Vector2(20, 6), new Vector2(200, -6));
+            // Récompenses du palier en cases (icône + quantité)
+            var box = MakeRect("Récompenses", passRowBg[i].transform, Vector2.zero, Vector2.one, new Vector2(196, 12), new Vector2(-240, -12));
+            var pc = GameState.PassContent(i);
+            int cells = pc.Length / 2;
+            box.anchorMax = new Vector2(0, 1); box.offsetMax = new Vector2(196 + cells * 112, -12);
+            FillRewards(box, pc, cells, 22, 8);
             passRowBtn[i] = MakeButton(passRowBg[i].transform, "Récupérer", new Vector2(1, 0), new Vector2(1, 1), new Vector2(-230, 16), new Vector2(-16, -16),
                 new Color(0.2f, 0.5f, 0.22f), "", 26, out passRowBtnText[i], () => { string e = GameState.ClaimPass(idx); if (e != null) Toast(e); RefreshPass(); RefreshPassButton(); });
         }
@@ -205,7 +211,7 @@ public partial class ForgeUI
             var ol = passRowBg[i].GetComponent<Outline>();
             passRowBg[i].color = SkinTint(claimed ? new Color(0.07f, 0.07f, 0.06f) : reached ? new Color(0.12f, 0.22f, 0.08f) : new Color(0.13f, 0.08f, 0.05f));
             ol.effectColor = claimed ? new Color(0.3f, 0.3f, 0.3f) : reached ? new Color(0.5f, 1f, 0.4f) : new Color(0.5f, 0.35f, 0.15f);
-            passRowText[i].text = "<b>" + GameState.StageName(MissionData.PassStage[i]) + "</b>\n<size=21>" + GameState.ContentText(GameState.PassContent(i), "  ") + "</size>";
+            passRowText[i].text = "<b>" + GameState.StageName(MissionData.PassStage[i]).Replace(" ", "\n") + "</b>";
             passRowBtn[i].interactable = reached && !claimed;
             passRowBtnText[i].text = claimed ? "Pris ✔" : reached ? "RÉCUPÉRER" : "Verrouillé";
         }

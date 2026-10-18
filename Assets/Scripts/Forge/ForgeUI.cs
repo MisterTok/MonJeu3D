@@ -28,7 +28,6 @@ public partial class ForgeUI : MonoBehaviour
     GameObject popup;
     Text popName, popInfo, popStat, popSubs, popCompare, popSellText;
     GameObject statsPanel;
-    Text statsPanelText;
     Image popFrame;
     Text toast;
     float toastTime;
@@ -187,6 +186,10 @@ public partial class ForgeUI : MonoBehaviour
             new Color(0.25f, 0.25f, 0.3f), "Auto", 28, out autoText, OnAutoToggle);
 
         // ----- Équipement : 2 rangées de 4, tuiles compactes -----
+        // Bandeau de pierre derrière les tuiles (entre le chemin et la forge)
+        var eqBg = Box(R, "Fond équipement", new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 518), new Vector2(0, 862), new Color(0.12f, 0.06f, 0.05f, 1f));
+        if (UISkin.Get("navbar") != null) { UISkin.Sliced(eqBg, "navbar"); eqBg.color = new Color(1f, 0.92f, 0.88f); }
+        eqBg.raycastTarget = false;
         var eq = MakeRect("Equipement", R, new Vector2(0, 0), new Vector2(1, 0), new Vector2(18, 530), new Vector2(-18, 850));
         equipRect = eq;
         equipGroup = eq.gameObject.AddComponent<CanvasGroup>();
@@ -283,10 +286,7 @@ public partial class ForgeUI : MonoBehaviour
         Text closeT;
         MakeButton(P, "Fermer", new Vector2(1, 1), new Vector2(1, 1), new Vector2(-104, -84), new Vector2(-20, -16),
             new Color(0.45f, 0.14f, 0.1f), "X", 40, out closeT, () => statsPanel.SetActive(false));
-        var card = Box(P, "Carte", new Vector2(0, 1), new Vector2(1, 1), new Vector2(24, -1060), new Vector2(-24, -110), new Color(0.13f, 0.07f, 0.06f, 1f));
-        UISkin.Sliced(card, "card"); card.color = Color.white;
-        statsPanelText = Label(card.transform, "", 36, TextAnchor.UpperLeft, TextMain, Vector2.zero, Vector2.one, new Vector2(44, 30), new Vector2(-44, -30));
-        statsPanelText.lineSpacing = 1.15f;
+        BuildHeroView(P);
         MakeButton(P, "Son", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-260, 24), new Vector2(-24, 84),
             new Color(0.25f, 0.12f, 0.1f), "", 26, out soundText, () => { GameState.Data.muted = !GameState.Data.muted; GameState.Save(); RefreshSoundButton(); });
         RefreshSoundButton();
@@ -317,52 +317,65 @@ public partial class ForgeUI : MonoBehaviour
         if (statsPanel.activeSelf) RefreshStatsPanel();
     }
 
-    void RefreshStatsPanel()
+    void RefreshStatsPanel() => RefreshHeroView();
+
+    // Tuile de comparaison de la fiche « nouvelle pièce » : fond teinté au cercle, icône, niveau, statistique dessous.
+    class PopTile { public Image bg, halo; public RawImage icon; public Text level, stat, caption; }
+
+    PopTile MakePopTile(Transform c, float cx, float size, string caption)
     {
-        string G(int t) => "<color=" + Hex(SubColors[t]) + ">" + SubGlyphs[t] + "</color> ";
-        string L(string name, string val) => name + "<color=#FFC07A>  " + val + "</color>\n";
-        var sb = new System.Text.StringBuilder();
-        sb.Append(L("Puissance", GameState.Fmt(GameState.Power())));
-        sb.Append(L("Attaque", GameState.Fmt(GameState.TotalAtk())));
-        sb.Append(L("Points de vie", GameState.Fmt(GameState.TotalHp())));
-        sb.Append(L("Attaques par seconde", (1f / GameState.AttackInterval).ToString("0.00")));
-        sb.Append("\n");
-        sb.Append(G(0) + L("Chance de critique", GameState.FmtPct(GameState.CritChance)));
-        sb.Append(G(1) + L("Dégâts critiques", "x" + GameState.CritMult.ToString("0.##")));
-        sb.Append(G(5) + L("Double frappe", GameState.FmtPct(GameState.DoubleChance)));
-        sb.Append(G(8) + L("Vitesse d'attaque", "+" + GameState.FmtPct(GameState.AttackSpeedBonus)));
-        sb.Append(G(6) + L("Dégâts", "+" + GameState.FmtPct(GameState.SubTotal(GameState.SubDamage))));
-        sb.Append(G(7) + L("Dégâts en mêlée", "+" + GameState.FmtPct(GameState.SubTotal(GameState.SubMelee))));
-        sb.Append(G(9) + L("Santé", "+" + GameState.FmtPct(GameState.SubTotal(GameState.SubHealth))));
-        sb.Append(G(4) + L("Vol de vie", GameState.FmtPct(GameState.LifeSteal)));
-        sb.Append(G(2) + L("Blocage", GameState.FmtPct(GameState.BlockChance)));
-        sb.Append(G(3) + L("Régénération", GameState.FmtPct(GameState.RegenPerSecond) + " / s"));
-        statsPanelText.text = sb.ToString();
+        var t = new PopTile();
+        var a = new Vector2(cx, 1);
+        t.halo = Box(c, "Halo", a, a, new Vector2(-size * 0.85f, -150 - size * 1.2f), new Vector2(size * 0.85f, -150 + size * 0.2f), Color.white);
+        t.halo.sprite = UISkin.Get("glow") ?? Circle(); t.halo.raycastTarget = false;
+        t.caption = Label(c, caption, 26, TextAnchor.LowerCenter, TextDim, a, a, new Vector2(-size, -150), new Vector2(size, -112));
+        t.bg = Box(c, "Tuile", a, a, new Vector2(-size * 0.5f, -158 - size), new Vector2(size * 0.5f, -158), Color.white);
+        UISkin.Sliced(t.bg, "tile", 1.3f); t.bg.raycastTarget = false;
+        t.icon = MakeRect("Icône", t.bg.transform, Vector2.zero, Vector2.one, new Vector2(size * 0.1f, size * 0.08f), new Vector2(-size * 0.1f, -size * 0.12f)).gameObject.AddComponent<RawImage>();
+        t.icon.raycastTarget = false;
+        t.level = Label(t.bg.transform, "", size > 220 ? 28 : 24, TextAnchor.UpperLeft, TextMain, Vector2.zero, Vector2.one, new Vector2(12, 6), new Vector2(-6, -8));
+        t.stat = Label(c, "", size > 220 ? 40 : 32, TextAnchor.UpperCenter, Color.white, a, a, new Vector2(-size, -230 - size), new Vector2(size, -166 - size));
+        return t;
     }
+
+    void SetPopTile(PopTile t, Item it, Color statColor)
+    {
+        bool ok = it != null && it.valid;
+        var c = ok ? GameState.CircleColors[it.circle] : new Color(0.4f, 0.32f, 0.3f);
+        t.bg.color = Color.Lerp(c, Color.white, 0.12f);
+        t.halo.color = new Color(c.r, c.g, c.b, ok ? 0.5f : 0f);
+        t.icon.texture = ok ? ItemIcons.Get(it) : null;
+        t.icon.color = ok ? Color.white : new Color(0, 0, 0, 0);
+        t.level.text = ok ? (it.stars > 0 ? "<color=#FFD24A>" + GameState.StarText(it.stars) + "</color> " : "") + "Niv. " + it.level : "";
+        t.stat.text = ok ? it.StatLabel + " " + GameState.Fmt(it.MainStat) : "<color=#776655>vide</color>";
+        t.stat.color = statColor;
+    }
+
+    PopTile popCur, popNew;
+    Text popArrow;
 
     void BuildPopup(Transform R)
     {
         popup = MakeRect("Nouvelle pièce", R, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero).gameObject;
-        // Fond qui bloque les clics en bas seulement : la pièce 3D reste visible en haut.
-        var shade = Box(popup.transform, "Voile", new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero, new Color(0, 0, 0, 0.6f));
+        // Voile sous la barre du haut (elle reste claire) ; la barre d'onglets passe par-dessus.
+        var shade = Box(popup.transform, "Voile", new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, new Vector2(0, -130), new Color(0, 0, 0, 0.65f));
         shade.raycastTarget = true;
-        popFrame = Box(popup.transform, "Cadre", new Vector2(0.06f, 0.08f), new Vector2(0.94f, 0.5f), Vector2.zero, Vector2.zero, Color.white);
-        UISkin.Sliced(popFrame, "frame");
+        popFrame = Box(popup.transform, "Cadre", new Vector2(0.04f, 0.1f), new Vector2(0.96f, 0.6f), Vector2.zero, Vector2.zero, Color.white);
+        UISkin.Sliced(popFrame, "frame", 1.6f);
         var inner = Box(popFrame.transform, "Carte", Vector2.zero, Vector2.one, new Vector2(14, 14), new Vector2(-14, -14), new Color(0.07f, 0.035f, 0.035f, 0.97f));
         if (UISkin.Get("panel") != null) { UISkin.Sliced(inner, "panel"); inner.color = Color.white; }
         Transform c = inner.transform;
-        // Icône de la pièce posée sur le haut de la fiche, avec un halo de la couleur du cercle.
-        popHalo = MakeRect("Halo", popup.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-190, 30), new Vector2(190, 410)).gameObject.AddComponent<Image>();
-        popHalo.sprite = UISkin.Get("glow") ?? Circle(); popHalo.raycastTarget = false;
-        popIcon = MakeRect("Icône", popup.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-150, 70), new Vector2(150, 370)).gameObject.AddComponent<RawImage>();
-        popIcon.raycastTarget = false;
-        popRemain = Label(c, "", 26, TextAnchor.UpperRight, TextDim, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-24, -14));
-        popName = Label(c, "", 54, TextAnchor.UpperCenter, Color.white, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-20, -30));
-        popInfo = Label(c, "", 34, TextAnchor.UpperCenter, TextDim, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-20, -105));
-        popStat = Label(c, "", 56, TextAnchor.UpperCenter, Color.white, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-20, -160));
-        popSubs = Label(c, "", 34, TextAnchor.UpperCenter, new Color(0.75f, 0.85f, 1f), Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-20, -228));
-        popPills = MakePills(c, new Vector2(20, -380), new Vector2(-20, -236));
-        popCompare = Label(c, "", 30, TextAnchor.UpperCenter, TextMain, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-20, -322));
+        popRemain = Label(c, "", 26, TextAnchor.UpperRight, TextDim, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-28, -18));
+        popName = Label(c, "", 52, TextAnchor.UpperCenter, Color.white, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-20, -24));
+        popInfo = Label(c, "", 28, TextAnchor.UpperCenter, TextDim, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-20, -88));
+        // Comparaison : pièce portée (à gauche, plus petite) -> nouvelle pièce (à droite)
+        popCur = MakePopTile(c, 0.25f, 200f, "Équipé");
+        popNew = MakePopTile(c, 0.7f, 270f, "Nouveau");
+        popArrow = Label(c, "➜", 64, TextAnchor.MiddleCenter, new Color(1f, 0.85f, 0.4f), new Vector2(0.47f, 1), new Vector2(0.47f, 1), new Vector2(-50, -330), new Vector2(50, -230));
+        popStat = Label(c, "", 34, TextAnchor.UpperCenter, Color.white, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-20, -502));
+        popPills = MakePills(c, new Vector2(20, -720), new Vector2(-20, -556));
+        popSubs = Label(c, "", 24, TextAnchor.UpperCenter, TextDim, Vector2.zero, Vector2.one, new Vector2(20, 0), new Vector2(-20, -730));
+        popCompare = popSubs;
         Text eqText;
         popEquipBtn = MakeButton(c, "Equiper", new Vector2(0, 0), new Vector2(0.5f, 0), new Vector2(30, 30), new Vector2(-15, 170),
             new Color(0.15f, 0.5f, 0.2f), "ÉQUIPER", 48, out eqText, OnEquip);
@@ -447,39 +460,30 @@ public partial class ForgeUI : MonoBehaviour
         Color c = GameState.CircleColors[it.circle];
         popFrame.color = c;
         popName.text = it.Name;
-        popIcon.texture = ItemIcons.Get(it);
-        popHalo.color = new Color(c.r, c.g, c.b, 0.55f);
+        popName.color = Color.Lerp(c, Color.white, 0.25f);
         int left = GameState.Data.forged.Count;
         popRemain.text = left > 0 ? "encore " + left : "";
-        popName.color = Color.Lerp(c, Color.white, 0.25f);
-        popInfo.text = "Cercle " + (it.circle + 1) + " : " + GameState.CircleNames[it.circle] + "  ·  Niveau " + it.level;
-        popStat.text = it.StatLabel + " +" + GameState.Fmt(it.MainStat);
-        popSubs.text = "";
-        SetPills(popPills, it.subs, it.subVals);
-        // Le texte de comparaison descend sous les pastilles.
-        int rows = (it.SubCount + 1) / 2;
-        popCompare.rectTransform.offsetMax = new Vector2(-20, rows == 0 ? -236 : -250 - rows * 72);
-
+        popInfo.text = "Cercle " + (it.circle + 1) + " : " + GameState.CircleNames[it.circle];
         var cur = GameState.Data.equipped[it.slot];
+        int cmp = !cur.valid ? 1 : it.MainStat.CompareTo(cur.MainStat);
+        SetPopTile(popCur, cur, TextDim);
+        SetPopTile(popNew, it, cmp > 0 ? new Color(0.45f, 1f, 0.5f) : cmp < 0 ? new Color(1f, 0.5f, 0.42f) : Color.white);
+        popNew.stat.text += cmp > 0 ? " ▲" : cmp < 0 ? " ▼" : "";
+
         long pDiff = GameState.PowerIfEquipped(it) - GameState.Power();
-        popBetter = pDiff > 0 || !GameState.Data.equipped[it.slot].valid;
+        popBetter = pDiff > 0 || !cur.valid;
         string pCol = pDiff > 0 ? "#6EE07A" : pDiff < 0 ? "#FF6A5A" : "#CCCCCC";
-        string pTxt = "Puissance <color=" + pCol + ">" + (pDiff > 0 ? "▲ +" : pDiff < 0 ? "▼ " : "= ") + GameState.Fmt(pDiff) + "</color>";
-        if (!cur.valid)
-            popCompare.text = pTxt + "\nEmplacement vide : <color=#6EE07A>équipe-la !</color>";
-        else
-        {
-            string curSubs = cur.SubCount > 0 ? "\n" + SubsRich(cur, "   ") : "";
-            popCompare.text = pTxt + "\n<color=#A89C94>Équipé : " + cur.Name + " (niv. " + cur.level + ") · " + cur.StatLabel + " " + GameState.Fmt(cur.MainStat) + "</color>" + curSubs;
-        }
+        popStat.text = "Puissance  <color=" + pCol + ">" + (pDiff > 0 ? "▲ +" : pDiff < 0 ? "▼ " : "= ") + GameState.Fmt(pDiff) + "</color>";
+        SetPills(popPills, it.subs, it.subVals);
+        int rows = (it.SubCount + 1) / 2;
+        popSubs.rectTransform.offsetMax = new Vector2(-20, rows == 0 ? -560 : -566 - rows * 72);
+        popSubs.text = cur.valid && cur.SubCount > 0 ? "Équipé : " + SubsRich(cur, "   ") : "";
         popSellText.text = "VENDRE\n+" + GameState.Fmt(it.SellValue) + " or";
         popup.SetActive(true);
         Refresh();
     }
 
     Pills popPills;
-    RawImage popIcon;
-    Image popHalo;
     Text popRemain;
     Button popEquipBtn;
     bool popBetter;
@@ -525,7 +529,7 @@ public partial class ForgeUI : MonoBehaviour
             anvilRect.GetWorldCorners(c);
             var anvil = new Rect(c[0].x / W, c[0].y / H, (c[2].x - c[0].x) / W, (c[2].y - c[0].y) / H);
             var expanded = new Rect(0f, anvil.y, 1f, battleTop - anvil.y);
-            world.SetBand(anvil, expanded);
+            world.SetBand(new Rect(0f, anvil.y, 1f, anvil.height), expanded);   // fond de la forge sur toute la largeur
             battle.SetBand(battleBottom, battleTop);
         }
         battle.SetVisible(world.ExpandAmount < 0.98f);
@@ -587,6 +591,7 @@ public partial class ForgeUI : MonoBehaviour
         UpdateShop();
         UpdateMissions();
         UpdateStones();
+        UpdateHeroView();
         refreshTimer -= Time.deltaTime;
         if (refreshTimer <= 0f)
         {

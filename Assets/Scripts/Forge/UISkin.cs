@@ -14,7 +14,7 @@ public static class UISkin
     {
         { "btn", new Vector4(34, 40, 34, 34) }, { "tab", new Vector4(26, 26, 26, 26) }, { "panel", new Vector4(40, 40, 40, 40) },
         { "card", new Vector4(26, 26, 26, 26) }, { "frame", new Vector4(48, 48, 48, 48) }, { "tile", new Vector4(30, 30, 30, 30) },
-        { "pill", new Vector4(31, 31, 31, 31) }, { "bar_bg", new Vector4(22, 22, 22, 22) }, { "bar_fill", new Vector4(22, 22, 22, 22) },
+        { "pill", new Vector4(31, 31, 31, 31) }, { "slot", new Vector4(22, 22, 22, 22) }, { "bar_bg", new Vector4(22, 22, 22, 22) }, { "bar_fill", new Vector4(22, 22, 22, 22) },
         { "banner", new Vector4(80, 0, 80, 0) }, { "topbar", new Vector4(0, 8, 0, 8) }, { "navbar", new Vector4(0, 8, 0, 8) },
     };
 

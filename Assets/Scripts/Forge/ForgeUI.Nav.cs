@@ -118,6 +118,19 @@ public partial class ForgeUI
     }
 
     // Outil de test (commande de capture « open:<écran> »).
+    // Outil de test : liste les éléments affichés sous un point de l'écran (x,y en pixels, origine en bas à gauche).
+    void TestUiAt(string xy)
+    {
+        var parts = xy.Split(',');
+        var pt = new Vector2(float.Parse(parts[0]), float.Parse(parts[1]));
+        var sb = new System.Text.StringBuilder();
+        foreach (var gr in GetComponentsInChildren<Graphic>())
+            if (gr.isActiveAndEnabled && gr.canvasRenderer.GetAlpha() > 0 && RectTransformUtility.RectangleContainsScreenPoint(gr.rectTransform, pt, null))
+                sb.AppendLine(gr.GetType().Name + "  " + GetPath(gr.transform) + "  col=" + gr.color + " depth=" + gr.depth);
+        System.IO.File.WriteAllText(System.IO.Path.Combine(Application.dataPath, "../../_dl/uiat.txt"), sb.ToString());
+    }
+    static string GetPath(Transform t) => t.parent == null ? t.name : GetPath(t.parent) + "/" + t.name;
+
     void TestOpen(string w)
     {
         CloseAllPanels();

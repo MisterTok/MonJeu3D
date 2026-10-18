@@ -69,6 +69,56 @@ public partial class ForgeUI
         return Label(p.transform, "", 36, TextAnchor.MiddleRight, textColor, Vector2.zero, Vector2.one, new Vector2(56, 0), new Vector2(-18, 0));
     }
 
+    // ---------- Récompenses en icônes (façon Forge Master) ----------
+    // Icône de chaque monnaie de ShopData (or, gemmes, marteaux, coquilles, remontoirs, tickets, potions, 4 clés).
+    static readonly string[] CurrencyIcon = { "i_gold", "i_gem", "i_hammer", "i_shell", "i_winder", "i_ticket", "i_potion",
+                                              "i_key_hammer", "i_key_egg", "i_key_potion", "i_key_skill" };
+
+    static string RewardAmount(int currency, long amount) =>
+        currency >= ShopData.KeyHammer ? "x" + amount : GameState.Fmt(GameState.ShopAmount(currency, amount));
+
+    // Remplit « box » de cases (icône + quantité) : content = { monnaie, quantité, … } ; cols cases par rangée, la dernière centrée.
+    void FillRewards(RectTransform box, int[] content, int cols, int fontSize = 26, float gap = 10f)
+    {
+        for (int i = box.childCount - 1; i >= 0; i--) Destroy(box.GetChild(i).gameObject);
+        int n = content.Length / 2;
+        if (n == 0) return;
+        cols = Mathf.Min(cols, n);
+        int rows = (n + cols - 1) / cols;
+        for (int i = 0; i < n; i++)
+        {
+            int row = i / cols, col = i % cols;
+            int inRow = row == rows - 1 ? n - row * cols : cols;
+            float shift = (cols - inRow) * 0.5f;
+            var aMin = new Vector2((col + shift) / cols, 1f - (row + 1f) / rows);
+            var aMax = new Vector2((col + shift + 1f) / cols, 1f - (float)row / rows);
+            RewardCell(box, content[i * 2], content[i * 2 + 1], aMin, aMax, gap, fontSize);
+        }
+    }
+
+    void RewardCell(Transform parent, int currency, long amount, Vector2 aMin, Vector2 aMax, float gap, int fontSize) =>
+        RewardCell(parent, CurrencyIcon[currency], RewardAmount(currency, amount), aMin, aMax, gap, fontSize);
+
+    void RewardCell(Transform parent, string icon, string amount, Vector2 aMin, Vector2 aMax, float gap, int fontSize)
+    {
+        var cell = Box(parent, "Récompense", aMin, aMax, new Vector2(gap * 0.5f, gap * 0.5f), new Vector2(-gap * 0.5f, -gap * 0.5f), Color.white);
+        UISkin.Sliced(cell, "slot", 1.2f);
+        cell.raycastTarget = false;
+        UISkin.Icon(cell.transform, icon, new Vector2(0.14f, 0.3f), new Vector2(0.86f, 0.96f), Vector2.zero, Vector2.zero);
+        var t = Label(cell.transform, amount, fontSize, TextAnchor.LowerCenter, Color.white, Vector2.zero, new Vector2(1, 0.42f), new Vector2(2, 4), new Vector2(-2, 0));
+        t.resizeTextForBestFit = true; t.resizeTextMaxSize = fontSize; t.resizeTextMinSize = 14;
+        t.horizontalOverflow = HorizontalWrapMode.Overflow;
+    }
+
+    // Icône de prix posée à gauche du texte d'un bouton (le texte est décalé vers la droite).
+    void PriceIcon(Button b, Text label, string icon, float size = 46f)
+    {
+        var rt = (RectTransform)label.transform;
+        rt.offsetMin = new Vector2(size + 4, rt.offsetMin.y);
+        var ic = UISkin.Icon(b.transform, icon, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(12, -size * 0.5f + 3), new Vector2(12 + size, size * 0.5f + 3));
+        ic.name = "Icône prix";
+    }
+
     // Les fonds sombres d'origine, éclaircis pour le sprite « tile » (qui assombrit ses bords).
     static Color SkinTint(Color c) => UISkin.Get("tile") == null ? c : new Color(Mathf.Min(1f, c.r * 2f + 0.03f), Mathf.Min(1f, c.g * 2f + 0.02f), Mathf.Min(1f, c.b * 2f + 0.02f), c.a);
 
@@ -176,7 +226,7 @@ public partial class ForgeUI
     }
 
     // ---------- Barre d'invocation compacte ----------
-    class SummonBar { public Text currency, level; public Image progFill; public Button b1, b2; public Text t1, t2; }
+    class SummonBar { public Text currency, level; public Image progFill, icon; public Button b1, b2; public Text t1, t2; }
 
     SummonBar MakeSummonBar(Transform P, float top, Color btnColor, Action s1, Action s2, Action info)
     {
@@ -184,7 +234,8 @@ public partial class ForgeUI
         var row = Box(P, "Invocation", new Vector2(0, 1), new Vector2(1, 1), new Vector2(12, top - 104), new Vector2(-12, top), new Color(0.1f, 0.06f, 0.06f, 0.95f));
         row.sprite = Round(); row.type = Image.Type.Sliced;
         if (UISkin.Get("card") != null) { UISkin.Sliced(row, "card"); row.color = Color.white; }
-        sb.currency = Label(row.transform, "", 30, TextAnchor.MiddleLeft, new Color(0.96f, 0.9f, 0.78f), new Vector2(0, 0), new Vector2(0.3f, 1), new Vector2(20, 0), Vector2.zero);
+        sb.icon = UISkin.Icon(row.transform, "i_shell", new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(12, -38), new Vector2(88, 38));
+        sb.currency = Label(row.transform, "", 30, TextAnchor.MiddleLeft, new Color(0.96f, 0.9f, 0.78f), new Vector2(0, 0), new Vector2(0.3f, 1), new Vector2(94, 0), Vector2.zero);
         sb.b1 = MakeButton(row.transform, "Invoquer 1", new Vector2(0.3f, 0), new Vector2(0.53f, 1), new Vector2(4, 12), new Vector2(-4, -12), btnColor, "", 24, out sb.t1, () => s1());
         sb.b2 = MakeButton(row.transform, "Invoquer 2", new Vector2(0.53f, 0), new Vector2(0.76f, 1), new Vector2(4, 12), new Vector2(-4, -12), btnColor, "", 24, out sb.t2, () => s2());
         // Niveau d'invocation : badge + barre ; le « ? » ouvre les chances
@@ -200,6 +251,8 @@ public partial class ForgeUI
 
     void SetSummonBar(SummonBar sb, string currencyName, long have, long cost1, int n1, int n2, int level, int prog, int need, int ascKind = -1)
     {
+        string cn = currencyName.ToLowerInvariant();
+        sb.icon.sprite = UISkin.Get(cn.StartsWith("coquille") ? "i_shell" : cn.StartsWith("remontoir") ? "i_winder" : cn.StartsWith("ticket") ? "i_ticket" : "i_gem");
         sb.currency.text = "<size=22>" + currencyName + "</size>\n<b>" + GameState.Fmt(have) + "</b>";
         sb.t1.text = "x" + n1 + "\n<size=20>" + GameState.Fmt(cost1 * n1) + "</size>";
         sb.t2.text = "x" + n2 + "\n<size=20>" + GameState.Fmt(cost1 * n2) + "</size>";

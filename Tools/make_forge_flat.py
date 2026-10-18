@@ -28,7 +28,7 @@ def flame(d, cx, by, w, h, cols):
 
 # ---------------- Fond ----------------
 def background():
-    W, H = 1400, 1000
+    W, H = 3000, 1000   # large : le fond occupe toute la rangée de la forge (les boutons se posent dessus)
     im = Image.new("RGBA", (W * S, H * S), (74, 34, 30, 255))
     d = ImageDraw.Draw(im)
     rnd = random.Random(3)
@@ -69,7 +69,7 @@ def background():
     for fx, fw, fh in [(cx - 140, 150, 260), (cx, 210, 380), (cx + 140, 160, 280)]:
         flame(d, fx, base, fw, fh, [(255, 90, 30, 255), (255, 190, 60, 255), (255, 245, 190, 255)])
     # Torches murales
-    for tx in (190, W - 190):
+    for tx in (cx - 510, cx + 510, cx - 1150, cx + 1150):
         torch = Image.new("RGBA", im.size, (0, 0, 0, 0)); td = ImageDraw.Draw(torch)
         td.polygon(sc([(tx - 24, 360), (tx + 24, 360), (tx + 12, 450), (tx - 12, 450)]), fill=(90, 80, 86, 255))
         td.rectangle(sc([(tx - 8, 450), (tx + 8, 520)]), fill=(110, 64, 34, 255))
@@ -78,19 +78,23 @@ def background():
         flame(d, tx, 366, 80, 150, [(255, 90, 30, 255), (255, 190, 60, 255), (255, 245, 190, 255)])
     # Râtelier d'armes (gauche) et bouclier (droite)
     rack = Image.new("RGBA", im.size, (0, 0, 0, 0)); rd = ImageDraw.Draw(rack)
-    for k, x in enumerate((330, 380)):
+    for k, x in enumerate((cx - 370, cx - 320)):
         rd.polygon(sc([(x - 9, 600), (x + 9, 600), (x + 9, 330), (x, 300), (x - 9, 330)]), fill=(196, 200, 214, 255))
         rd.rectangle(sc([(x - 28, 600), (x + 28, 612)]), fill=(214, 168, 64, 255))
         rd.rectangle(sc([(x - 7, 612), (x + 7, 660)]), fill=(110, 56, 30, 255))
-    rd.ellipse(sc([(W - 420, 380), (W - 280, 540)]), fill=(150, 40, 34, 255))
-    rd.ellipse(sc([(W - 380, 425), (W - 320, 495)]), fill=(214, 168, 64, 255))
+    rd.ellipse(sc([(cx + 280, 380), (cx + 420, 540)]), fill=(150, 40, 34, 255))
+    rd.ellipse(sc([(cx + 320, 425), (cx + 380, 495)]), fill=(214, 168, 64, 255))
+    for bx in (cx - 820, cx + 820):   # tonneaux de part et d'autre
+        rd.rounded_rectangle(sc([(bx - 70, 520), (bx + 70, 700)]), 30 * S, fill=(150, 88, 46, 255))
+        rd.rectangle(sc([(bx - 72, 560), (bx + 72, 574)]), fill=(90, 90, 100, 255))
+        rd.rectangle(sc([(bx - 72, 646), (bx + 72, 660)]), fill=(90, 90, 100, 255))
     outlined(im, rack, 6 * S)
     d = ImageDraw.Draw(im)
     # Sol en dalles
     d.rectangle(sc([(0, floor_y), (W, H)]), fill=(96, 62, 54, 255))
     for k, y in enumerate((floor_y, 780, 880)):
         d.line(sc([(0, y), (W, y)]), fill=INK if k == 0 else (60, 36, 32, 255), width=(8 if k == 0 else 5) * S)
-    for k in range(-8, 9):
+    for k in range(-16, 17):
         d.line(sc([(cx + k * 110, floor_y), (cx + k * 260, H)]), fill=(60, 36, 32, 255), width=5 * S)
     # Lueur de la fournaise sur le sol
     glow = Image.new("RGBA", im.size, (0, 0, 0, 0)); gd = ImageDraw.Draw(glow)

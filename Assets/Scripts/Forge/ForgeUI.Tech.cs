@@ -13,6 +13,16 @@ public partial class ForgeUI
     readonly Image[] techTabImg = new Image[3];
     readonly List<Button>[] nodeBtn = { new List<Button>(), new List<Button>(), new List<Button>() };
     readonly List<Text>[] nodeText = { new List<Text>(), new List<Text>(), new List<Text>() };
+    readonly List<Image>[] nodeFill = { new List<Image>(), new List<Image>(), new List<Image>() };
+    readonly List<Graphic>[] nodeIcon = { new List<Graphic>(), new List<Graphic>(), new List<Graphic>() };
+
+    // Icône d'une recherche : la pièce concernée (bonus / niveau d'un emplacement) ou la ressource touchée.
+    static readonly string[] SlotTech = { "Weapon", "Helmet", "Body", "Glove", "Shoe", "Belt", "Necklace", "Ring" };
+    static int TechSlot(string t) { for (int i = 0; i < SlotTech.Length; i++) if (t.StartsWith(SlotTech[i])) return i; return -1; }
+    static string TechIcon(string t) =>
+        t.Contains("Egg") || t.StartsWith("Pet") ? "i_shell" : t.StartsWith("Mount") || t.Contains("Mount") ? "i_winder" : t.StartsWith("Skill") || t.Contains("Skill") ? "i_ticket"
+        : t.StartsWith("Tech") || t.Contains("Potion") ? "i_potion" : t.Contains("Offline") ? "i_clock" : t.Contains("Coin") || t.Contains("Sell") || t.Contains("Cost") ? "i_gold"
+        : t.Contains("Hammer") || t.Contains("Forge") ? "i_hammer" : t.Contains("Health") ? "i_heart" : t.Contains("Damage") ? "i_sword" : "i_star";
     int techTree, selNode = -1;
     float techTimer;
     static readonly string[] Roman = { "I", "II", "III", "IV", "V" };
@@ -71,7 +81,7 @@ public partial class ForgeUI
             if (!byLayer.ContainsKey(layer)) byLayer[layer] = new List<int>();
             byLayer[layer].Add(id);
         }
-        for (int id = 0; id < nodes.Length; id++) { nodeBtn[tr].Add(null); nodeText[tr].Add(null); }
+        for (int id = 0; id < nodes.Length; id++) { nodeBtn[tr].Add(null); nodeText[tr].Add(null); nodeFill[tr].Add(null); nodeIcon[tr].Add(null); }
 
         float y = -10f;
         int lastTier = -1;
@@ -92,9 +102,23 @@ public partial class ForgeUI
                 Text t;
                 var b = MakeButton(content, "Nœud " + id, new Vector2((float)j / k, 1), new Vector2((float)(j + 1) / k, 1),
                     new Vector2(8, y - 112), new Vector2(-8, y), Panel, "", 24, out t, () => SelectNode(id));
-                b.GetComponent<Image>().sprite = Round(); b.GetComponent<Image>().type = Image.Type.Sliced;
+                UISkin.Sliced(b.GetComponent<Image>(), "tile", 1.4f);
                 nodeBtn[tr][id] = b;
                 nodeText[tr][id] = t;
+                // Icône à gauche, nom à droite, barre de niveau en bas
+                string type = TechData.Types[nodes[id][2]];
+                int slot = TechSlot(type);
+                var iconRt = MakeRect("Icône", b.transform, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(10, -36), new Vector2(82, 36));
+                if (slot >= 0) { var ri = iconRt.gameObject.AddComponent<RawImage>(); ri.texture = ItemIcons.Get(slot, 2); ri.raycastTarget = false; nodeIcon[tr][id] = ri; }
+                else { var im = iconRt.gameObject.AddComponent<Image>(); im.sprite = UISkin.Get(TechIcon(type)); im.preserveAspect = true; im.raycastTarget = false; nodeIcon[tr][id] = im; }
+                t.alignment = TextAnchor.MiddleLeft;
+                t.rectTransform.offsetMin = new Vector2(88, 22); t.rectTransform.offsetMax = new Vector2(-8, -4);
+                t.resizeTextForBestFit = true; t.resizeTextMaxSize = 24; t.resizeTextMinSize = 14;
+                var bar = Box(b.transform, "Niveau", new Vector2(0, 0), new Vector2(1, 0), new Vector2(88, 12), new Vector2(-14, 30), new Color(0, 0, 0, 0.6f));
+                UISkin.Sliced(bar, "bar_bg", 2.4f); bar.raycastTarget = false;
+                var fill = Box(bar.transform, "Remplissage", Vector2.zero, new Vector2(0, 1), Vector2.zero, Vector2.zero, new Color(1f, 0.75f, 0.3f));
+                UISkin.Sliced(fill, "bar_fill", 2.4f); fill.raycastTarget = false;
+                nodeFill[tr][id] = fill;
             }
             y -= 128f;
         }
@@ -193,11 +217,14 @@ public partial class ForgeUI
             else if (!unlocked) { bg = new Color(0.12f, 0.1f, 0.1f); border = new Color(0.25f, 0.2f, 0.2f); }
             else { bg = new Color(0.38f, 0.17f, 0.08f); border = Ember; }
             if (id == selNode) border = Color.white;
-            img.color = bg;
+            img.color = SkinTint(bg);
             ol.effectColor = border;
             ol.effectDistance = id == selNode ? new Vector2(5, -5) : new Vector2(3, -3);
             string col = unlocked ? "" : "<color=#7A6A66>";
-            nodeText[tr][id].text = col + TechText.Name(type) + "\n<b><size=26>" + lvl + "/" + max + "</size></b>" + (researching ? "  <color=#7FC8FF>●</color>" : "") + (unlocked ? "" : "</color>");
+            nodeText[tr][id].text = col + TechText.Name(type) + "  <size=20>" + lvl + "/" + max + "</size>" + (researching ? "  <color=#7FC8FF>●</color>" : "") + (unlocked ? "" : "</color>");
+            nodeFill[tr][id].rectTransform.anchorMax = new Vector2(max > 0 ? lvl / (float)max : 0f, 1);
+            nodeFill[tr][id].color = lvl >= max ? new Color(1f, 0.85f, 0.35f) : new Color(0.5f, 0.85f, 1f);
+            nodeIcon[tr][id].color = unlocked ? Color.white : new Color(0.35f, 0.32f, 0.32f, 0.8f);
         }
 
     }

@@ -119,6 +119,17 @@ def tile():
     over(im, masked(solid(n, n, (255, 255, 255, 255), gl.filter(ImageFilter.GaussianBlur(14 * SS))), inner))
     save(im, "tile", (128, 128))
 
+def slot():
+    # Case enfoncée (récompenses) : creux sombre, ombre intérieure en haut, liseré clair en bas. Non teintée.
+    n, r = 96 * SS, 20 * SS
+    im = new(n, n)
+    over(im, solid(n, n, (150, 96, 64, 140), rrect_mask(n, n, r)))
+    over(im, solid(n, n, (8, 4, 4, 255), rrect_mask(n, n, r, 2 * SS)))
+    over(im, masked(vgrad(n, n, [(0, (20, 10, 9, 255)), (1, (52, 28, 22, 255))]), rrect_mask(n, n, r, 4 * SS)))
+    sh = L(n, n); ImageDraw.Draw(sh).rounded_rectangle([4 * SS, 4 * SS, n - 1 - 4 * SS, 22 * SS], 12 * SS, fill=150)
+    over(im, masked(solid(n, n, (0, 0, 0, 255), sh.filter(ImageFilter.GaussianBlur(4 * SS))), rrect_mask(n, n, r, 4 * SS)))
+    save(im, "slot", (96, 96))
+
 def pill():
     n, r = 64 * SS, 30 * SS
     im = new(n, n)
@@ -351,10 +362,88 @@ def ic_skull():
     icon([(head, g((255, 246, 226, 255), (186, 160, 130, 255))), (eyes, g((255, 120, 30, 255), (190, 20, 10, 255))),
           (ImageChops.lighter(nose, teeth), new(N, N, (60, 30, 24, 255)))], name="i_skull")
 
+# ---------- Icônes des ressources (récompenses, boutique, donjons) ----------
+def ic_shell():
+    # Coquille d'œuf fendue, tachetée.
+    egg = ell(0.2, 0.08, 0.8, 0.92)
+    crack = L(N, N); ImageDraw.Draw(crack).line([(0.22 * N, 0.5 * N), (0.34 * N, 0.42 * N), (0.44 * N, 0.54 * N), (0.56 * N, 0.4 * N),
+                                                  (0.66 * N, 0.52 * N), (0.78 * N, 0.44 * N)], fill=255, width=int(0.045 * N), joint="curve")
+    spots = ImageChops.lighter(ell(0.32, 0.22, 0.42, 0.32), ImageChops.lighter(ell(0.58, 0.64, 0.7, 0.76), ell(0.36, 0.68, 0.44, 0.76)))
+    icon([(egg, g((255, 250, 236, 255), (200, 170, 130, 255), (240, 226, 200, 255))), (spots, new(N, N, (160, 110, 190, 255))),
+          (ImageChops.multiply(crack, egg), new(N, N, (90, 50, 30, 255))), hl(egg, 90, 0.4)], name="i_shell")
+
+def ic_winder():
+    # Fer à cheval doré (montures).
+    shoe = sub(ell(0.12, 0.1, 0.88, 0.86), ell(0.3, 0.28, 0.7, 0.68))
+    shoe = sub(shoe, rr(0.38, 0.6, 0.62, 1.0, 0))
+    nails = L(N, N)
+    for a in (200, 230, 260, 280, 310, 340):
+        x = 0.5 + 0.29 * math.cos(math.radians(a)); y = 0.48 + 0.29 * math.sin(math.radians(a))
+        nails = ImageChops.lighter(nails, ell(x - 0.025, y - 0.025, x + 0.025, y + 0.025))
+    nails = rot(nails, 180, 0.5, 0.48)
+    icon([(shoe, g((255, 236, 150, 255), (180, 96, 20, 255), (240, 180, 60, 255))), (ImageChops.multiply(nails, shoe), new(N, N, (110, 60, 20, 255))),
+          hl(shoe, 80, 0.4)], name="i_winder")
+
+def ic_ticket():
+    # Grimoire vert (tickets de compétences).
+    cover = rr(0.16, 0.12, 0.8, 0.88, 0.05)
+    pages = rr(0.22, 0.8, 0.84, 0.92, 0.02)
+    spine = rr(0.16, 0.12, 0.27, 0.88, 0.03)
+    gem = poly([(0.53, 0.32), (0.66, 0.5), (0.53, 0.68), (0.4, 0.5)])
+    corner = ImageChops.lighter(poly([(0.8, 0.12), (0.8, 0.26), (0.66, 0.12)]), poly([(0.8, 0.88), (0.8, 0.74), (0.66, 0.88)]))
+    icon([(pages, g((255, 250, 230, 255), (200, 180, 140, 255))), (cover, g((110, 220, 110, 255), (20, 100, 40, 255))),
+          (spine, g((60, 150, 60, 255), (10, 60, 20, 255))), (corner, g((255, 230, 120, 255), (180, 110, 30, 255))),
+          (gem, g((200, 255, 230, 255), (40, 190, 140, 255))), hl(cover, 70, 0.35)], name="i_ticket")
+
+def ic_potion():
+    neck = rr(0.42, 0.12, 0.58, 0.4, 0.02); bulb = ell(0.18, 0.3, 0.82, 0.92); cork = rr(0.39, 0.06, 0.61, 0.17, 0.03)
+    liquid = sub(bulb, rr(0, 0, 1, 0.52, 0))
+    glass = g((220, 240, 255, 220), (130, 160, 200, 220))
+    icon([(neck, glass), (bulb, glass), (liquid, g((255, 110, 80, 255), (160, 10, 24, 255))), (cork, g((210, 150, 90, 255), (120, 70, 30, 255))),
+          (ell(0.28, 0.4, 0.42, 0.54), new(N, N, (255, 255, 255, 190))), (ell(0.5, 0.64, 0.58, 0.72), new(N, N, (255, 200, 180, 210)))], name="i_potion")
+
+def ic_key_variant(name, top, bottom, gemc):
+    ring = sub(ell(0.08, 0.08, 0.5, 0.5), ell(0.2, 0.2, 0.38, 0.38))
+    shaft = rot(rr(0.42, 0.25, 0.94, 0.36, 0.02), -45, 0.29, 0.29)
+    t1 = rot(rr(0.7, 0.36, 0.78, 0.47, 0.0), -45, 0.29, 0.29); t2 = rot(rr(0.83, 0.36, 0.91, 0.52, 0.0), -45, 0.29, 0.29)
+    m = ImageChops.lighter(ImageChops.lighter(shaft, t1), t2)
+    gem = ell(0.235, 0.235, 0.345, 0.345)
+    icon([(ring, g(top, bottom)), (m, g(top, bottom)), (gem, g((255, 255, 255, 255), gemc)), hl(ring, 80, 0.3)], name=name)
+
+def ic_token():
+    # Jeton du Pas japonais : pierre ronde gravée d'une empreinte de pas.
+    o = ell(0.08, 0.14, 0.92, 0.9); face = ell(0.16, 0.18, 0.84, 0.8)
+    foot = ImageChops.lighter(ell(0.4, 0.36, 0.6, 0.66), ImageChops.lighter(ell(0.36, 0.26, 0.44, 0.34),
+           ImageChops.lighter(ell(0.46, 0.22, 0.54, 0.3), ell(0.56, 0.26, 0.64, 0.34))))
+    icon([(o, g((150, 150, 160, 255), (60, 60, 70, 255))), (face, g((220, 220, 226, 255), (130, 130, 140, 255))),
+          (foot, g((255, 160, 60, 255), (200, 50, 10, 255))), hl(face, 80, 0.4)], name="i_token")
+
+def ic_sword():
+    blade = rot(poly([(0.5, 0.04), (0.56, 0.12), (0.56, 0.66), (0.44, 0.66), (0.44, 0.12)]), -45)
+    guard = rot(rr(0.3, 0.64, 0.7, 0.72, 0.03), -45); grip = rot(rr(0.46, 0.72, 0.54, 0.88, 0.01), -45); pom = rot(ell(0.43, 0.86, 0.57, 0.98), -45)
+    icon([(blade, g((250, 252, 255, 255), (130, 136, 156, 255))), (guard, g((255, 226, 110, 255), (180, 100, 24, 255))),
+          (grip, g((150, 60, 30, 255), (70, 26, 12, 255))), (pom, g((255, 226, 110, 255), (180, 100, 24, 255)))], name="i_sword")
+
+def ic_heart():
+    h = ImageChops.lighter(ImageChops.lighter(ell(0.1, 0.16, 0.52, 0.58), ell(0.48, 0.16, 0.9, 0.58)),
+                           poly([(0.13, 0.46), (0.87, 0.46), (0.5, 0.9)]))
+    icon([(h, g((255, 120, 120, 255), (170, 10, 30, 255), (240, 50, 60, 255))), hl(h, 90, 0.4)], name="i_heart")
+
+def ic_clock():
+    o = ell(0.1, 0.1, 0.9, 0.9); f = ell(0.18, 0.18, 0.82, 0.82)
+    hands = L(N, N); d = ImageDraw.Draw(hands)
+    d.line([(0.5 * N, 0.5 * N), (0.5 * N, 0.27 * N)], fill=255, width=int(0.07 * N)); d.line([(0.5 * N, 0.5 * N), (0.66 * N, 0.58 * N)], fill=255, width=int(0.07 * N))
+    icon([(o, g((255, 226, 120, 255), (170, 96, 24, 255))), (f, g((255, 252, 240, 255), (210, 200, 180, 255))), (hands, new(N, N, (60, 30, 20, 255)))], name="i_clock")
+
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    button(); tab(); panel(); card(); frame(); tile(); pill(); bar(); banner(); glow(); rays()
+    button(); tab(); panel(); card(); frame(); tile(); slot(); pill(); bar(); banner(); glow(); rays()
     strip("topbar", (40, 16, 14, 250), (14, 6, 6, 250), line_top=False)
     strip("navbar", (36, 14, 12, 255), (10, 4, 4, 255), line_top=True)
     ic_coin(); ic_gem(); ic_hammer(); ic_power(); ic_shop(); ic_hero(); ic_forge(); ic_adventure(); ic_tech()
     ic_close(); ic_lock(); ic_star(); ic_check(); ic_key(); ic_skull()
+    ic_shell(); ic_winder(); ic_ticket(); ic_potion(); ic_token(); ic_sword(); ic_heart(); ic_clock()
+    ic_key_variant("i_key_hammer", (255, 236, 140, 255), (190, 110, 30, 255), (255, 170, 40, 255))
+    ic_key_variant("i_key_egg", (250, 244, 226, 255), (170, 150, 120, 255), (170, 110, 200, 255))
+    ic_key_variant("i_key_potion", (255, 150, 130, 255), (150, 20, 20, 255), (255, 60, 60, 255))
+    ic_key_variant("i_key_skill", (150, 240, 150, 255), (20, 110, 40, 255), (60, 220, 160, 255))
