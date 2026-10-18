@@ -143,7 +143,39 @@ public class BattleWorld : MonoBehaviour
     static readonly string[] KnightHide = { "1H_Sword_Offhand", "Badge_Shield", "Rectangle_Shield", "Round_Shield", "Spike_Shield", "1H_Sword", "2H_Sword" };
     static readonly string[] HeroDeath = { "Death" };
 
-    const float HeroSpeed = 2.4f, EnemySpeed = 1.8f, Engage = 0.75f, Spacing = 1.25f;
+    const float HeroSpeed = 2.4f, EnemySpeed = 2.2f, Engage = 0.75f, Spacing = 1.25f;
+    // Combat façon FM : les ennemis marchent vers le héros ; 3 au plus frappent au corps à corps en même temps,
+    // les tireurs (oracles, voyants, nécromanciens, rôdeurs) s'arrêtent à distance et lancent des projectiles.
+    // Le héros avec un Arc, un Bâton ou un Sceptre tire de loin.
+    const float HeroRange = 4.2f, EnemyRange = 3.8f;
+    const int MeleeSlots = 3;
+    static readonly float[] MeleeLanes = { 0f, 0.6f, -0.6f };
+
+    static bool RangedEnemy(Fighter f)
+    {
+        string k = f.def.sprite ?? f.def.path ?? "";
+        return k.Contains("Seer") || k.Contains("Oracle") || k.Contains("Necromancer") || k.Contains("Ranger") || k.Contains("SkelMage");
+    }
+    static Color EnemyShotColor(Fighter f)
+    {
+        string k = f.def.sprite ?? "";
+        return k.Contains("Ranger") ? new Color(0.85f, 0.7f, 0.45f) : k.Contains("Necromancer") ? new Color(0.5f, 1f, 0.5f)
+            : k.Contains("Oracle") ? new Color(0.75f, 0.45f, 1f) : new Color(0.45f, 0.75f, 1f);
+    }
+    // Arme à distance : la famille du modèle de l'arme équipée.
+    static bool HeroRanged()
+    {
+        var w = GameState.Data.equipped[0];
+        if (w == null || !w.valid) return false;
+        string n = GameState.ModelName(0, w.circle, w.model);
+        return n.StartsWith("Arc") || n.StartsWith("Bâton") || n.StartsWith("Sceptre");
+    }
+    static Color HeroShotColor()
+    {
+        var w = GameState.Data.equipped[0];
+        string n = GameState.ModelName(0, w.circle, w.model);
+        return n.StartsWith("Arc") ? new Color(1f, 0.92f, 0.7f) : Color.Lerp(GameState.CircleColors[w.circle], Color.white, 0.3f);
+    }
     const float HeroAttackInterval = 0.85f, EnemyAttackInterval = 1.3f;
 
     Camera cam;
@@ -730,6 +762,11 @@ public class BattleWorld : MonoBehaviour
             f.share = waveShare;
             f.atk = GameState.EnemyAtk(boss);
         }
+        // Plusieurs ennemis frappent en même temps (jusqu'à 3 en mêlée + les tireurs) : dégâts par ennemi réduits
+        // pour garder la difficulté d'avant (un seul attaquant à la fois). Groupes de la vue FM : 0,6 x la part de la vague.
+        if (missionSlot >= 0) f.atk *= GameState.MissionUnits(missionSlot) > 1 ? 0.45 : 1.0;
+        else if (dungeon == GameState.DungeonEgg) f.atk *= 0.45;
+        else if (dungeon < 0 && waveShare < 1) f.atk *= waveShare * 0.6;
         f.cooldown = 0.6f;
         Play(f, def.move, true);
         enemies.Add(f);
@@ -897,8 +934,10 @@ public class BattleWorld : MonoBehaviour
             }
         }
 
+        // Cible : l'ennemi vivant le plus proche.
         Fighter front = null;
-        foreach (var e in enemies) if (!e.dead) { front = e; break; }
+        foreach (var e in enemies) if (!e.dead && (front == null || e.X < front.X)) front = e;
+        bool ranged = HeroRanged();
 
         if (phase == "walk")
         {
@@ -942,7 +981,8 @@ public class BattleWorld : MonoBehaviour
             }
 
             float gap = hero.spr != null ? Engage + 0.3f : Engage;
-            bool engaged = front != null && front.X - hero.X <= gap + front.halfLen + 0.05f;
+            float reach = ranged ? HeroRange : gap;
+            bool engaged = front != null && front.X - hero.X <= reach + front.halfLen + 0.05f;
             heroEngaged = engaged;
             if (!engaged)
             {
@@ -961,7 +1001,7 @@ public class BattleWorld : MonoBehaviour
                 if (hero.hitTimer > 0f)
                 {
                     hero.hitTimer -= dt;
-                    if (hero.hitTimer <= 0f) HeroHits(front);
+                    if (hero.hitTimer <= 0f) { if (ranged) HeroShoots(front); else HeroHits(front); }
                 }
                 if (hero.cooldown < GameState.AttackInterval - 0.6f) Play(hero, HeroIdle, true);
             }
@@ -972,9 +1012,11 @@ public class BattleWorld : MonoBehaviour
             Play(hero, HeroRun, true);
         }
 
-        // Ennemis
-        int idx = 0;
-        float queueX = hero.X + (hero.spr != null ? Engage + 0.3f : Engage);
+        // Ennemis : ils marchent vers le héros. Mêlée : 3 places autour de lui (les autres attendent juste derrière) ;
+        // tireurs : à distance, en léger décalage.
+        float meleeGap = hero.spr != null ? Engage + 0.3f : Engage;
+        int melee = 0, shooters = 0;
+        enemies.Sort((a, b) => a.dead == b.dead ? a.X.CompareTo(b.X) : a.dead ? 1 : -1);
         for (int i = 0; i < enemies.Count; i++)
         {
             var e = enemies[i];
@@ -991,37 +1033,41 @@ public class BattleWorld : MonoBehaviour
                 if (e.deathTimer > 2.2f) { Destroy(e.go); enemies.RemoveAt(i); i--; }
                 continue;
             }
-            float target = queueX + e.halfLen;
-            queueX = decor != null ? target + (e.halfLen + 0.55f) * 0.45f : target + e.halfLen + (e.spr != null ? 0.55f : 0.35f);
-            if (decor != null && idx == 0)
+            bool shooter = RangedEnemy(e);
+            int slot = shooter ? shooters++ : melee++;
+            float target; float lane = e.go.transform.localPosition.z;
+            if (shooter) target = hero.X + EnemyRange + e.halfLen + slot * 0.55f;
+            else if (slot < MeleeSlots) { target = hero.X + meleeGap + e.halfLen + (slot == 0 ? 0f : 0.25f); if (decor != null) lane = MeleeLanes[slot]; }
+            else target = hero.X + meleeGap + e.halfLen + 0.9f + (slot - MeleeSlots) * 0.45f;
+            if (decor != null)
             {
                 var pz = e.go.transform.localPosition;
-                pz.z = Mathf.MoveTowards(pz.z, 0f, dt * 1.5f);
+                pz.z = Mathf.MoveTowards(pz.z, lane, dt * 1.5f);
                 e.go.transform.localPosition = pz;
             }
+            bool canHit = phase == "walk" && !hero.dead && (shooter || slot < MeleeSlots);
             if (e.X > target + 0.02f)
             {
                 e.X = Mathf.Max(target, e.X - EnemySpeed * dt);
                 Play(e, e.def.move, true);
             }
-            else if (idx == 0 && phase == "walk" && !hero.dead)
+            else if (canHit)
             {
                 e.cooldown -= dt;
                 if (e.cooldown <= 0f)
                 {
-                    e.cooldown = EnemyAttackInterval;
+                    e.cooldown = EnemyAttackInterval * Random.Range(0.9f, 1.15f);
                     Play(e, e.def.attack, false, true);
                     e.hitTimer = 0.35f;
                 }
                 if (e.hitTimer > 0f)
                 {
                     e.hitTimer -= dt;
-                    if (e.hitTimer <= 0f) EnemyHits(e);
+                    if (e.hitTimer <= 0f) { if (shooter) EnemyShoots(e); else EnemyHits(e); }
                 }
                 if (e.cooldown < EnemyAttackInterval - 0.8f) Play(e, e.def.idle, true);
             }
             else Play(e, e.def.idle, true);
-            idx++;
         }
 
         UpdateSkills(dt);
@@ -1043,6 +1089,36 @@ public class BattleWorld : MonoBehaviour
         UpdateArena(hero.X);
 
         UpdateOverlay(dt);
+    }
+
+    // Arme à distance : un projectile part de la main du héros ; à l'impact, coup normal (critique, double frappe, vol de vie).
+    void HeroShoots(Fighter target)
+    {
+        if (target == null || target.dead) return;
+        var from = hero.go.transform.position + new Vector3(0.35f, 1.0f, 0f);
+        var t = target;
+        float h = t.def.height * 0.55f + t.def.fly * 0.3f;
+        Vector3 last = t.go.transform.position + Vector3.up * h;
+        var w = GameState.Data.equipped[0];
+        bool bow = GameState.ModelName(0, w.circle, w.model).StartsWith("Arc");
+        SkillFx.Projectile(from, () => { if (t.go != null && !t.dead) last = t.go.transform.position + Vector3.up * h; return last; },
+            HeroShotColor(), bow ? 18f : 12f, bow ? 0.25f : 0.1f, bow ? 0.6f : 0.9f, () =>
+            {
+                var hit = t;
+                if (hit.dead || hit.go == null) return;
+                HeroHits(hit);
+            });
+    }
+
+    // Ennemi tireur : projectile vers le héros ; dégâts à l'impact (blocage possible).
+    void EnemyShoots(Fighter e)
+    {
+        if (hero.dead) return;
+        var from = e.go.transform.position + new Vector3(-0.3f, e.def.height * 0.6f, 0f);
+        SkillFx.Projectile(from, () => hero.go.transform.position + Vector3.up * 1.0f, EnemyShotColor(e), 9f, 0.5f, 0.7f, () =>
+        {
+            if (!hero.dead && phase == "walk") EnemyHits(e);
+        });
     }
 
     void HeroHits(Fighter target)

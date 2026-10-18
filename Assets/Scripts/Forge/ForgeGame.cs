@@ -82,6 +82,14 @@ public class ForgeGame : MonoBehaviour
         if (name.StartsWith("open:")) { FindAnyObjectByType<ForgeUI>()?.SendMessage("TestOpen", name.Substring(5)); return; } // outil de test : ouvre un écran (shop, hero, skills, pets, mounts, dungeons, missions, tech, pass, odds, home)
         if (name.StartsWith("ss:")) { FindAnyObjectByType<ForgeUI>()?.SendMessage("TestStones", name.Substring(3)); return; } // outil de test : « ss:tokens », « ss:0 »/« ss:1 » (pierre gauche/droite), « ss:auto »
         if (name.StartsWith("tier")) { int t = -1; int.TryParse(name.Substring(4), out t); ItemIcons.TestTier = name.Length > 4 ? t : -1; GameState.AddEggshells(0); return; } // outil de test : apparence d'ascension des animaux
+        if (name.StartsWith("weapon:")) // outil de test : « weapon:Arc » équipe une arme de cette famille (cercle de l'arme actuelle si elle existe)
+        {
+            string fam = name.Substring(7);
+            for (int c = 0; c < 10; c++)
+                for (int m = 0; m < GameState.ModelCount(0); m++)
+                    if (GameState.ModelName(0, c, m).StartsWith(fam)) { var it = GameState.MakeItem(0, c, 12); it.model = m; GameState.Data.equipped[0] = it; GameState.AddEggshells(0); return; }
+            return;
+        }
         if (name == "tickets") { GameState.Data.skillTickets += 5000; GameState.AddEggshells(0); return; } // outil de test : tickets de compétences
         if (name.StartsWith("forge")) { GameState.Data.hammers = Mathf.Max(GameState.Data.hammers, 1); FindAnyObjectByType<ForgeUI>()?.SendMessage("OnForge"); return; }
         ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(dir, name + ".png"));
